@@ -1,0 +1,22 @@
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": [
+      "Phase 2 · CodeRabbit AI Review",
+      "Phase 2 · CodeQL SAST",
+      "Phase 2 · Snyk SCA",
+      "Phase 3 · Jest Unit Tests",
+      "Phase 3 · Newman API Tests"
+    ]
+  },
+  "enforce_admins": true,
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 1,
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": false
+  },
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "required_linear_history": true
+}
