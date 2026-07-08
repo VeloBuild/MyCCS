@@ -1,0 +1,367 @@
+# =============================================================================
+# MyCCS — Centralized Department Mobile App
+# Multi-Tiered DevSecOps CI/CD Pipeline
+# =============================================================================
+# Trigger: Pull Requests targeting 'main' or 'develop'
+# Phases:
+#   Phase 2 — Static Analysis (CodeRabbit AI, CodeQL SAST, Snyk SCA)
+#   Phase 3 — Automated QA (Jest Unit, Newman API, Playwright E2E)
+#   Phase 4 — Build (Expo EAS → .apk/.ipa → GitHub Artifact)
+#   Phase 5 — CD (Vercel/Netlify deploy, Supabase DB migrations)
+# =============================================================================
+
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types: [opened, synchronize, reopened]
+
+# Cancel in-flight runs for the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+# =============================================================================
+# PHASE 2 — STATIC ANALYSIS
+# DevSecOps gate: SAST, SCA, and AI-powered code review
+# =============================================================================
+jobs:
+  # ---------------------------------------------------------------------------
+  # CodeRabbit AI — Automated diff review
+  # ---------------------------------------------------------------------------
+  coderabbit:
+    name: "Phase 2 · CodeRabbit AI Review"
+    runs-on: ubuntu-latest
+    # NOTE: CodeRabbit is configured as a GitHub App integration.
+    # It automatically reviews PRs when installed on the repository.
+    # This job acts as a status check gate — it will be replaced by
+    # the actual CodeRabbit App check once integrated.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # TODO: CodeRabbit AI is a GitHub App — install from:
+      # https://github.com/apps/coderabbitai
+      # Once installed, it automatically reviews PRs and posts
+      # a status check. This placeholder ensures the required
+      # status check name exists in the pipeline.
+      - name: "Placeholder: CodeRabbit AI Review"
+        run: |
+          echo "✅ CodeRabbit AI review is handled by the GitHub App integration."
+          echo "   Install: https://github.com/apps/coderabbitai"
+          echo "   This step acts as a status check placeholder."
+
+  # ---------------------------------------------------------------------------
+  # CodeQL — Static Application Security Testing (SAST)
+  # ---------------------------------------------------------------------------
+  codeql:
+    name: "Phase 2 · CodeQL SAST"
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          # TODO: Add custom CodeQL query suites if needed
+          # queries: +security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"
+
+  # ---------------------------------------------------------------------------
+  # Snyk — Software Composition Analysis (SCA)
+  # ---------------------------------------------------------------------------
+  snyk:
+    name: "Phase 2 · Snyk SCA"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # TODO: Add SNYK_TOKEN to repository secrets
+      # Get your token from: https://app.snyk.io/account
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+        # continue-on-error: true  # Uncomment to allow builds with vulnerabilities
+
+  # =============================================================================
+  # PHASE 3 — AUTOMATED QA
+  # Unit tests, API tests, and E2E tests
+  # =============================================================================
+
+  # ---------------------------------------------------------------------------
+  # Jest — Unit & Component Testing
+  # ---------------------------------------------------------------------------
+  jest:
+    name: "Phase 3 · Jest Unit Tests"
+    runs-on: ubuntu-latest
+    needs: [coderabbit, codeql, snyk]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # TODO: Configure Jest in package.json or jest.config.ts
+      # Add test scripts: "test": "jest --coverage"
+      - name: Run Jest tests
+        run: npm test -- --coverage --ci --reporters=default --reporters=jest-junit
+        env:
+          JEST_JUNIT_OUTPUT_DIR: ./reports/junit
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jest-results
+          path: ./reports/junit/
+          retention-days: 30
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: ./coverage/
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Newman — Supabase Edge Function API Testing
+  # ---------------------------------------------------------------------------
+  newman:
+    name: "Phase 3 · Newman API Tests"
+    runs-on: ubuntu-latest
+    needs: [coderabbit, codeql, snyk]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Newman
+        run: npm install -g newman newman-reporter-htmlextra
+
+      # TODO: Create Postman collection exports in /tests/api/
+      # Export collections from Postman and place them at:
+      #   tests/api/collection.json
+      #   tests/api/environment.json
+      - name: Run Newman API tests
+        run: |
+          echo "🔧 Newman API tests placeholder"
+          echo "   To activate, create Postman collections at:"
+          echo "   tests/api/collection.json"
+          echo "   tests/api/environment.json"
+          # newman run tests/api/collection.json \
+          #   -e tests/api/environment.json \
+          #   -r htmlextra,cli,junit \
+          #   --reporter-htmlextra-export ./reports/newman/report.html \
+          #   --reporter-junit-export ./reports/newman/junit.xml
+
+      - name: Upload Newman results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-results
+          path: ./reports/newman/
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Playwright — E2E Web Admin Testing
+  # ---------------------------------------------------------------------------
+  playwright:
+    name: "Phase 3 · Playwright E2E Tests"
+    runs-on: ubuntu-latest
+    needs: [coderabbit, codeql, snyk]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # TODO: Install Playwright and configure tests
+      # npx playwright install --with-deps
+      # Create tests in /tests/e2e/
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        continue-on-error: true
+
+      - name: Run Playwright E2E tests
+        run: |
+          echo "🔧 Playwright E2E tests placeholder"
+          echo "   To activate, create test files at: tests/e2e/"
+          # npx playwright test --reporter=html
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: ./playwright-report/
+          retention-days: 30
+
+  # =============================================================================
+  # PHASE 4 — BUILD
+  # Expo EAS cloud build → .apk / .ipa → GitHub Artifact upload
+  # =============================================================================
+  build:
+    name: "Phase 4 · Expo EAS Build"
+    runs-on: ubuntu-latest
+    needs: [jest, newman, playwright]
+    if: github.base_ref == 'main' || github.base_ref == 'develop'
+    strategy:
+      matrix:
+        platform: [android]
+        # TODO: Add 'ios' when Apple Developer account is configured
+        # platform: [android, ios]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Expo & EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # TODO: Configure eas.json with build profiles
+      # Run: eas build:configure
+      # Profiles: development, preview, production
+      - name: Run EAS Build (${{ matrix.platform }})
+        run: |
+          echo "🔧 EAS Build placeholder for ${{ matrix.platform }}"
+          echo "   To activate:"
+          echo "   1. Run: npx eas-cli build:configure"
+          echo "   2. Add EXPO_TOKEN to repository secrets"
+          echo "   3. Uncomment the eas build command below"
+          # eas build \
+          #   --platform ${{ matrix.platform }} \
+          #   --profile preview \
+          #   --non-interactive \
+          #   --no-wait
+
+      # TODO: Download and upload the built binary as a GitHub Artifact
+      # After EAS build completes, the binary URL is available in the output
+      - name: Upload build artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.platform }}-${{ github.sha }}
+          path: |
+            *.apk
+            *.ipa
+          retention-days: 90
+          if-no-files-found: warn
+
+  # =============================================================================
+  # PHASE 5 — CONTINUOUS DEPLOYMENT
+  # Web admin deploy + Supabase database migrations
+  # =============================================================================
+  deploy:
+    name: "Phase 5 · Deploy"
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.base_ref == 'main'
+    environment:
+      name: production
+      url: ${{ steps.deploy-web.outputs.url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ----- Web Admin Deployment (Vercel / Netlify) -----
+      # TODO: Choose deployment platform and configure
+      # Option A — Vercel:
+      #   1. Install Vercel CLI: npm i -g vercel
+      #   2. Add VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID to secrets
+      #   3. Run: vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
+      # Option B — Netlify:
+      #   1. Install Netlify CLI: npm i -g netlify-cli
+      #   2. Add NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID to secrets
+      #   3. Run: netlify deploy --prod
+      - name: "Placeholder: Deploy Web Admin"
+        id: deploy-web
+        run: |
+          echo "🔧 Web admin deployment placeholder"
+          echo "   Configure Vercel or Netlify secrets to activate"
+          echo "url=https://myccs.example.com" >> $GITHUB_OUTPUT
+
+      # ----- Supabase Database Migrations -----
+      # TODO: Add SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD,
+      #       SUPABASE_PROJECT_ID to repository secrets
+      - name: "Placeholder: Supabase Migrations"
+        run: |
+          echo "🔧 Supabase migration placeholder"
+          echo "   To activate:"
+          echo "   1. Add SUPABASE_ACCESS_TOKEN to secrets"
+          echo "   2. Add SUPABASE_PROJECT_ID to secrets"
+          echo "   3. Uncomment the migration commands below"
+          # npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
+          # npx supabase db push

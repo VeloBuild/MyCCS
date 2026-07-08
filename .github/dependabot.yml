@@ -1,0 +1,35 @@
+# Dependabot Configuration
+# Automatically creates PRs for npm dependency updates on a weekly schedule.
+# Docs: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+
+version: 2
+updates:
+  # NPM Dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Asia/Manila"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "AlexisRellon"
+    labels:
+      - "dependencies"
+      - "automated"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "ci/cd"
+      - "automated"
+    commit-message:
+      prefix: "chore(ci)"

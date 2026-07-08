@@ -39,3 +39,32 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Supabase
+supabase/.temp/
+supabase/.branches/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Test reports & coverage
+/coverage/
+/reports/
+/playwright-report/
+/test-results/
+
+# Build artifacts
+*.apk
+*.ipa
+*.aab
+
+# Husky
+.husky/_/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
