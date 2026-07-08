@@ -1,0 +1,15 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.1
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
+ignore:
+  SNYK-JS-IMAGESIZE-17295814:
+    - '*':
+        reason: 'No patch available yet, introduced by react-native'
+        expires: 2026-08-07T10:19:57.066Z
+        created: 2026-07-08T10:19:57.068Z
+  SNYK-JS-IMAGESIZE-17295816:
+    - '*':
+        reason: 'No patch available yet, introduced by react-native'
+        expires: 2026-08-07T10:19:59.921Z
+        created: 2026-07-08T10:19:59.925Z
+patch: {}
