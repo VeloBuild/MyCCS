@@ -1,0 +1,4 @@
+# Exclude agent skill directories from the MyCCS knowledge graph
+.agents/skills/
+.claude/skills/
+.agents/plugins/myccs-plugin/skills/

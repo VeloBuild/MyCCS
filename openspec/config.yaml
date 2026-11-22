@@ -1,0 +1,31 @@
+schema: spec-driven
+
+context: |
+  Project: MyCCS (Expo React Native mobile app + standalone Vite/React SPA `web-admin/` on Cloudflare Pages + `shared/` Zod contracts + Supabase PostgreSQL 17 / Deno 2 Edge Functions).
+  Auth: Verified `@lpunetwork.edu.ph` Email + Password + 6-digit OTP via Resend SMTP + server-side `before-user-created` Auth Hook (no MS 365 IdP clearance).
+  Security (RA 10173): Encrypt PII + `certification_keys.key_code` with `key_version` rotation; match GMetrix CSV via HMAC-SHA256 `email_blind_index`; keep `student_id` private; never put raw keys in push payloads or raw PII in QR codes.
+  Database: Every `public` table migration MUST enable RLS and issue explicit `GRANT` statements for `authenticated`. Commit client + `shared/` + `supabase/` atomically.
+  Ponytail Mode: Always choose the smallest complete change. No speculative wrappers, options, or "for later" abstractions. Document intentional MVP limits with `shortcut: <limit>, <when to upgrade>`.
+
+rules:
+  proposal:
+    - Reference a `SCRUM-<number>` Jira ticket and the matching `spec-0X-*` item in `openspec/ROADMAP.md`
+    - Explicitly state what is out of scope (MVP cutline from `docs/jira/PRD_MyCCS.md`)
+  specs:
+    - Cite owning `PRD_MyCCS.md` requirement IDs (`FR-AUTH`, `FR-DEPT`, `FR-ORG`, `FR-EVT`, `FR-ATT`, `FR-FORM`, `FR-CERT`)
+  design:
+    - Specify exact surfaces touched (root mobile, `web-admin/`, `shared/`, `supabase/migrations/`, `supabase/functions/`)
+    - Include RLS policies, explicit `GRANT`s, and encryption/blind-index rules for any new table
+  tasks:
+    - Keep tasks atomic (max ~2 hours each) and group DB migrations with their client/Edge Function changes
+    - Include one focused verification test (Jest, Newman, or Playwright) for every non-trivial behavior
+
+operations:
+  apply:
+    guidance:
+      - Follow ponytail rules: smallest complete diff, no unrequested abstractions
+      - Log any bugs discovered during implementation in `openspec/ROADMAP.md` (Implementation Bug Log)
+      - Run `bash .agents/skills/myccs-workflow/scripts/gates.sh` before finishing
+  archive:
+    guidance:
+      - Check off the completed spec in `openspec/ROADMAP.md` and run `graphify update .`

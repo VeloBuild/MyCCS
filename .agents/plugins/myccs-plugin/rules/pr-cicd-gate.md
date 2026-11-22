@@ -1,0 +1,29 @@
+---
+trigger: model_decision
+description: Use this rule when the agent is preparing to open or review a pull request, to verify all CI/CD gate requirements are met first.
+---
+
+## PR Readiness — CI/CD Gate
+
+Before creating or declaring a PR ready for review, verify all 6 gates. State any failure and stop.
+
+### Gate 1 — Jira Linkage
+PR title must contain `SCRUM-\d+`. If missing, ask for the Jira ticket number before continuing.
+
+### Gate 2 — Target Branch
+- `feat/`, `fix/`, `chore/`, `refactor/` → must target `develop`
+- `develop` → may only target `main` during a planned release cutover
+- `hotfix/` → may target `main` directly
+
+### Gate 3 — Security scan awareness
+The following run automatically — surface any known issues before CI catches them:
+- **CodeQL** (SAST), **Snyk** (SCA), **CodeRabbit AI** (architectural review)
+
+### Gate 4 — Test coverage
+Changes to `.ts`/`.tsx` files outside `tests/` must have corresponding Jest unit tests. Thresholds: statements ≥ 80%, branches ≥ 75%, functions ≥ 80%, lines ≥ 80%.
+
+### Gate 5 — Migration pairing
+If `supabase/migrations/` is touched, confirm the migration and its paired React Native code are in the same commit.
+
+### Gate 6 — Merge strategy
+Remind the user: select **Squash and Merge** in the GitHub UI before merging into `develop`.
