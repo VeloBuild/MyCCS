@@ -1,0 +1,240 @@
+{
+  "$metadata": {
+    "tokenSetOrder": [
+      "myccs-primitives",
+      "myccs-theme"
+    ]
+  },
+  "myccs-primitives": {
+    "color": {
+      "brand": {
+        "blue": {
+          "900": {
+            "$type": "color",
+            "$value": "#062A55"
+          },
+          "700": {
+            "$type": "color",
+            "$value": "#075AA8"
+          },
+          "600": {
+            "$type": "color",
+            "$value": "#087AC1"
+          }
+        },
+        "cyan": {
+          "500": {
+            "$type": "color",
+            "$value": "#00B8E6"
+          },
+          "400": {
+            "$type": "color",
+            "$value": "#38D9FF"
+          }
+        },
+        "gold": {
+          "500": {
+            "$type": "color",
+            "$value": "#D4AF37"
+          },
+          "400": {
+            "$type": "color",
+            "$value": "#F5D76E"
+          }
+        }
+      },
+      "neutral": {
+        "0": {
+          "$type": "color",
+          "$value": "#FFFFFF"
+        },
+        "50": {
+          "$type": "color",
+          "$value": "#F8FAFC"
+        },
+        "100": {
+          "$type": "color",
+          "$value": "#F1F5F9"
+        },
+        "200": {
+          "$type": "color",
+          "$value": "#E2E8F0"
+        },
+        "300": {
+          "$type": "color",
+          "$value": "#CBD5E1"
+        },
+        "500": {
+          "$type": "color",
+          "$value": "#64748B"
+        },
+        "700": {
+          "$type": "color",
+          "$value": "#334155"
+        },
+        "900": {
+          "$type": "color",
+          "$value": "#0F172A"
+        }
+      }
+    },
+    "spacing": {
+      "1": {
+        "$type": "dimension",
+        "$value": "4px"
+      },
+      "2": {
+        "$type": "dimension",
+        "$value": "8px"
+      },
+      "3": {
+        "$type": "dimension",
+        "$value": "12px"
+      },
+      "4": {
+        "$type": "dimension",
+        "$value": "16px"
+      },
+      "6": {
+        "$type": "dimension",
+        "$value": "24px"
+      },
+      "8": {
+        "$type": "dimension",
+        "$value": "32px"
+      }
+    },
+    "radius": {
+      "small": {
+        "$type": "dimension",
+        "$value": "6px"
+      },
+      "medium": {
+        "$type": "dimension",
+        "$value": "12px"
+      },
+      "large": {
+        "$type": "dimension",
+        "$value": "20px"
+      }
+    }
+  },
+  "myccs-theme": {
+    "light": {
+      "surface": {
+        "background": {
+          "$type": "color",
+          "$value": "{color.neutral.0}"
+        },
+        "primary": {
+          "$type": "color",
+          "$value": "{color.neutral.50}"
+        },
+        "brand": {
+          "$type": "color",
+          "$value": "{color.brand.blue.700}"
+        }
+      },
+      "text": {
+        "primary": {
+          "$type": "color",
+          "$value": "{color.neutral.900}"
+        },
+        "secondary": {
+          "$type": "color",
+          "$value": "{color.neutral.700}"
+        },
+        "inverse": {
+          "$type": "color",
+          "$value": "#FFFFFF"
+        }
+      },
+      "interactive": {
+        "primary": {
+          "$type": "color",
+          "$value": "{color.brand.blue.700}"
+        },
+        "focus": {
+          "$type": "color",
+          "$value": "{color.brand.cyan.500}"
+        }
+      },
+      "status": {
+        "success": {
+          "$type": "color",
+          "$value": "#16A34A"
+        },
+        "warning": {
+          "$type": "color",
+          "$value": "#D97706"
+        },
+        "error": {
+          "$type": "color",
+          "$value": "#DC2626"
+        },
+        "info": {
+          "$type": "color",
+          "$value": "#0284C7"
+        }
+      }
+    },
+    "dark": {
+      "surface": {
+        "background": {
+          "$type": "color",
+          "$value": "#020617"
+        },
+        "primary": {
+          "$type": "color",
+          "$value": "#0F172A"
+        },
+        "brand": {
+          "$type": "color",
+          "$value": "#087AC1"
+        }
+      },
+      "text": {
+        "primary": {
+          "$type": "color",
+          "$value": "#F8FAFC"
+        },
+        "secondary": {
+          "$type": "color",
+          "$value": "#CBD5E1"
+        },
+        "inverse": {
+          "$type": "color",
+          "$value": "#0F172A"
+        }
+      },
+      "interactive": {
+        "primary": {
+          "$type": "color",
+          "$value": "#087AC1"
+        },
+        "focus": {
+          "$type": "color",
+          "$value": "#38D9FF"
+        }
+      },
+      "status": {
+        "success": {
+          "$type": "color",
+          "$value": "#4ADE80"
+        },
+        "warning": {
+          "$type": "color",
+          "$value": "#FBBF24"
+        },
+        "error": {
+          "$type": "color",
+          "$value": "#F87171"
+        },
+        "info": {
+          "$type": "color",
+          "$value": "#38BDF8"
+        }
+      }
+    }
+  }
+}

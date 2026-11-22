@@ -1,0 +1,42 @@
+{
+  "no-env-in-commands": {
+    "enabled": false,
+    "SessionStart": null,
+    "PreInvocation": null,
+    "PostInvocation": null,
+    "Stop": null,
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Users/Admin/.gemini/config/plugins/myccs-plugin/hooks/block-env-commands.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": null
+  },
+  "sensitive-file-guard": {
+    "enabled": false,
+    "SessionStart": null,
+    "PreInvocation": null,
+    "PostInvocation": null,
+    "Stop": null,
+    "PreToolUse": [
+      {
+        "matcher": "read_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Users/Admin/.gemini/config/plugins/myccs-plugin/hooks/sensitive-file-guard.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": null
+  }
+}

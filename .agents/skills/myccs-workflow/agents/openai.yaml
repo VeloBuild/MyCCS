@@ -1,0 +1,4 @@
+interface:
+  display_name: "MyCCS Unified Workflow"
+  short_description: "Jira (SCRUM-*), Graphify, OpenSpec, and GitHub (issues, pr, release, ship) scripts"
+  default_prompt: "Use $myccs-workflow to run Jira, Graphify, OpenSpec, or GitHub (issues, pr, release, ship) tasks."
