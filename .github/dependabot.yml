@@ -33,6 +33,11 @@ updates:
           - "patch"
     # Pin core framework & tooling versions aligned with Expo SDK 58 compatibility
     ignore:
+      - dependency-name: "react"
+        update-types:
+          - "version-update:semver-patch"
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
       - dependency-name: "react-native"
         update-types:
           - "version-update:semver-minor"

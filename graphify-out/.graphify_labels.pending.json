@@ -5,5 +5,6 @@
   "19": "post-checkout",
   "23": "post-commit",
   "24": "post-merge",
-  "25": "post-rewrite"
+  "25": "post-rewrite",
+  "26": "overrides"
 }
