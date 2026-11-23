@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Owns GitHub Actions CI/CD workflows (`workflows/ci.yml`), Dependabot (`dependabot.yml`), repository instructions (`copilot-instructions.md`, `instructions/`), and custom GitHub agents (`agents/`).
+Owns GitHub Actions CI/CD workflows (`workflows/ci.yml`), issue templates (`ISSUE_TEMPLATE/`), Dependabot (`dependabot.yml`), repository instructions (`copilot-instructions.md`, `instructions/`), and custom GitHub agents (`agents/`).
 
 ## Mandatory Rules
 
