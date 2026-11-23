@@ -1,0 +1,9 @@
+{
+  "9": "Milestones & Per-Spec Checklist",
+  "10": "MyCCS Claude Code Instructions",
+  "15": "Bounded Conditional Form Builder (JSONB + Zod)",
+  "19": "post-checkout",
+  "23": "post-commit",
+  "24": "post-merge",
+  "25": "post-rewrite"
+}

@@ -1,0 +1,5 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "myccs-plugin",
+  "description": "MyCCS multi-agent workflow plugin for the Expo React Native + Supabase monorepo. Bundles 5 specialist agents, Git/Jira/security rules, and enforced pre-tool hooks."
+}

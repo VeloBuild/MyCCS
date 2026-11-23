@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "postman-mcp-server": {
+      "args": [
+        "-y",
+        "@postman/postman-mcp-server"
+      ],
+      "command": "npx",
+      "env": {
+        "POSTMAN_API_KEY": "PMAK-xxxxxxxxxxxxxxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    }    
+  }
+}

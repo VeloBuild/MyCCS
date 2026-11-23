@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security & RA 10173 Privacy Report
+    url: https://github.com/VeloBuild/MyCCS/security/advisories/new
+    about: Privately report security vulnerabilities, RLS bypasses, or PII exposure (never open a public issue).
+  - name: MyCCS Documentation & Specs
+    url: https://github.com/VeloBuild/MyCCS/blob/develop/openspec/ROADMAP.md
+    about: Review the OpenSpec roadmap, PRD, and Software Architecture Baseline before filing a request.

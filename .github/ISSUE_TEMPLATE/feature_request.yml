@@ -1,0 +1,87 @@
+name: Feature Request
+description: Propose a new feature or user story aligned with the MyCCS PRD, SAB, and OpenSpec roadmap
+title: "[SCRUM-XXX] feat(<scope>): "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Propose a feature or user story for **MyCCS**.
+        Reference the [PRD](docs/jira/PRD_MyCCS.md), [Software Architecture Baseline](docs/jira/Software_Architecture_Baseline.md), and [OpenSpec Roadmap](openspec/ROADMAP.md).
+
+  - type: input
+    id: jira-key
+    attributes:
+      label: Jira Ticket
+      description: Linked `SCRUM-*` Jira story or epic key.
+      placeholder: "SCRUM-123"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: spec-ref
+    attributes:
+      label: OpenSpec Milestone / Spec
+      description: Which roadmap spec does this belong to?
+      options:
+        - spec-01-auth-identity
+        - spec-02-core-schema-rls
+        - spec-03-web-admin-scaffold
+        - spec-04-dept-and-org-pages
+        - spec-05-gmetrix-csv-and-push
+        - spec-06-events-and-offline-qr
+        - spec-07-conditional-forms-metrics
+        - spec-08-qa-security-release
+        - Post-MVP / Unscheduled
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Target Workspace(s)
+      multiple: true
+      options:
+        - mobile (Expo React Native)
+        - web-admin (Cloudflare Pages Vite SPA)
+        - shared (Types & Zod Schemas)
+        - supabase (Migrations / RLS / Edge Functions)
+        - ci (GitHub Actions / DevSecOps)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / User Story
+      description: Who benefits (student, officer, faculty/admin) and what problem does this solve?
+      placeholder: "As a <role>, I want <capability> so that <outcome>."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution & Acceptance Criteria
+      description: Smallest complete slice required by the spec, plus testable acceptance criteria.
+      value: |
+        ### Scope
+        - ...
+
+        ### Acceptance Criteria
+        - [ ] ...
+        - [ ] Unit / API / E2E tests added
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: guardrails
+    attributes:
+      label: Architecture & Privacy Checklist
+      options:
+        - label: Any new `public` table includes PostgreSQL RLS + explicit `GRANT`s and ships atomically with client changes.
+          required: false
+        - label: PII / GMetrix key handling follows RA 10173 encryption, blind-index, and payload redaction rules.
+          required: false
+        - label: "`web-admin/` remains strictly excluded from the Expo mobile bundle."
+          required: false

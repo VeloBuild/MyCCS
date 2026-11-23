@@ -1,0 +1,10 @@
+{
+  "excludes": [
+    ".agents/skills/**",
+    ".agents/skills",
+    ".claude/skills/**",
+    ".claude/skills",
+    ".agents/plugins/myccs-plugin/skills/**",
+    ".agents/plugins/myccs-plugin/skills"
+  ]
+}

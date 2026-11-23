@@ -1,0 +1,95 @@
+name: Bug Report
+description: Report a bug in the MyCCS mobile app, web-admin portal, Supabase backend, or CI/CD pipeline
+title: "[SCRUM-XXX] fix(<scope>): "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug in **MyCCS**.
+        > **Privacy Notice (RA 10173):** Never paste real student PII (`@lpunetwork.edu.ph` emails, `student_id`, full names), raw GMetrix keys, JWTs, or `.env` secrets into this issue. Use redacted or synthetic values only.
+
+  - type: input
+    id: jira-key
+    attributes:
+      label: Jira Ticket
+      description: Linked Jira key (required before opening a PR).
+      placeholder: "SCRUM-123"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Area
+      description: Which workspace or subsystem is affected?
+      options:
+        - mobile (Expo React Native)
+        - web-admin (Cloudflare Pages Vite SPA)
+        - shared (Types & Zod Schemas)
+        - supabase (DB / RLS / Edge Functions)
+        - ci (GitHub Actions / DevSecOps)
+        - docs / tooling
+    validations:
+      required: true
+
+  - type: dropdown
+    id: role
+    attributes:
+      label: User Role / Context
+      description: Which RBAC role experienced the issue?
+      options:
+        - Student
+        - Officer
+        - Admin / Faculty
+        - Unauthenticated / Auth Flow
+        - N/A (CI, DevOps, or Build)
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Describe the Bug
+      description: Clear, concise description of what went wrong and what you expected instead.
+      placeholder: "Expected ... but observed ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the issue.
+      value: |
+        1. Go to '...'
+        2. Trigger '...'
+        3. Observe '...'
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Device / OS / Expo Go or EAS build / Browser / Node version.
+      placeholder: "e.g., Android 14 (EAS preview), Chrome 131, Node 20"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or Screenshots (Redacted)
+      description: Relevant stack traces, network status codes, or redacted screenshots.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: privacy-check
+    attributes:
+      label: Privacy & Security Confirmation
+      options:
+        - label: I confirmed this report contains no real student PII, GMetrix keys, tokens, or secrets (RA 10173).
+          required: true
