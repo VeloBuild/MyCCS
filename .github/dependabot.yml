@@ -4,9 +4,10 @@
 
 version: 2
 updates:
-  # NPM Dependencies
+  # NPM Dependencies (version updates targeting develop)
   - package-ecosystem: "npm"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -20,10 +21,53 @@ updates:
       - "automated"
     commit-message:
       prefix: "chore(deps)"
+    groups:
+      expo:
+        patterns:
+          - "expo"
+          - "expo-*"
+          - "@expo/*"
+          - "jest-expo"
+        update-types:
+          - "minor"
+          - "patch"
+    # Pin core framework & tooling versions aligned with Expo SDK 58 compatibility
+    ignore:
+      - dependency-name: "react-native"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
+      - dependency-name: "jest"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
+
+  # NPM Security Updates (default branch main; limit 0 disables duplicate version updates)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    reviewers:
+      - "AlexisRellon"
+    labels:
+      - "security"
+      - "dependencies"
+      - "automated"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      npm-security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -33,3 +77,7 @@ updates:
       - "automated"
     commit-message:
       prefix: "chore(ci)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

@@ -5,6 +5,5 @@
   "19": "post-checkout",
   "23": "post-commit",
   "24": "post-merge",
-  "25": "post-rewrite",
-  "26": "App.test.tsx"
+  "25": "post-rewrite"
 }
