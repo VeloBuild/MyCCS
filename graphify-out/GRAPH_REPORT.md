@@ -1,17 +1,17 @@
 # Graph Report - MyCCS  (2026-11-23)
 
 ## Corpus Check
-- 55 files · ~46,889 words
+- 55 files · ~46,922 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 12 file(s) not represented in the graph (top: (none) 11, .toml 1)
 
 ## Summary
-- 198 nodes · 248 edges · 26 communities (12 shown, 14 thin omitted)
+- 207 nodes · 257 edges · 27 communities (13 shown, 14 thin omitted)
 - Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 26 edges (avg confidence: 0.89)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `96647ede`
+- Built from commit: `26cd6f96`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -35,6 +35,7 @@
 - Skill Sync Script
 - Dependabot Configuration
 - OpenSpec Configuration
+- overrides
 
 ## God Nodes (most connected - your core abstractions)
 1. `Product Requirements Document (PRD_MyCCS.md)` - 17 edges
@@ -63,7 +64,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (26 total, 14 thin omitted)
+## Communities (27 total, 14 thin omitted)
 
 ### Community 0 - "MyCCS Product, Auth & Architecture"
 Cohesion: 0.12
@@ -113,25 +114,29 @@ Nodes (5): expo/tsconfig.base, compilerOptions, strict, types, extends
 Cohesion: 0.50
 Nodes (3): description, name, $schema
 
+### Community 26 - "overrides"
+Cohesion: 0.22
+Nodes (9): minimatch, minimatch, minimatch, overrides, @expo/fingerprint, glob@10, glob@13, test-exclude@7 (+1 more)
+
 ## Knowledge Gaps
 - **25 isolated node(s):** `react`, `@testing-library/react-native`, `@types/jest`, `@types/react`, `husky` (+20 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 110 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 114 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Product Requirements Document (PRD_MyCCS.md)` connect `MyCCS Product, Auth & Architecture` to `MyCCS Product, Auth & Architecture`, `Governance, CI/CD & Agent Guides`?**
-  _High betweenness centrality (0.041) - this node is a cross-community bridge._
+  _High betweenness centrality (0.038) - this node is a cross-community bridge._
 - **What connects `react`, `@testing-library/react-native`, `@types/jest` to the rest of the system?**
   _25 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `MyCCS Product, Auth & Architecture` be split into smaller, more focused modules?**
   _Cohesion score 0.11587301587301588 - nodes in this community are weakly interconnected._
 - **Why does `MyCCS Repository Rules (rules.md)` connect `MyCCS Product, Auth & Architecture` to `MyCCS Product, Auth & Architecture`, `Governance, CI/CD & Agent Guides`?**
-  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+  _High betweenness centrality (0.034) - this node is a cross-community bridge._
 - **Should `Expo App Entry & Manifest` be split into smaller, more focused modules?**
   _Cohesion score 0.08615384615384615 - nodes in this community are weakly interconnected._
 - **Why does `CI/CD Pipeline Specification` connect `MyCCS Product, Auth & Architecture` to `MyCCS Product, Auth & Architecture`, `Governance, CI/CD & Agent Guides`?**
-  _High betweenness centrality (0.030) - this node is a cross-community bridge._
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
 - **Should `Governance, CI/CD & Agent Guides` be split into smaller, more focused modules?**
   _Cohesion score 0.1286549707602339 - nodes in this community are weakly interconnected._

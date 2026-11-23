@@ -1,37 +1,37 @@
 {
   ".agents/plugins/myccs-plugin/hooks.json": {
-    "mtime": 1795368705.7048385,
-    "seen": 1795422115.4671688,
+    "mtime": 1795427691.4785903,
+    "seen": 1795428693.0094516,
     "ast_hash": "5b5dd5232b09fee12737beaf17a922a1",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/hooks/block-env-commands.sh": {
-    "mtime": 1795368705.7068367,
-    "seen": 1795422115.467175,
+    "mtime": 1795427691.4795897,
+    "seen": 1795428693.0094576,
     "ast_hash": "1e83e6b560ea2edc8f1afdf09151710d",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/hooks/sensitive-file-guard.sh": {
-    "mtime": 1795368705.7078385,
-    "seen": 1795422115.4671779,
+    "mtime": 1795427691.4810977,
+    "seen": 1795428693.0094604,
     "ast_hash": "f122091b863b49498cdf2c615e3bdb00",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/mcp_config.json": {
-    "mtime": 1795368705.7088368,
-    "seen": 1795422115.46718,
+    "mtime": 1795427691.482105,
+    "seen": 1795428693.0094628,
     "ast_hash": "9ce772241994cc5b3e9d06c51cb76563",
     "semantic_hash": "9ce772241994cc5b3e9d06c51cb76563"
   },
   ".agents/plugins/myccs-plugin/plugin.json": {
-    "mtime": 1795368705.7108893,
-    "seen": 1795422115.4671822,
+    "mtime": 1795427691.482105,
+    "seen": 1795428693.0094647,
     "ast_hash": "5f2b0095a6ea87dab67c49b2ee48cb03",
     "semantic_hash": ""
   },
   ".husky/commit-msg": {
-    "mtime": 1795368705.9288666,
-    "seen": 1795422115.4671836,
+    "mtime": 1795427691.5751297,
+    "seen": 1795428693.0094666,
     "ast_hash": "9fbbbe0cf0d8bea573a35d29357a02f9",
     "semantic_hash": ""
   },
@@ -42,14 +42,14 @@
     "semantic_hash": "731f821041b5c3db08788f28bf3c467e"
   },
   "app.json": {
-    "mtime": 1795424098.1151626,
-    "seen": 1795424116.9991348,
+    "mtime": 1795427691.588066,
+    "seen": 1795428693.009478,
     "ast_hash": "12ccfa0c7a31411b94f28f14b31a19f8",
     "semantic_hash": ""
   },
   "docs/myccs.figma.variables.json": {
-    "mtime": 1795368705.9852867,
-    "seen": 1795422115.4671977,
+    "mtime": 1795427691.5991626,
+    "seen": 1795428693.0094798,
     "ast_hash": "ee0e08a9cfc116f00a58c3fdd7abb5d1",
     "semantic_hash": ""
   },
@@ -60,20 +60,20 @@
     "semantic_hash": "33caa6d28d87fc7e637c033d0d7124b1"
   },
   "jest.config.js": {
-    "mtime": 1795368706.0464687,
-    "seen": 1795422115.4672012,
+    "mtime": 1795427691.6104622,
+    "seen": 1795428693.0094836,
     "ast_hash": "0b7fda03a0d2ccc3aa14b8d79e0eccd3",
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1795424098.1612847,
-    "seen": 1795424116.9991417,
-    "ast_hash": "838b4b7fd73ca459229db61f4e91afc6",
+    "mtime": 1795428567.8142192,
+    "seen": 1795428693.009485,
+    "ast_hash": "664e072c6cff14b017a26c1e9dc07883",
     "semantic_hash": ""
   },
   "scripts/branch-protection-body.json": {
-    "mtime": 1795368706.0857718,
-    "seen": 1795422115.4672036,
+    "mtime": 1795427691.623896,
+    "seen": 1795428693.009487,
     "ast_hash": "2417d8fdc26d487cbd0a4741f89e0bfa",
     "semantic_hash": "2417d8fdc26d487cbd0a4741f89e0bfa"
   },
@@ -84,182 +84,182 @@
     "semantic_hash": "7f3197ca18793dd0e23ee2b20bd4fdf9"
   },
   "tests/unit/App.test.tsx": {
-    "mtime": 1795368706.105528,
-    "seen": 1795422115.4672086,
+    "mtime": 1795427691.6295025,
+    "seen": 1795428693.009492,
     "ast_hash": "e1b26e3405dcafce106033dc954c8258",
     "semantic_hash": ""
   },
   "tsconfig.json": {
-    "mtime": 1795368706.1121287,
-    "seen": 1795422115.46721,
+    "mtime": 1795427691.630503,
+    "seen": 1795428693.0094938,
     "ast_hash": "3a24784c2a68449db83cc37179dbc269",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/agents/devsecops-sentinel.md": {
-    "mtime": 1795368705.677971,
-    "seen": 1795422115.467211,
+    "mtime": 1795427691.4705126,
+    "seen": 1795428693.0094953,
     "ast_hash": "f016fa774cd5af722ca4af37fd2a05fb",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/agents/jira-git-workflow.md": {
-    "mtime": 1795368705.67948,
-    "seen": 1795422115.4672122,
+    "mtime": 1795427691.472519,
+    "seen": 1795428693.009497,
     "ast_hash": "a12075192748eeed9e6e61c246ae87ea",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/agents/postman-api-specialist.md": {
-    "mtime": 1795368705.6850073,
-    "seen": 1795422115.4672136,
+    "mtime": 1795427691.47352,
+    "seen": 1795428693.0094984,
     "ast_hash": "c191afe75e705c4a3921e4a81b700f18",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/agents/react-native-qa-specialist.md": {
-    "mtime": 1795368705.6870074,
-    "seen": 1795422115.467215,
+    "mtime": 1795427691.4745195,
+    "seen": 1795428693.0094998,
     "ast_hash": "db233d6dbec5334b31f8708547a67863",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/agents/release-manager.md": {
-    "mtime": 1795368705.6956549,
-    "seen": 1795422115.4672167,
+    "mtime": 1795427691.4765816,
+    "seen": 1795428693.0095015,
     "ast_hash": "accd9e28aa063e7e101a900527ad8bcd",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/agents/supabase-architect.md": {
-    "mtime": 1795368705.6972535,
-    "seen": 1795422115.4672182,
+    "mtime": 1795427691.4775896,
+    "seen": 1795428693.0095026,
     "ast_hash": "48c451db76a09b7d8f5172a087c48d64",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/rules/git-hygiene.md": {
-    "mtime": 1795368705.7225125,
-    "seen": 1795422115.4672194,
+    "mtime": 1795427691.4841063,
+    "seen": 1795428693.009504,
     "ast_hash": "18ea017a50b0afdac65cbae285ba605d",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/rules/migration-safety.md": {
-    "mtime": 1795368705.7235122,
-    "seen": 1795422115.467221,
+    "mtime": 1795427691.4851055,
+    "seen": 1795428693.0095055,
     "ast_hash": "231b5720d18beec488b24d81c69b69d6",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/rules/pr-cicd-gate.md": {
-    "mtime": 1795368705.7245133,
-    "seen": 1795422115.4672222,
+    "mtime": 1795427691.4861057,
+    "seen": 1795428693.0095067,
     "ast_hash": "2edfecd6b912e8fbf7a8fd48f13121aa",
     "semantic_hash": ""
   },
   ".agents/plugins/myccs-plugin/rules/sensitive-file-guard.md": {
-    "mtime": 1795368705.726584,
-    "seen": 1795422115.467224,
+    "mtime": 1795427691.488106,
+    "seen": 1795428693.0095084,
     "ast_hash": "1dcbda5e297db53e2c5e896782126809",
     "semantic_hash": ""
   },
   ".github/agents/devsecops-sentinel.agent.md": {
-    "mtime": 1795368705.8838851,
-    "seen": 1795422115.4672327,
+    "mtime": 1795427691.5595858,
+    "seen": 1795428693.009518,
     "ast_hash": "1681f8c6f537f0a9747150817efe03d7",
     "semantic_hash": "1681f8c6f537f0a9747150817efe03d7"
   },
   ".github/agents/jira-git-workflow.agent.md": {
-    "mtime": 1795368705.8863902,
-    "seen": 1795422115.4672341,
+    "mtime": 1795427691.560594,
+    "seen": 1795428693.0095193,
     "ast_hash": "b9e44167cc4fa51274ed0ae80616588c",
     "semantic_hash": "b9e44167cc4fa51274ed0ae80616588c"
   },
   ".github/agents/myccs-code.agent.md": {
-    "mtime": 1795368705.8927085,
-    "seen": 1795422115.4672356,
+    "mtime": 1795427691.5619311,
+    "seen": 1795428693.0095205,
     "ast_hash": "2d89ca3c8c0b1be08d95f18998669b74",
     "semantic_hash": "2d89ca3c8c0b1be08d95f18998669b74"
   },
   ".github/agents/react-native-qa-specialist.agent.md": {
-    "mtime": 1795368705.8937147,
-    "seen": 1795422115.4672372,
+    "mtime": 1795427691.5619311,
+    "seen": 1795428693.0095222,
     "ast_hash": "b3ba47e2b151ff395f2db337fe5c823d",
     "semantic_hash": "b3ba47e2b151ff395f2db337fe5c823d"
   },
   ".github/agents/release-manager.agent.md": {
-    "mtime": 1795368705.896806,
-    "seen": 1795422115.4672384,
+    "mtime": 1795427691.5634449,
+    "seen": 1795428693.0095236,
     "ast_hash": "f8a2faa28a5b0571f368422394a11b16",
     "semantic_hash": "f8a2faa28a5b0571f368422394a11b16"
   },
   ".github/agents/supabase-architect.agent.md": {
-    "mtime": 1795368705.903986,
-    "seen": 1795422115.4672396,
+    "mtime": 1795427691.5654547,
+    "seen": 1795428693.0095253,
     "ast_hash": "aa9559d1a9c23a532d3509cea3c5f1e9",
     "semantic_hash": "aa9559d1a9c23a532d3509cea3c5f1e9"
   },
   ".github/copilot-instructions.md": {
-    "mtime": 1795368705.9049842,
-    "seen": 1795422115.4672413,
+    "mtime": 1795427691.566153,
+    "seen": 1795428693.0095265,
     "ast_hash": "b0a5e2407bb600408664a444656eeb92",
     "semantic_hash": "b0a5e2407bb600408664a444656eeb92"
   },
   ".github/dependabot.yml": {
-    "mtime": 1795424098.112658,
-    "seen": 1795424116.9991832,
-    "ast_hash": "f85c44016301a2e7841ac9459e523539",
+    "mtime": 1795428570.714627,
+    "seen": 1795428693.0095284,
+    "ast_hash": "92911eaed14c37ef836ea3443f4b5e25",
     "semantic_hash": ""
   },
   ".github/instructions/myccs.rules.instructions.md": {
-    "mtime": 1795368705.9069846,
-    "seen": 1795422115.4672444,
+    "mtime": 1795427691.568698,
+    "seen": 1795428693.0095296,
     "ast_hash": "5b720bb8991ce90f48bc3e366727c2c8",
     "semantic_hash": "5b720bb8991ce90f48bc3e366727c2c8"
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1795424098.1136582,
-    "seen": 1795424116.9991856,
-    "ast_hash": "cd74964b9dcd5bb1150121ec8316a3a2",
+    "mtime": 1795428539.8612926,
+    "seen": 1795428693.0095308,
+    "ast_hash": "a06ca19a549914c72d9383d98f613d10",
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1795424096.8877842,
-    "seen": 1795424116.9991868,
+    "mtime": 1795427691.5859585,
+    "seen": 1795428693.0095325,
     "ast_hash": "ef2d10ab09a7e8289a0bc0d729b68922",
     "semantic_hash": ""
   },
   "concepts_brief.md": {
-    "mtime": 1795368705.9490204,
-    "seen": 1795422115.4672499,
+    "mtime": 1795427691.589122,
+    "seen": 1795428693.009535,
     "ast_hash": "bde0ea964f9cb2eb6674296069b98406",
     "semantic_hash": ""
   },
   "docs/jira/CI_CD Pipeline Specification_ Centralized Department Mobile App.md": {
-    "mtime": 1795368705.963742,
-    "seen": 1795422115.4672532,
+    "mtime": 1795427691.5930398,
+    "seen": 1795428693.009538,
     "ast_hash": "e7b4339ec8661b57aecd8af8b763f4cf",
     "semantic_hash": ""
   },
   "docs/jira/College Department App - Agile Project Brief_Proposal.md": {
-    "mtime": 1795368705.964749,
-    "seen": 1795422115.4672549,
+    "mtime": 1795427691.5942383,
+    "seen": 1795428693.0095396,
     "ast_hash": "1313cb75c65ed53c2e32e9c8535a64ad",
     "semantic_hash": ""
   },
   "docs/jira/Git Branching & Version Control Strategy.md": {
-    "mtime": 1795368705.9702506,
-    "seen": 1795422115.4672563,
+    "mtime": 1795427691.5952694,
+    "seen": 1795428693.009541,
     "ast_hash": "0eaf6d2de8db2b4ce7ff42f70247f948",
     "semantic_hash": ""
   },
   "docs/jira/PRD_MyCCS.md": {
-    "mtime": 1795368705.9738953,
-    "seen": 1795422115.4672573,
+    "mtime": 1795427691.5969424,
+    "seen": 1795428693.0095425,
     "ast_hash": "95a296bd9691edaa06e382024816ee1c",
     "semantic_hash": ""
   },
   "docs/jira/Software_Architecture_Baseline.md": {
-    "mtime": 1795368705.983274,
-    "seen": 1795422115.467259,
+    "mtime": 1795427691.5984087,
+    "seen": 1795428693.0095437,
     "ast_hash": "15a58bcf2be1722ec39e928d8330ee40",
     "semantic_hash": ""
   },
   "openspec/config.yaml": {
-    "mtime": 1795368706.061687,
-    "seen": 1795422115.467262,
+    "mtime": 1795427691.6143746,
+    "seen": 1795428693.0095465,
     "ast_hash": "d9b0bd24b3b1f08bb33d24746e08810d",
     "semantic_hash": ""
   },
@@ -306,104 +306,104 @@
     "semantic_hash": "97dae5a0e62ad8551d8a31897b425e63"
   },
   ".github/AGENTS.md": {
-    "mtime": 1795424096.877438,
-    "seen": 1795424116.9991655,
+    "mtime": 1795427691.5545416,
+    "seen": 1795428693.0095105,
     "ast_hash": "fd1e819824f27d29cdf97ee7e5b2d13c",
     "semantic_hash": ""
   },
   "docs/AGENTS.md": {
-    "mtime": 1795368705.956044,
-    "seen": 1795422115.4672518,
+    "mtime": 1795427691.5904253,
+    "seen": 1795428693.0095367,
     "ast_hash": "582c6087a531c9d61d158a0d6cc38751",
     "semantic_hash": ""
   },
   "rules.md": {
-    "mtime": 1795368706.0786355,
-    "seen": 1795422115.4672635,
+    "mtime": 1795427691.6218958,
+    "seen": 1795428693.009548,
     "ast_hash": "2ecc80eff1bf3f9537ade83d59b7df30",
     "semantic_hash": ""
   },
   "scripts/AGENTS.md": {
-    "mtime": 1795368706.0801487,
-    "seen": 1795422115.4672647,
+    "mtime": 1795427691.6228952,
+    "seen": 1795428693.0095499,
     "ast_hash": "47d4229c47af455fec303e0d2d647fb3",
     "semantic_hash": ""
   },
   "supabase/AGENTS.md": {
-    "mtime": 1795368706.094319,
-    "seen": 1795422115.4672663,
+    "mtime": 1795427691.6258953,
+    "seen": 1795428693.0095513,
     "ast_hash": "d0d977bd321194e9efd332d304decf68",
     "semantic_hash": ""
   },
   "tests/AGENTS.md": {
-    "mtime": 1795368706.103911,
-    "seen": 1795422115.4672678,
+    "mtime": 1795427691.6285033,
+    "seen": 1795428693.0095527,
     "ast_hash": "a71bd71d21421c1a08abd3c4c3e16000",
     "semantic_hash": ""
   },
   "scripts/sync-skills.sh": {
-    "mtime": 1795368706.0918484,
-    "seen": 1795422115.4672074,
+    "mtime": 1795427691.6248944,
+    "seen": 1795428693.0094905,
     "ast_hash": "33a82ae6aa76fc4d2c19bc5e7015c190",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795368705.9425142,
-    "seen": 1795422115.4672487,
+    "mtime": 1795427691.5869489,
+    "seen": 1795428693.009534,
     "ast_hash": "58816a495fb63b823b0a0b609efadd70",
     "semantic_hash": ""
   },
   "openspec/ROADMAP.md": {
-    "mtime": 1795368706.0480082,
-    "seen": 1795422115.4672604,
+    "mtime": 1795427691.6122677,
+    "seen": 1795428693.0095453,
     "ast_hash": "10d385721f279179eafc8070ca9459d4",
     "semantic_hash": ""
   },
   ".husky/post-checkout": {
-    "mtime": 1795424096.8827758,
-    "seen": 1795424116.9991264,
+    "mtime": 1795427691.5762305,
+    "seen": 1795428693.0094683,
     "ast_hash": "7ab6c6909c4bfb43157b01307a1fa643",
     "semantic_hash": ""
   },
   ".husky/post-commit": {
-    "mtime": 1795424096.8837824,
-    "seen": 1795424116.9991286,
+    "mtime": 1795427691.57732,
+    "seen": 1795428693.00947,
     "ast_hash": "3b500e5deb7a89eb6f5022ef7b637e52",
     "semantic_hash": ""
   },
   ".husky/post-merge": {
-    "mtime": 1795424096.884783,
-    "seen": 1795424116.99913,
+    "mtime": 1795427691.5784173,
+    "seen": 1795428693.0094714,
     "ast_hash": "097e598d291400ea19d5cb67071b1ad3",
     "semantic_hash": ""
   },
   ".husky/post-rewrite": {
-    "mtime": 1795424096.884783,
-    "seen": 1795424116.9991314,
+    "mtime": 1795427691.5804794,
+    "seen": 1795428693.009473,
     "ast_hash": "d392741be08b484c600330ad5b7f7c5b",
     "semantic_hash": ""
   },
   ".github/ISSUE_TEMPLATE/bug_report.yml": {
-    "mtime": 1795424096.8784952,
-    "seen": 1795424116.9991672,
+    "mtime": 1795427691.5557735,
+    "seen": 1795428693.0095122,
     "ast_hash": "920be306898005643a4e3fca2b602737",
     "semantic_hash": ""
   },
   ".github/ISSUE_TEMPLATE/chore_task.yml": {
-    "mtime": 1795424096.879019,
-    "seen": 1795424116.9991689,
+    "mtime": 1795427691.5568545,
+    "seen": 1795428693.0095136,
     "ast_hash": "36dcfcee5f479657f0ad525dfff096c8",
     "semantic_hash": ""
   },
   ".github/ISSUE_TEMPLATE/config.yml": {
-    "mtime": 1795424096.8795636,
-    "seen": 1795424116.99917,
+    "mtime": 1795427691.5573628,
+    "seen": 1795428693.0095153,
     "ast_hash": "6d1adfd03dc17e5cf3a32a4d60a235d8",
     "semantic_hash": ""
   },
   ".github/ISSUE_TEMPLATE/feature_request.yml": {
-    "mtime": 1795424096.880627,
-    "seen": 1795424116.9991713,
+    "mtime": 1795427691.5580707,
+    "seen": 1795428693.0095165,
     "ast_hash": "4bd01b2dea0264369e3642093ba4e3a0",
     "semantic_hash": ""
   }
