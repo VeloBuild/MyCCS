@@ -1,10 +1,17 @@
 {
+  "1": "package.json",
+  "4": "auth-identity.test.ts",
+  "6": "Design: Auth & Privacy-First Identity (`spec-01-auth-identity`)",
+  "7": "Requirements",
   "9": "Milestones & Per-Spec Checklist",
   "10": "MyCCS Claude Code Instructions",
-  "15": "Bounded Conditional Form Builder (JSONB + Zod)",
+  "15": "supabase.ts",
   "19": "post-checkout",
   "23": "post-commit",
   "24": "post-merge",
   "25": "post-rewrite",
-  "26": "overrides"
+  "26": "overrides",
+  "27": "ADDED Requirements",
+  "28": "identity-crypto.ts",
+  "29": "dependencies"
 }

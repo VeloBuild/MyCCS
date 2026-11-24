@@ -41,31 +41,13 @@ echo ""
 # Step 2: Configure branch protection for both permanent branches
 # ---------------------------------------------------------------------------
 BRANCHES=("main" "develop")
-STATUS_CHECKS='["CodeRabbit AI","Jest","Newman","CodeQL","Snyk"]'
 
 for BRANCH in "${BRANCHES[@]}"; do
   echo "🔒 Protecting branch: $BRANCH"
 
   gh api "repos/$OWNER/$REPO/branches/$BRANCH/protection" \
     --method PUT \
-    --input - <<EOF
-{
-  "required_status_checks": {
-    "strict": true,
-    "contexts": ["Phase 2 · CodeRabbit AI Review", "Phase 2 · CodeQL SAST", "Phase 2 · Snyk SCA", "Phase 3 · Jest Unit Tests", "Phase 3 · Newman API Tests"]
-  },
-  "enforce_admins": true,
-  "required_pull_request_reviews": {
-    "required_approving_review_count": 1,
-    "dismiss_stale_reviews": true,
-    "require_code_owner_reviews": false
-  },
-  "restrictions": null,
-  "allow_force_pushes": false,
-  "allow_deletions": false,
-  "required_linear_history": true
-}
-EOF
+    --input scripts/branch-protection-body.json
 
   echo "   ✅ Branch protection applied to '$BRANCH'"
   echo ""
@@ -78,7 +60,7 @@ echo "Summary:"
 echo "  • Squash-and-merge only (merge commits & rebase disabled)"
 echo "  • Direct pushes blocked on main & develop"
 echo "  • Pull requests required with 1 approving review"
-echo "  • Status checks required: CodeRabbit, CodeQL, Snyk, Jest, Newman"
+echo "  • Status checks required: Jira, CodeRabbit, CodeQL, Snyk, Jest, Newman, Playwright"
 echo "  • Stale review dismissal enabled"
 echo "  • Admin enforcement enabled"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

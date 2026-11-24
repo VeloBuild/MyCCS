@@ -36,10 +36,10 @@
     "semantic_hash": ""
   },
   "App.tsx": {
-    "mtime": 1783501726.854581,
-    "seen": 1795361945.4153445,
-    "ast_hash": "731f821041b5c3db08788f28bf3c467e",
-    "semantic_hash": "731f821041b5c3db08788f28bf3c467e"
+    "mtime": 1795534146.4920628,
+    "seen": 1795534473.0424252,
+    "ast_hash": "8d20127696526d6f8044f903e59bc690",
+    "semantic_hash": ""
   },
   "app.json": {
     "mtime": 1795427691.588066,
@@ -60,15 +60,15 @@
     "semantic_hash": "33caa6d28d87fc7e637c033d0d7124b1"
   },
   "jest.config.js": {
-    "mtime": 1795427691.6104622,
-    "seen": 1795428693.0094836,
-    "ast_hash": "0b7fda03a0d2ccc3aa14b8d79e0eccd3",
+    "mtime": 1795535025.0553765,
+    "seen": 1795535129.5090926,
+    "ast_hash": "5fee53913be911b6c29633b4b3b47fb3",
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1795428567.8142192,
-    "seen": 1795428693.009485,
-    "ast_hash": "664e072c6cff14b017a26c1e9dc07883",
+    "mtime": 1795537882.0003805,
+    "seen": 1795538208.54574,
+    "ast_hash": "663d2ec260980ea81a79b8bb0e02a39c",
     "semantic_hash": ""
   },
   "scripts/branch-protection-body.json": {
@@ -78,15 +78,15 @@
     "semantic_hash": "2417d8fdc26d487cbd0a4741f89e0bfa"
   },
   "scripts/protect-branches.sh": {
-    "mtime": 1783505970.0374792,
-    "seen": 1795361945.415353,
-    "ast_hash": "7f3197ca18793dd0e23ee2b20bd4fdf9",
-    "semantic_hash": "7f3197ca18793dd0e23ee2b20bd4fdf9"
+    "mtime": 1795537969.1569784,
+    "seen": 1795538208.5459535,
+    "ast_hash": "2d4979b6a76b35e5970a162809c7ea67",
+    "semantic_hash": ""
   },
   "tests/unit/App.test.tsx": {
-    "mtime": 1795427691.6295025,
-    "seen": 1795428693.009492,
-    "ast_hash": "e1b26e3405dcafce106033dc954c8258",
+    "mtime": 1795535026.7106166,
+    "seen": 1795535129.5111122,
+    "ast_hash": "ec1fe7952c522a99b8262abffc1cc31a",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -198,8 +198,8 @@
     "semantic_hash": "b0a5e2407bb600408664a444656eeb92"
   },
   ".github/dependabot.yml": {
-    "mtime": 1795428570.714627,
-    "seen": 1795428693.0095284,
+    "mtime": 1795429075.2085638,
+    "seen": 1795534473.055441,
     "ast_hash": "92911eaed14c37ef836ea3443f4b5e25",
     "semantic_hash": ""
   },
@@ -210,9 +210,9 @@
     "semantic_hash": "5b720bb8991ce90f48bc3e366727c2c8"
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1795428539.8612926,
-    "seen": 1795428693.0095308,
-    "ast_hash": "a06ca19a549914c72d9383d98f613d10",
+    "mtime": 1795537884.8168333,
+    "seen": 1795538208.5519495,
+    "ast_hash": "9f52c908ac021c4960e63ed4f607e603",
     "semantic_hash": ""
   },
   "AGENTS.md": {
@@ -258,9 +258,9 @@
     "semantic_hash": ""
   },
   "openspec/config.yaml": {
-    "mtime": 1795427691.6143746,
-    "seen": 1795428693.0095465,
-    "ast_hash": "d9b0bd24b3b1f08bb33d24746e08810d",
+    "mtime": 1795432855.8461163,
+    "seen": 1795534473.0594876,
+    "ast_hash": "9f6a4f1d600c0f98c20e5b5c6a127819",
     "semantic_hash": ""
   },
   "tests/README.md": {
@@ -354,9 +354,9 @@
     "semantic_hash": ""
   },
   "openspec/ROADMAP.md": {
-    "mtime": 1795427691.6122677,
-    "seen": 1795428693.0095453,
-    "ast_hash": "10d385721f279179eafc8070ca9459d4",
+    "mtime": 1795538603.9657564,
+    "seen": 1795538675.4830072,
+    "ast_hash": "410e44361302124641cde765eb2b42e0",
     "semantic_hash": ""
   },
   ".husky/post-checkout": {
@@ -405,6 +405,84 @@
     "mtime": 1795427691.5580707,
     "seen": 1795428693.0095165,
     "ast_hash": "4bd01b2dea0264369e3642093ba4e3a0",
+    "semantic_hash": ""
+  },
+  "shared/auth.ts": {
+    "mtime": 1795537694.6928494,
+    "seen": 1795538208.546157,
+    "ast_hash": "b66036ecbf8b7051efd325682a4ababc",
+    "semantic_hash": ""
+  },
+  "shared/identity-crypto.ts": {
+    "mtime": 1795537697.1663575,
+    "seen": 1795538208.546159,
+    "ast_hash": "14a66aa0282c2bda82ae84a051e92aaa",
+    "semantic_hash": ""
+  },
+  "src/lib/supabase.ts": {
+    "mtime": 1795537707.866116,
+    "seen": 1795538208.5461638,
+    "ast_hash": "9a2b523442b2393e3c09c4a411c511d4",
+    "semantic_hash": ""
+  },
+  "src/screens/AuthIdentityScreen.tsx": {
+    "mtime": 1795537813.407785,
+    "seen": 1795538208.5461652,
+    "ast_hash": "fc1ead5fb6ede293a387348f88efa25b",
+    "semantic_hash": ""
+  },
+  "src/services/auth.ts": {
+    "mtime": 1795537732.2531376,
+    "seen": 1795538208.5461671,
+    "ast_hash": "03eb19cdee8ada73722f7ce68a74e50c",
+    "semantic_hash": ""
+  },
+  "tests/unit/auth-identity.test.ts": {
+    "mtime": 1795538089.8623054,
+    "seen": 1795538208.546386,
+    "ast_hash": "c4c8fdf8e449cf2a0b45f7c5570d57d5",
+    "semantic_hash": ""
+  },
+  "src/components/IdentityCard.tsx": {
+    "mtime": 1795537744.116548,
+    "seen": 1795538208.5461614,
+    "ast_hash": "58c2ccaf48c9f0fef63d230d2f0103d1",
+    "semantic_hash": ""
+  },
+  "openspec/changes/archive/2026-11-25-spec-01-auth-identity/.openspec.yaml": {
+    "mtime": 1795433121.1263318,
+    "seen": 1795538675.4830115,
+    "ast_hash": "2ddefb3a8594c73008058b815027fb23",
+    "semantic_hash": ""
+  },
+  "openspec/changes/archive/2026-11-25-spec-01-auth-identity/design.md": {
+    "mtime": 1795534940.9230185,
+    "seen": 1795538675.4830139,
+    "ast_hash": "19819f648fd5cd38444520099b50a55c",
+    "semantic_hash": ""
+  },
+  "openspec/changes/archive/2026-11-25-spec-01-auth-identity/proposal.md": {
+    "mtime": 1795433185.587051,
+    "seen": 1795538675.483016,
+    "ast_hash": "086fdb432d048f1dbfd987843aa052af",
+    "semantic_hash": ""
+  },
+  "openspec/changes/archive/2026-11-25-spec-01-auth-identity/specs/auth-identity/spec.md": {
+    "mtime": 1795433278.66583,
+    "seen": 1795538675.483018,
+    "ast_hash": "5be95d9e9b70f97bb012eab22cea2c87",
+    "semantic_hash": ""
+  },
+  "openspec/changes/archive/2026-11-25-spec-01-auth-identity/tasks.md": {
+    "mtime": 1795534358.1969855,
+    "seen": 1795538675.4830198,
+    "ast_hash": "5a0581d4eec947af521ba6036ddc14ce",
+    "semantic_hash": ""
+  },
+  "openspec/specs/auth-identity/spec.md": {
+    "mtime": 1795538554.3355808,
+    "seen": 1795538675.483232,
+    "ast_hash": "e60104dc0c29d05469d2cfa90075e3b2",
     "semantic_hash": ""
   }
 }
