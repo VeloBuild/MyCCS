@@ -116,6 +116,8 @@ jobs:
   snyk:
     name: "Phase 2 · Snyk SCA"
     runs-on: ubuntu-latest
+    env:
+      HAS_SNYK_TOKEN: ${{ secrets.SNYK_TOKEN != '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -132,12 +134,17 @@ jobs:
       # TODO: Add SNYK_TOKEN to repository secrets
       # Get your token from: https://app.snyk.io/account
       - name: Run Snyk to check for vulnerabilities
+        if: env.HAS_SNYK_TOKEN == 'true'
         uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
-        continue-on-error: true  # Allows builds to pass even if vulnerabilities are found
+
+      - name: Warn when SNYK_TOKEN is not configured
+        if: env.HAS_SNYK_TOKEN != 'true'
+        run: |
+          echo "::warning::SNYK_TOKEN is not configured in repository secrets — skipping Snyk SCA scan. Add SNYK_TOKEN (https://app.snyk.io/account) to fail PRs on high/critical vulnerabilities."
 
   # =============================================================================
   # PHASE 3 — AUTOMATED QA
