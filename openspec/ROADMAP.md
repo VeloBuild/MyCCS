@@ -32,11 +32,11 @@ Single living tracker for implementing MyCCS spec-by-spec using OpenSpec (`schem
   - [x] Migrations for `department_info`, `organizations` (`parent_org_id` for Main -> Sub-Org), `org_memberships`, `announcements`
   - [x] 3-role RBAC RLS policies (`student | officer | admin`) + explicit `GRANT`s for `authenticated`
   - [x] Tests: Newman RLS positive/negative access checks per role
-- [ ] **`spec-03-web-admin-scaffold`** (`ADR-009`)
-  - [ ] Standalone Vite + React + TypeScript SPA in `web-admin/` (strictly excluded from Metro/EAS bundle)
-  - [ ] `shared/` directory for shared TypeScript DTOs and Zod schemas
-  - [ ] Admin login + route guard (`role = 'admin'`) + Cloudflare Pages root-directory config + Edge Function CORS allowlist
-  - [ ] Tests: Playwright smoke test verifying non-admin `@lpunetwork.edu.ph` student is blocked from `web-admin/`
+- [x] **`spec-03-web-admin-scaffold`** (`ADR-009`)
+  - [x] Standalone Vite + React + TypeScript SPA in `web-admin/` (strictly excluded from Metro/EAS bundle)
+  - [x] `shared/` directory for shared TypeScript DTOs and Zod schemas
+  - [x] Admin login + route guard (`role = 'admin'`) + Cloudflare Pages root-directory config + Edge Function CORS allowlist
+  - [x] Tests: Playwright smoke test verifying non-admin `@lpunetwork.edu.ph` student is blocked from `web-admin/`
 
 ---
 
@@ -117,6 +117,7 @@ Record every bug found during audit or implementation here so root causes are fi
 | **BUG-014** | 2026-11-24 | DevSecOps & Git Workflow (`scripts/protect-branches.sh`, `.gitattributes`, `.github/workflows/ci.yml`, `gh-release.sh`) | `protect-branches.sh` applied 5 stale checks, `.husky/*` risked Windows CRLF errors, Snyk soft-failed via `continue-on-error: true`, and `gh-release.sh` emitted literal `\n` | Duplicated inline JSON vs `scripts/branch-protection-body.json`, missing `.husky/*` LF rule, unconditional `continue-on-error`, and single-line `\n` `--notes` string | **Fixed** — Wired `protect-branches.sh` to `--input scripts/branch-protection-body.json` (7 checks), added `.husky/* text eol=lf`, enforced conditional Snyk gate without `continue-on-error`, and replaced literal `\n` in `gh-release.sh` with multi-line `NOTES_BODY`. |
 | **BUG-015** | 2026-11-24 | Auth Policy & Crypto Bounds (`supabase/config.toml`, `shared/identity-crypto.ts`) | Server allowed 6-char passwords (`minimum_password_length = 6`) & unauthenticated password changes (`secure_password_change = false`) vs 8-char client schema; `identity-crypto.ts` accepted `<16`-byte secrets and `keyVersion > 0xffffffff` | Default Supabase config weaker than `SignupRequestSchema`; missing `MIN_SECRET_BYTES` and 32-bit `keyVersion` upper-bound guards | **Fixed** — Set `minimum_password_length = 8` & `secure_password_change = true` in `config.toml`; enforced `>=16`-byte secrets, `1 <= keyVersion <= 0xffffffff`, and safe `keyRing` lookup in `shared/identity-crypto.ts`. |
 | **BUG-016** | 2026-11-24 | QA Config & Tests (`jest.config.js`, `tests/unit/App.test.tsx`, `tests/unit/auth-identity.test.ts`) | Jest lacked coverage threshold enforcement (initial branch coverage 56.07%), `App.test.tsx` was a placeholder (`expect(true)`), and RNTL v14 async `render`/`fireEvent` caused TS2339 errors | No `coverageThreshold` in `jest.config.js`, starter placeholder test, and `@testing-library/react-native` v14 Promise-returning APIs | **Fixed** — Enforced `80/75/80/80` thresholds in `jest.config.js`, wired real `<App />` render test, awaited RNTL v14 APIs, and expanded suite to 18 passing tests (99.15% stmts / 89% branches). |
+| **BUG-017** | 2026-11-26 | Web Admin Guard, Metro & CI (`web-admin/src/services/adminAuth.ts`, `web-admin/src/App.tsx`, `metro.config.js`, `playwright.config.ts`, `.github/workflows/ci.yml`) | Global `signOut()` kept tokens in `sessionStorage` on 5xx/offline and logged users out of mobile; non-admin restore fired `SIGNED_OUT` during `loading` and skipped `/access-denied`; unanchored Metro segment regex blocked checkouts under any `web-admin` folder; CI Snyk skipped `web-admin/package.json` | Default `scope: 'global'` sign-out, missing operation counter and `authenticated`-only `SIGNED_OUT` check in `App.tsx`, redundant `webAdminSegmentPattern` regex, and single-workspace Snyk step | **Fixed** — Switched to `signOut({ scope: 'local' })`, added `authOpIdRef` + error boundaries + `formatWebAdminError`, removed `webAdminSegmentPattern`, pinned Playwright to port `4174` with `reuseExistingServer: false`, and added `web-admin` Snyk + root `tsc --noEmit` in CI. |
 
 ---
 
@@ -128,6 +129,7 @@ Track intentional MVP shortcuts (`shortcut: <limit>, <when to upgrade>`) so debt
 | :--- | :--- | :--- |
 | `spec-01-auth-identity` | Initial profile PII encryption runs in Postgres `SECURITY DEFINER` RPC (`pgcrypto`) rather than an Edge Function | `spec-05` if Edge Functions need to decrypt `profiles.full_name_enc` directly |
 | `spec-02-core-schema-rls` | `org_memberships.submission_id` is a nullable `uuid` without a foreign key constraint | `spec-07-conditional-forms-metrics` when `public.form_submissions` is created (add `REFERENCES public.form_submissions(id) ON DELETE SET NULL`) |
+| `spec-03-web-admin-scaffold` | Playwright smoke test mocks Supabase Auth and `get_my_profile` RPC via `page.route` for deterministic CI runs without live credentials | `spec-08-qa-security-release` when adding an optional staging-backed E2E smoke check before `v1.0.0` cutover |
 | `spec-04-dept-and-org-pages` | Org pages are read-only chronological posts (no likes, comments, or drag-and-drop builder) | Phase 2 if orgs request interactive discussions |
 | `spec-05-gmetrix-csv-and-push` | Unregistered CSV rows are returned for manual email/MS Teams delivery (no automated email send) | Phase 2 when Resend transactional email notifications are added |
 | `spec-06b-guest-passes` | Guests get event-scoped passes only (no accounts, no post-event evaluation forms, no org membership) | Phase 2 if guest feedback is required (emailed evaluation link tied to the pass) |

@@ -49,6 +49,24 @@ updates:
         update-types:
           - "version-update:semver-major"
 
+  - package-ecosystem: "npm"
+    directory: "/web-admin"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Asia/Manila"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "AlexisRellon"
+    labels:
+      - "dependencies"
+      - "web-admin"
+      - "automated"
+    commit-message:
+      prefix: "chore(deps)"
+
   # NPM Security Updates (default branch main; limit 0 disables duplicate version updates)
   - package-ecosystem: "npm"
     directory: "/"
