@@ -5,6 +5,12 @@ import {
   type PublicProfileDto,
   toPublicProfileDto,
 } from './auth';
+import {
+  isSecretSupabaseKeyPrefix,
+  isSupabaseServiceRoleJwt,
+} from './supabase-key-guard';
+
+const SUPABASE_HOSTED_DOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.supabase\.(?:co|in)$/;
 
 function isValidSupabaseUrl(value: string): boolean {
   let parsed: URL;
@@ -19,44 +25,13 @@ function isValidSupabaseUrl(value: string): boolean {
   }
 
   if (parsed.protocol === 'https:') {
-    return true;
+    return SUPABASE_HOSTED_DOMAIN_REGEX.test(parsed.hostname.toLowerCase());
   }
 
   return (
     parsed.protocol === 'http:' &&
     (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')
   );
-}
-
-function isServiceRoleJwt(token: string): boolean {
-  const parts = token.split('.');
-  if (parts.length !== 3) {
-    return false;
-  }
-
-  const payloadSegment = parts[1];
-  if (!payloadSegment || !/^[A-Za-z0-9_-]+$/.test(payloadSegment)) {
-    return false;
-  }
-
-  const base64 = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
-
-  try {
-    const binary = atob(padded);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    const decoded: unknown = JSON.parse(new TextDecoder().decode(bytes));
-    return (
-      typeof decoded === 'object' &&
-      decoded !== null &&
-      (decoded as { role?: unknown }).role === 'service_role'
-    );
-  } catch {
-    return false;
-  }
 }
 
 export const WebAdminEnvSchema = z.object({
@@ -66,18 +41,18 @@ export const WebAdminEnvSchema = z.object({
     .url('VITE_SUPABASE_URL must be a valid URL.')
     .refine(
       isValidSupabaseUrl,
-      'VITE_SUPABASE_URL must use https:// (or http://localhost / http://127.0.0.1 for local development).'
+      'VITE_SUPABASE_URL must target a hosted Supabase origin (https://*.supabase.co or https://*.supabase.in) or http://localhost / http://127.0.0.1 for local development.'
     ),
   VITE_SUPABASE_PUBLISHABLE_KEY: z
     .string()
     .trim()
     .min(1, 'VITE_SUPABASE_PUBLISHABLE_KEY is required.')
     .refine(
-      (value) => !value.toLowerCase().startsWith('sb_secret_'),
+      (value) => !isSecretSupabaseKeyPrefix(value),
       'Backend secret keys (sb_secret_*) must never be used in web-admin.'
     )
     .refine(
-      (value) => !isServiceRoleJwt(value),
+      (value) => !isSupabaseServiceRoleJwt(value),
       'Supabase service_role JWTs must never be used in web-admin.'
     ),
 });

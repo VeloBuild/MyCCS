@@ -22,11 +22,20 @@ export interface WebAdminSupabaseClient {
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
 }
 
+let internalSignOutDepth = 0;
+
+export function isInternalAdminSignOut(): boolean {
+  return internalSignOutDepth > 0;
+}
+
 async function revokeLocalSessionSafely(client: WebAdminSupabaseClient): Promise<void> {
+  internalSignOutDepth += 1;
   try {
     await client.auth.signOut({ scope: 'local' });
   } catch {
     return;
+  } finally {
+    internalSignOutDepth -= 1;
   }
 }
 

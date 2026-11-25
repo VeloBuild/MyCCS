@@ -10,6 +10,7 @@ import { AdminDashboardShell } from './components/AdminDashboardShell';
 import { LoginView } from './components/LoginView';
 import { getWebAdminSupabaseClient } from './lib/supabase';
 import {
+  isInternalAdminSignOut,
   restoreAdminSession,
   signInAsAdmin,
   signOutAdmin,
@@ -55,7 +56,6 @@ export function App() {
       const nextPath = window.location.pathname;
       setPathname(nextPath);
       if (nextPath === '/login') {
-        authOpIdRef.current += 1;
         setSessionState((current) =>
           current.status === 'forbidden' ? { status: 'unauthenticated' } : current
         );
@@ -96,9 +96,11 @@ export function App() {
       if (!active) {
         return;
       }
-      if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT' && !isInternalAdminSignOut()) {
+        authOpIdRef.current += 1;
+        setIsBusy(false);
         setSessionState((current) =>
-          current.status === 'authenticated' ? { status: 'unauthenticated' } : current
+          current.status === 'forbidden' ? current : { status: 'unauthenticated' }
         );
       }
     });

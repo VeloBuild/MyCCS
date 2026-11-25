@@ -6,13 +6,15 @@ Standalone Vite + React 19 + TypeScript (`strict: true`) portal for CCS Departme
 
 - **Isolated from Expo Mobile:** Excluded from Metro (`metro.config.js`), EAS uploads (`.easignore`), root `tsconfig.json`, and Jest unit test discovery (`jest.config.js`).
 - **Shared Pure Contracts:** Imports only pure TypeScript/Zod contracts from `../shared/` (`@shared/*`), resolving `zod` from `web-admin/node_modules`.
-- **Zero Backend Secrets:** Uses only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` validated by `WebAdminEnvSchema` (rejects `sb_secret_*` and `service_role` JWTs).
+- **Zero Backend Secrets:** Uses only `VITE_SUPABASE_URL` (`https://*.supabase.co`, `https://*.supabase.in`, or local `http://localhost` / `http://127.0.0.1` matching `public/_headers` `connect-src`) and `VITE_SUPABASE_PUBLISHABLE_KEY` validated at both Vite build time (`vite.config.ts`) and browser runtime (`WebAdminEnvSchema`, rejecting `sb_secret_*` and `service_role` JWTs).
 - **Admin-Only Route Guard:** Authenticates verified `@lpunetwork.edu.ph` credentials with Supabase PKCE (`window.sessionStorage`), checks server-side role via `public.get_my_profile()`, admits only `role = 'admin'`, and immediately signs out and redirects `student`, `officer`, or unprovisioned accounts to `/access-denied`.
 
 ## Local Development
 
+Run from the repository root:
+
 ```bash
-cp .env.example .env.local
+cp web-admin/.env.example web-admin/.env.local
 npm --prefix web-admin run dev
 ```
 

@@ -1,5 +1,6 @@
 import {
   AdminProfileDtoSchema,
+  assertPublishableClientKey,
   DepartmentInfoSchema,
   evaluateAdminAccess,
   formatWebAdminError,
@@ -67,12 +68,18 @@ describe('spec-03-web-admin-scaffold (SCRUM-12)', () => {
       expect(WebAdminRouteSchema.options).toEqual(['/', '/login', '/access-denied']);
     });
 
-    it('accepts valid HTTPS and local HTTP Supabase env configs with publishable or anon keys', () => {
-      const prod = WebAdminEnvSchema.parse({
+    it('accepts valid Supabase-hosted HTTPS and local HTTP env configs with publishable or anon keys', () => {
+      const prodCo = WebAdminEnvSchema.parse({
         VITE_SUPABASE_URL: 'https://myccs-project.supabase.co',
         VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_valid_client_key',
       });
-      expect(prod.VITE_SUPABASE_URL).toBe('https://myccs-project.supabase.co');
+      expect(prodCo.VITE_SUPABASE_URL).toBe('https://myccs-project.supabase.co');
+
+      const prodIn = WebAdminEnvSchema.parse({
+        VITE_SUPABASE_URL: 'https://myccs-project.supabase.in',
+        VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_valid_client_key',
+      });
+      expect(prodIn.VITE_SUPABASE_URL).toBe('https://myccs-project.supabase.in');
 
       const local = WebAdminEnvSchema.parse({
         VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
@@ -87,34 +94,28 @@ describe('spec-03-web-admin-scaffold (SCRUM-12)', () => {
       expect(localhost.VITE_SUPABASE_URL).toBe('http://localhost:54321');
     });
 
-    it('rejects insecure URLs, embedded credentials, sb_secret_* keys, and service_role JWTs', () => {
-      expect(
-        WebAdminEnvSchema.safeParse({
-          VITE_SUPABASE_URL: 'http://myccs-project.supabase.co',
-          VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ok',
-        }).success
-      ).toBe(false);
+    it('rejects non-Supabase HTTPS hosts, insecure URLs, embedded credentials, sb_secret_* keys, and service_role JWTs', () => {
+      for (const badUrl of [
+        'https://custom.example.com',
+        'https://supabase.co',
+        'https://evil-supabase.co',
+        'http://myccs-project.supabase.co',
+        'http://localhost.evil.com',
+        'https://user:pass@myccs-project.supabase.co',
+        'not-a-url',
+      ]) {
+        expect(
+          WebAdminEnvSchema.safeParse({
+            VITE_SUPABASE_URL: badUrl,
+            VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ok',
+          }).success
+        ).toBe(false);
+      }
 
-      expect(
-        WebAdminEnvSchema.safeParse({
-          VITE_SUPABASE_URL: 'http://localhost.evil.com',
-          VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ok',
-        }).success
-      ).toBe(false);
-
-      expect(
-        WebAdminEnvSchema.safeParse({
-          VITE_SUPABASE_URL: 'https://user:pass@myccs-project.supabase.co',
-          VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ok',
-        }).success
-      ).toBe(false);
-
-      expect(
-        WebAdminEnvSchema.safeParse({
-          VITE_SUPABASE_URL: 'not-a-url',
-          VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ok',
-        }).success
-      ).toBe(false);
+      const serviceRoleJwt = makeFakeJwt({
+        role: 'service_role',
+        iss: 'supabase',
+      });
 
       expect(
         WebAdminEnvSchema.safeParse({
@@ -126,10 +127,7 @@ describe('spec-03-web-admin-scaffold (SCRUM-12)', () => {
       expect(
         WebAdminEnvSchema.safeParse({
           VITE_SUPABASE_URL: 'https://myccs-project.supabase.co',
-          VITE_SUPABASE_PUBLISHABLE_KEY: makeFakeJwt({
-            role: 'service_role',
-            iss: 'supabase',
-          }),
+          VITE_SUPABASE_PUBLISHABLE_KEY: serviceRoleJwt,
         }).success
       ).toBe(false);
 
@@ -139,6 +137,13 @@ describe('spec-03-web-admin-scaffold (SCRUM-12)', () => {
           VITE_SUPABASE_PUBLISHABLE_KEY: '   ',
         }).success
       ).toBe(false);
+
+      expect(() => assertPublishableClientKey(undefined)).not.toThrow();
+      expect(() => assertPublishableClientKey('   ')).not.toThrow();
+      expect(() => assertPublishableClientKey('sb_publishable_ok')).not.toThrow();
+      expect(() => assertPublishableClientKey('a..c')).not.toThrow();
+      expect(() => assertPublishableClientKey('sb_secret_build_leak')).toThrow(/sb_secret_/);
+      expect(() => assertPublishableClientKey(serviceRoleJwt)).toThrow(/service_role/);
     });
 
     it('enforces strict admin profile schema without student_id', () => {
@@ -545,15 +550,12 @@ describe('spec-03-web-admin-scaffold (SCRUM-12)', () => {
         nodeFs.existsSync(nodePath.resolve(REPO_ROOT, 'web-admin/public/404.html'))
       ).toBe(false);
 
-      const envExample = nodeFs.readFileSync(
-        nodePath.resolve(REPO_ROOT, 'web-admin/.env.example'),
+      const viteConfig = nodeFs.readFileSync(
+        nodePath.resolve(REPO_ROOT, 'web-admin/vite.config.ts'),
         'utf8'
       );
-      expect(envExample).toContain('VITE_SUPABASE_URL=');
-      expect(envExample).toContain('VITE_SUPABASE_PUBLISHABLE_KEY=');
-      expect(envExample).not.toMatch(/sb_secret_[A-Za-z0-9]/);
-      expect(envExample).not.toMatch(/SUPABASE_SECRET_KEY=/);
-      expect(envExample).not.toMatch(/SERVICE_ROLE_KEY=/i);
+      expect(viteConfig).toContain('assertPublishableClientKey');
+      expect(viteConfig).toContain('loadEnv');
     });
   });
 });

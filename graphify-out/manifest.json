@@ -594,21 +594,21 @@
     "semantic_hash": ""
   },
   "playwright.config.ts": {
-    "mtime": 1795633274.4312458,
-    "seen": 1795633716.420418,
-    "ast_hash": "0fe9a1321ec45e622be9570d9aace793",
+    "mtime": 1795634611.1175354,
+    "seen": 1795634673.6828334,
+    "ast_hash": "bcef6dccc4a4450f5ba1ea755396485a",
     "semantic_hash": ""
   },
   "shared/index.ts": {
-    "mtime": 1795631935.0203962,
-    "seen": 1795633716.423514,
-    "ast_hash": "83086c0603dbcee1c65598bae49cee0e",
+    "mtime": 1795634561.0197146,
+    "seen": 1795634673.68497,
+    "ast_hash": "b39a89ec7233c3318cc1d70230d4eef3",
     "semantic_hash": ""
   },
   "shared/web-admin.ts": {
-    "mtime": 1795633228.5826378,
-    "seen": 1795633716.4235194,
-    "ast_hash": "03fa4226b909b0dadedb16d8775a6ed8",
+    "mtime": 1795634562.4324985,
+    "seen": 1795634673.6849754,
+    "ast_hash": "64327d3948fd347fca4e0fd8e1de1816",
     "semantic_hash": ""
   },
   "supabase/functions/_shared/cors.ts": {
@@ -618,15 +618,15 @@
     "semantic_hash": ""
   },
   "tests/e2e/web-admin-guard.spec.ts": {
-    "mtime": 1795633347.3602908,
-    "seen": 1795633716.4259136,
-    "ast_hash": "cc569214ed406cc73b46899c74291f1e",
+    "mtime": 1795634616.7252617,
+    "seen": 1795634673.686574,
+    "ast_hash": "ece0229624625dc876caea06fcf00e55",
     "semantic_hash": ""
   },
   "tests/unit/web-admin-scaffold.test.ts": {
-    "mtime": 1795633345.6050158,
-    "seen": 1795633716.4272912,
-    "ast_hash": "7be7651bce70ce63b86677eb584e8843",
+    "mtime": 1795634620.2873538,
+    "seen": 1795634673.68753,
+    "ast_hash": "dd72676d639825c0322a1c152f891825",
     "semantic_hash": ""
   },
   "web-admin/package.json": {
@@ -636,9 +636,9 @@
     "semantic_hash": ""
   },
   "web-admin/src/App.tsx": {
-    "mtime": 1795633241.3751059,
-    "seen": 1795633716.4273016,
-    "ast_hash": "08a0780a29ab497c3494c6ee1988b99f",
+    "mtime": 1795634572.9644713,
+    "seen": 1795634673.6880653,
+    "ast_hash": "bd9a021548586696440cdb116c4bd0a1",
     "semantic_hash": ""
   },
   "web-admin/src/components/AccessDeniedView.tsx": {
@@ -672,21 +672,21 @@
     "semantic_hash": ""
   },
   "web-admin/src/services/adminAuth.ts": {
-    "mtime": 1795633239.8323205,
-    "seen": 1795633716.4273193,
-    "ast_hash": "7aeb7ea57eaf8b0bff1ee625808b9e63",
+    "mtime": 1795634568.504549,
+    "seen": 1795634673.6894257,
+    "ast_hash": "3c7de923346a9d5d10ebe572cd123085",
     "semantic_hash": ""
   },
   "web-admin/tsconfig.json": {
-    "mtime": 1795632029.031845,
-    "seen": 1795633716.427322,
-    "ast_hash": "1a4cfa9871c5d398859d07dedb7c9f52",
+    "mtime": 1795634565.581122,
+    "seen": 1795634673.6894283,
+    "ast_hash": "c6eb44cf1aa4f3f3ccc505b034e0e635",
     "semantic_hash": ""
   },
   "web-admin/vite.config.ts": {
-    "mtime": 1795632030.2970347,
-    "seen": 1795633716.4273252,
-    "ast_hash": "c97cd5a39bcef4a0fea67d2b4382f175",
+    "mtime": 1795634564.0008743,
+    "seen": 1795634673.6894305,
+    "ast_hash": "9c2abd5a148b18f39f8684f56ffafc4c",
     "semantic_hash": ""
   },
   "openspec/changes/archive/2026-11-26-spec-03-web-admin-scaffold/.openspec.yaml": {
@@ -726,15 +726,21 @@
     "semantic_hash": ""
   },
   "web-admin/README.md": {
-    "mtime": 1795632035.9847453,
-    "seen": 1795633716.4458578,
-    "ast_hash": "0f3ed744bb9220cb57ecaed15d1aaf35",
+    "mtime": 1795634566.9359221,
+    "seen": 1795634673.7058828,
+    "ast_hash": "6ac9025ef0e496414d9a2c20c9dd35c4",
     "semantic_hash": ""
   },
   "web-admin/index.html": {
     "mtime": 1795633271.6717262,
     "seen": 1795633716.4458606,
     "ast_hash": "fcb3c00e727e548f3097065e75702622",
+    "semantic_hash": ""
+  },
+  "shared/supabase-key-guard.ts": {
+    "mtime": 1795634559.668868,
+    "seen": 1795634673.684973,
+    "ast_hash": "0fa50892372ca5b0d4fe0c9a8223f56b",
     "semantic_hash": ""
   }
 }

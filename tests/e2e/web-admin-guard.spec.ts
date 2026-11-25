@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 // shortcut: Playwright smoke test mocks Supabase Auth and get_my_profile RPC via page.route for deterministic CI runs without live credentials; upgrade in spec-08 to run an optional staging-backed E2E smoke check before v1.0.0 cutover.
 
-const SUPABASE_TEST_ORIGIN = 'https://e2e.supabase.test';
+const SUPABASE_TEST_ORIGIN = 'https://e2e.supabase.co';
 const SUPABASE_STORAGE_KEY = 'sb-e2e-auth-token';
 const STUDENT_ID_SENTINEL = '2026-0001-PRIVATE';
 
@@ -18,6 +18,7 @@ interface MockRouteOptions {
   persona?: MockPersona;
   profileStatus?: number;
   profileNull?: boolean;
+  profileDelayMs?: number;
   logoutStatus?: number;
 }
 
@@ -83,7 +84,13 @@ async function setupSupabaseRoutes(
   page: Page,
   options: MockRouteOptions = {}
 ): Promise<MockCounters> {
-  const { persona, profileStatus = 200, profileNull = false, logoutStatus = 204 } = options;
+  const {
+    persona,
+    profileStatus = 200,
+    profileNull = false,
+    profileDelayMs = 0,
+    logoutStatus = 204,
+  } = options;
   const counters: MockCounters = {
     tokenRequests: 0,
     logoutRequests: 0,
@@ -116,6 +123,9 @@ async function setupSupabaseRoutes(
 
     if (url.pathname === '/rest/v1/rpc/get_my_profile' && request.method() === 'POST') {
       counters.profileRequests += 1;
+      if (profileDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, profileDelayMs));
+      }
       if (profileStatus !== 200) {
         await route.fulfill({
           status: profileStatus,
@@ -402,5 +412,29 @@ test.describe('MyCCS Web Admin role guard', () => {
     expect(counters.logoutRequests).toBeGreaterThanOrEqual(1);
     expect(counters.logoutScopes).toContain('local');
     expect(await readSessionStorageKeys(page)).toEqual([]);
+  });
+
+  test('does not stick in loading state when browser Back runs during pending restoration', async ({
+    page,
+  }) => {
+    const admin: MockPersona = {
+      id: '33333333-3333-4333-8333-333333333333',
+      email: 'dean.ccs@lpunetwork.edu.ph',
+      fullName: 'Dr. Elena Reyes',
+      role: 'admin',
+      qrToken: 'v1.33333333-3333-4333-8333-333333333333.0123456789abcdef01234567',
+    };
+    await setupSupabaseRoutes(page, { persona: admin, profileDelayMs: 300 });
+
+    await page.goto('/login');
+    await page.getByLabel('Institutional Email').fill(admin.email);
+    await page.getByLabel('Password').fill('AdminPass123!');
+    await page.getByRole('button', { name: 'Sign in to Web Admin' }).click();
+    await expect(page).toHaveURL(/\/$/);
+
+    await page.reload();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('heading', { name: `Welcome, ${admin.fullName}` })).toBeVisible();
   });
 });

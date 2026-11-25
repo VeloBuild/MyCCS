@@ -28,7 +28,7 @@ export default defineConfig({
     url: 'http://127.0.0.1:4174',
     reuseExistingServer: false,
     env: {
-      VITE_SUPABASE_URL: 'https://e2e.supabase.test',
+      VITE_SUPABASE_URL: 'https://e2e.supabase.co',
       VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_e2e_synthetic_key',
     },
   },
