@@ -35,13 +35,13 @@ if [[ -z "$PR_NUMBER" ]]; then
   PR_NUMBER=$(gh pr view --json number -q .number)
 fi
 
-PR_STATE=$(gh pr view "$PR_NUMBER" --json state -q .state)
-if [[ "$PR_STATE" != "OPEN" ]]; then
-  echo "ERROR: PR #${PR_NUMBER} is ${PR_STATE}, not OPEN." >&2
+PR_META=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '"\(.state):\(.head.sha)"')
+PR_STATE="${PR_META%%:*}"
+HEAD_SHA="${PR_META##*:}"
+if [[ "$PR_STATE" != "open" ]]; then
+  echo "ERROR: PR #${PR_NUMBER} is ${PR_STATE}, not open." >&2
   exit 1
 fi
-
-HEAD_SHA=$(gh pr view "$PR_NUMBER" --json headRefOid -q .headRefOid)
 HEAD_COMMIT_DATE=$(gh api "repos/${REPO}/commits/${HEAD_SHA}" --jq '.commit.committer.date')
 
 get_cr_status() {
@@ -68,7 +68,7 @@ else
     echo "@coderabbitai review was already requested after HEAD commit (${HEAD_COMMIT_DATE}); skipping duplicate comment."
   else
     echo "Posting '@coderabbitai review' on PR #${PR_NUMBER}..."
-    gh pr comment "$PR_NUMBER" --body "@coderabbitai review"
+    gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" --method POST -f body="@coderabbitai review" --silent
   fi
 fi
 
