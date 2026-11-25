@@ -60,29 +60,9 @@ jobs:
   # DevSecOps gate: SAST, SCA, and AI-powered code review
   # ===========================================================================
   # ---------------------------------------------------------------------------
-  # CodeRabbit AI — Automated diff review
+  # CodeRabbit AI — Handled natively by the CodeRabbit GitHub App via .coderabbit.yaml
+  # Required status check name: "CodeRabbit" (tracked in scripts/branch-protection-body.json)
   # ---------------------------------------------------------------------------
-  coderabbit:
-    name: "Phase 2 · CodeRabbit AI Review"
-    runs-on: ubuntu-latest
-    # NOTE: CodeRabbit is configured as a GitHub App integration.
-    # It automatically reviews PRs when installed on the repository.
-    # This job acts as a status check gate — it will be replaced by
-    # the actual CodeRabbit App check once integrated.
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      # TODO: CodeRabbit AI is a GitHub App — install from:
-      # https://github.com/apps/coderabbitai
-      # Once installed, it automatically reviews PRs and posts
-      # a status check. This placeholder ensures the required
-      # status check name exists in the pipeline.
-      - name: "Placeholder: CodeRabbit AI Review"
-        run: |
-          echo "✅ CodeRabbit AI review is handled by the GitHub App integration."
-          echo "   Install: https://github.com/apps/coderabbitai"
-          echo "   This step acts as a status check placeholder."
 
   # ---------------------------------------------------------------------------
   # CodeQL — Static Application Security Testing (SAST)
@@ -157,7 +137,7 @@ jobs:
   jest:
     name: "Phase 3 · Jest Unit Tests"
     runs-on: ubuntu-latest
-    needs: [coderabbit, codeql, snyk]
+    needs: [codeql, snyk]
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -200,7 +180,7 @@ jobs:
   newman:
     name: "Phase 3 · Newman API Tests"
     runs-on: ubuntu-latest
-    needs: [coderabbit, codeql, snyk]
+    needs: [codeql, snyk]
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -247,7 +227,7 @@ jobs:
   playwright:
     name: "Phase 3 · Playwright E2E Tests"
     runs-on: ubuntu-latest
-    needs: [coderabbit, codeql, snyk]
+    needs: [codeql, snyk]
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
