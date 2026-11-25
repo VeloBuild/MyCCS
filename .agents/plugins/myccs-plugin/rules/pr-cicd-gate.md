@@ -15,9 +15,10 @@ PR title must contain `SCRUM-\d+`. If missing, ask for the Jira ticket number be
 - `develop` → may only target `main` during a planned release cutover
 - `hotfix/` → may target `main` directly
 
-### Gate 3 — Security scan awareness
+### Gate 3 — Security scan & CodeRabbit review
 The following run automatically — surface any known issues before CI catches them:
 - **CodeQL** (SAST), **Snyk** (SCA), **CodeRabbit AI** (architectural review)
+- Because OSS repos with `< 10` stars skip automatic CodeRabbit reviews, run `bash .agents/skills/coderabbit-pr-gate/scripts/trigger-coderabbit-review.sh [PR_NUMBER] --wait` after opening/updating a PR and inspect findings before Squash & Merge.
 
 ### Gate 4 — Test coverage
 Changes to `.ts`/`.tsx` files outside `tests/` must have corresponding Jest unit tests. Thresholds: statements ≥ 80%, branches ≥ 75%, functions ≥ 80%, lines ≥ 80%.
