@@ -28,10 +28,10 @@ Single living tracker for implementing MyCCS spec-by-spec using OpenSpec (`schem
   - [x] Encrypted `profiles` (`email_enc`, `full_name_enc`, `student_id_enc`, `email_blind_index`, `key_version`, `qr_token`, `role`) + RLS + explicit `GRANT`s
   - [x] SQL seed for initial Department Admin(s) + Expo SecureStore session flow
   - [x] Tests: domain rejection, OTP verification, blind-index lookup, `student_id` privacy
-- [ ] **`spec-02-core-schema-rls`** (`SAB §6`, `ADR-005`)
-  - [ ] Migrations for `department_info`, `organizations` (`parent_org_id` for Main -> Sub-Org), `org_memberships`, `announcements`
-  - [ ] 3-role RBAC RLS policies (`student | officer | admin`) + explicit `GRANT`s for `authenticated`
-  - [ ] Tests: Newman RLS positive/negative access checks per role
+- [x] **`spec-02-core-schema-rls`** (`SAB §6`, `ADR-005`)
+  - [x] Migrations for `department_info`, `organizations` (`parent_org_id` for Main -> Sub-Org), `org_memberships`, `announcements`
+  - [x] 3-role RBAC RLS policies (`student | officer | admin`) + explicit `GRANT`s for `authenticated`
+  - [x] Tests: Newman RLS positive/negative access checks per role
 - [ ] **`spec-03-web-admin-scaffold`** (`ADR-009`)
   - [ ] Standalone Vite + React + TypeScript SPA in `web-admin/` (strictly excluded from Metro/EAS bundle)
   - [ ] `shared/` directory for shared TypeScript DTOs and Zod schemas
@@ -58,7 +58,7 @@ Single living tracker for implementing MyCCS spec-by-spec using OpenSpec (`schem
 ---
 
 ### Milestone 3 — Events, Offline Attendance & Conditional Forms (Sprint 3)
-*Exit gate: Officers scan permanent student QRs offline with check-in/check-out, cooldown, and auto-checkout; orgs run conditional membership and post-event evaluation forms with host metrics.*
+*Exit gate: Officers scan permanent student QRs offline with check-in/check-out, cooldown, and auto-checkout; open events admit guests via pre-registered or walk-in guest passes; orgs run conditional membership and post-event evaluation forms with host metrics.*
 
 - [ ] **`spec-06-events-and-offline-qr`** (`FR-EVT`, `FR-ATT`, `ADR-004`, `ADR-006`)
   - [ ] Migrations for `events` (`modality`, `meeting_url`, window/cooldown/auto-checkout fields), `event_registrations`, `attendance_scans`, `attendance_records`
@@ -66,6 +66,14 @@ Single living tracker for implementing MyCCS spec-by-spec using OpenSpec (`schem
   - [ ] Offline SQLite `attendance_scans` queue (`client_scan_id` UUID), pre-event `clock_offset_ms` + minimal display-name roster cache
   - [ ] Opaque permanent QR (`v1.<profile_id>.<short_hmac>`) scanner with cooldown guard, visual name display, officer rescan check-out, and server-side reconciliation + auto-checkout job
   - [ ] Tests: Jest unit tests for `clock_offset_ms`, cooldown suppression, multi-officer reconciliation, and auto-checkout
+- [ ] **`spec-06b-guest-passes`** (`FR-GUEST`, `FR-ATT-06`) — *approved 2026-11-25; implement after `spec-06`*
+  - [ ] Migrations: `events.audience` (`ccs_only` default | `open`), `event_guests` (encrypted name/email + blind index, consent, `source`, `over_capacity`, `purged_at`), `event_kiosk_links` (hashed token, expiry, revoke), `attendance_records.guest_id` + one-of CHECK, rate-limit counter + RLS/explicit `GRANT`s (no `anon` table access)
+  - [ ] Shared Zod `GuestRegistrationSchema` + `parseAttendanceCode()` (`v1.` member / `g1.` guest)
+  - [ ] Edge Functions `register-guest` (Turnstile, rate limit, capacity, dedupe, pass email/kiosk display), `resend-guest-pass`, `create-kiosk-link`; extend attendance sync for walk-ins + `g1` HMAC verification; secrets `GUEST_PASS_HMAC_KEY`, `TURNSTILE_SECRET_KEY`
+  - [ ] Public `web-admin/` routes `/e/:eventId` (pre-registration) and `/e/:eventId/kiosk` (walk-in, QR on screen, 20 s reset) outside the admin guard, with no admin imports
+  - [ ] Mobile: audience toggle, kiosk link create/revoke, guest roster cache, scanner `g1` results + "unverified guest", offline "Add walk-in", "Rejected scans"
+  - [ ] `purge_guest_pii()` daily `pg_cron` job (`GUEST_RETENTION_DAYS`, default 30) + member/guest split in attendance summary
+  - [ ] Tests: Jest code parsing & guest scan classification; Newman `register-guest` / kiosk / sync / RLS negatives; SQL purge test; Playwright kiosk + pre-registration
 - [ ] **`spec-07-conditional-forms-metrics`** (`FR-FORM`, `ADR-010`)
   - [ ] Migrations for `forms` (`schema_json`), `form_submissions` (`UNIQUE(form_id, profile_id)`)
   - [ ] Shared Zod JSONB schema bounded to 4 field types (`short_text`, `single_choice`, `multi_choice`, `rating_1_5`) + 1-level `visibleIf: { fieldId, equals }`
@@ -119,6 +127,12 @@ Track intentional MVP shortcuts (`shortcut: <limit>, <when to upgrade>`) so debt
 | Spec | Shortcut (`limit`) | When to Upgrade |
 | :--- | :--- | :--- |
 | `spec-01-auth-identity` | Initial profile PII encryption runs in Postgres `SECURITY DEFINER` RPC (`pgcrypto`) rather than an Edge Function | `spec-05` if Edge Functions need to decrypt `profiles.full_name_enc` directly |
+| `spec-02-core-schema-rls` | `org_memberships.submission_id` is a nullable `uuid` without a foreign key constraint | `spec-07-conditional-forms-metrics` when `public.form_submissions` is created (add `REFERENCES public.form_submissions(id) ON DELETE SET NULL`) |
 | `spec-04-dept-and-org-pages` | Org pages are read-only chronological posts (no likes, comments, or drag-and-drop builder) | Phase 2 if orgs request interactive discussions |
 | `spec-05-gmetrix-csv-and-push` | Unregistered CSV rows are returned for manual email/MS Teams delivery (no automated email send) | Phase 2 when Resend transactional email notifications are added |
+| `spec-06b-guest-passes` | Guests get event-scoped passes only (no accounts, no post-event evaluation forms, no org membership) | Phase 2 if guest feedback is required (emailed evaluation link tied to the pass) |
+| `spec-06b-guest-passes` | Rate limiting uses a Postgres counter table | When public registration traffic makes DB writes a bottleneck (move to edge KV) |
+| `spec-06b-guest-passes` | Public guest routes share the `web-admin/` Cloudflare Pages origin | If public traffic grows or CSP needs diverge (split into `web-public/`) |
+| `spec-06b-guest-passes` | Guest PII retention fixed at 30 days after event end | Once the DPO confirms the official retention period |
+| `spec-06b-guest-passes` | Kiosk and officer walk-ins are not email-verified (tagged by `source`) | If walk-in abuse appears in reports (add email confirmation before pass) |
 | `spec-07-conditional-forms-metrics` | Form builder capped at 4 field types + 1-level `visibleIf` equality (no AND/OR trees or file uploads) | Phase 2 if complex multi-branch evaluations are required |

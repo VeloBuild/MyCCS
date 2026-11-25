@@ -1,6 +1,7 @@
 {
   "1": "package.json",
   "4": "auth-identity.test.ts",
+  "5": "core-schema.ts",
   "6": "Design: Auth & Privacy-First Identity (`spec-01-auth-identity`)",
   "7": "Requirements",
   "9": "Milestones & Per-Spec Checklist",
@@ -13,5 +14,8 @@
   "26": "overrides",
   "27": "ADDED Requirements",
   "28": "identity-crypto.ts",
-  "29": "dependencies"
+  "29": "devDependencies",
+  "30": "Design: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`)",
+  "31": "Requirements",
+  "32": "ADDED Requirements"
 }
