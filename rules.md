@@ -38,6 +38,7 @@ Authoritative engineering, security, privacy, and delivery rules for MyCCS (Expo
 * **Branches:** `<type>/SCRUM-<number>-<kebab-case>` targeting `develop` (`hotfix/*` targets `main`). Direct pushes to `main` and `develop` are blocked.
 * **Commits:** `<type>(<scope>): [SCRUM-<number>] <short description>` (scope optional; enforced by `.husky/commit-msg`).
 * **Merge Policy:** Squash and Merge all PRs targeting `develop`.
+* **CodeRabbit PR Review Gate:** After opening a PR (or pushing new commits) and before Squash & Merge, trigger an actual CodeRabbit review via `bash .agents/skills/coderabbit-pr-gate/scripts/trigger-coderabbit-review.sh [PR_NUMBER] --wait` (OSS repos with `< 10` stars skip auto-review) and resolve critical findings.
 * **CI vs. CD Separation:** `pull_request` workflows run CI only (Phases 1–3). Builds and deploys (Phases 4–5) run strictly on post-merge `push` to `develop`/`main`.
 
 ---

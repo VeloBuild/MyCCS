@@ -33,6 +33,7 @@
 ## Editing Guidance
 
 - Follow [rules.md](rules.md) and the directory-specific `AGENTS.md` before modifying files.
+- Before Squash & Merge on any open PR, run the `coderabbit-pr-gate` skill (`.agents/skills/coderabbit-pr-gate/scripts/trigger-coderabbit-review.sh [PR_NUMBER] --wait`) to trigger `@coderabbitai review` and inspect findings.
 - Keep agent prompts, skill signatures, and hook contracts in sync across `.agents/` and `.github/agents/`.
 - Link to the docs above instead of repeating their contents.
 
