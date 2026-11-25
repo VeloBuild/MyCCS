@@ -43,7 +43,7 @@
     "web": "expo start --web",
     "prepare": "husky",
     "test": "jest",
-    "db:test": "npx supabase db reset && psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -f tests/api/auth-identity-rls.sql"
+    "db:test": "npx supabase db reset && psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -f tests/api/auth-identity-rls.sql && psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -f tests/api/core-schema-rls.sql"
   },
   "private": true
 }
