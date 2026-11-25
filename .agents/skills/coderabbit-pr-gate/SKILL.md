@@ -34,8 +34,8 @@ bash .agents/skills/coderabbit-pr-gate/scripts/trigger-coderabbit-review.sh [PR_
   2. Inspects the `CodeRabbit` check run on the head SHA:
      - `completed` + `success` -> exits `0` (already reviewed for current HEAD).
      - `in_progress` / `queued` -> skips re-commenting; waits if `--wait` is set.
-     - `skipped` or missing -> posts `@coderabbitai review` (unless already posted after the latest commit).
-  3. With `--wait`, polls until `CodeRabbit` completes and prints any CodeRabbit review comments.
+     - `skipped`, failed/non-success, or missing -> posts `@coderabbitai review` tagged with the current head SHA marker whenever no active/recent pending request exists or the latest request for that HEAD did not produce a started or successful review.
+  3. With `--wait`, polls until `CodeRabbit` completes (re-verifying the PR head SHA before reporting success, returning nonzero on head changes or non-success conclusions, and exiting `2` on timeout after a final status check) and prints all CodeRabbit inline review comments.
 
 ### 2. Inspect Findings Before Squashing
 
@@ -43,7 +43,7 @@ If `--wait` reports review comments (or inspect manually):
 
 ```bash
 gh pr view <PR_NUMBER> --comments
-gh api repos/{owner}/{repo}/pulls/<PR_NUMBER>/comments --jq '.[] | select(.user.login == "coderabbitai[bot]") | "\(.path):\(.line // .original_line) — \(.body | split("\n")[0])"'
+gh api --paginate repos/{owner}/{repo}/pulls/<PR_NUMBER>/comments --jq '.[] | select(.user.login == "coderabbitai[bot]") | "\(.path):\(.line // .original_line)\n\(.body)\n"'
 ```
 
 - Address critical/security/logic findings and push fixes (re-run step 1 if new commits are pushed).
@@ -61,4 +61,4 @@ gh pr merge <PR_NUMBER> --squash --delete-branch
 ## Guardrails
 
 - Never squash-merge while `CodeRabbit` is `in_progress`, `queued`, or `skipped` without first triggering `@coderabbitai review` (unless the user explicitly waives review).
-- Never post duplicate `@coderabbitai review` comments on the same head commit SHA.
+- Never post duplicate `@coderabbitai review` comments while a review for the same head commit SHA is pending or has already succeeded.
