@@ -618,9 +618,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/web-admin-guard.spec.ts": {
-    "mtime": 1795634616.7252617,
-    "seen": 1795634673.686574,
-    "ast_hash": "ece0229624625dc876caea06fcf00e55",
+    "mtime": 1795635227.4211056,
+    "seen": 1795635271.438275,
+    "ast_hash": "b7eb156836514505acdaab113e6b009c",
     "semantic_hash": ""
   },
   "tests/unit/web-admin-scaffold.test.ts": {
@@ -636,9 +636,9 @@
     "semantic_hash": ""
   },
   "web-admin/src/App.tsx": {
-    "mtime": 1795634572.9644713,
-    "seen": 1795634673.6880653,
-    "ast_hash": "bd9a021548586696440cdb116c4bd0a1",
+    "mtime": 1795635226.242236,
+    "seen": 1795635271.4403138,
+    "ast_hash": "50eae9bd983d39bc1326b0d9b729824c",
     "semantic_hash": ""
   },
   "web-admin/src/components/AccessDeniedView.tsx": {

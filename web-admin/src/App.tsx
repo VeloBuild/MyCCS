@@ -62,6 +62,7 @@ export function App() {
       }
     };
     window.addEventListener('popstate', handlePopState);
+    handlePopState();
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
@@ -114,12 +115,16 @@ export function App() {
   const resolution = resolveWebAdminRoute(pathname, sessionState);
 
   useEffect(() => {
-    if (!clientResult.client || !resolution.redirectTo) {
+    if (!clientResult.client) {
       return;
     }
-    syncBrowserPath(resolution.redirectTo, true);
-    setPathname(resolution.redirectTo);
-  }, [clientResult.client, resolution.redirectTo]);
+    if (resolution.redirectTo) {
+      syncBrowserPath(resolution.redirectTo, true);
+      setPathname(resolution.redirectTo);
+    } else if (sessionState.status !== 'loading' && window.location.pathname !== resolution.route) {
+      syncBrowserPath(resolution.route, true);
+    }
+  }, [clientResult.client, resolution.redirectTo, resolution.route, sessionState.status]);
 
   if (clientResult.error || !clientResult.client) {
     return (

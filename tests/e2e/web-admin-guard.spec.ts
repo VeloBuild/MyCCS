@@ -433,6 +433,7 @@ test.describe('MyCCS Web Admin role guard', () => {
     await expect(page).toHaveURL(/\/$/);
 
     await page.reload();
+    await expect(page.getByText('Checking your institutional admin session…')).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole('heading', { name: `Welcome, ${admin.fullName}` })).toBeVisible();

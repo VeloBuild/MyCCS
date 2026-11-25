@@ -1,7 +1,7 @@
 # Graph Report - MyCCS  (2026-11-26)
 
 ## Corpus Check
-- 106 files · ~85,287 words
+- 106 files · ~85,311 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 18 file(s) not represented in the graph (top: (none) 13, .example 2, .toml 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `12523a18`
+- Built from commit: `429789ee`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
