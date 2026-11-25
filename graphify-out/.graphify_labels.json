@@ -1,12 +1,7 @@
 {
   "0": "MyCCS Product, Auth & Architecture",
-  "1": "Expo App Entry & Manifest",
   "2": "Governance, CI/CD & Agent Guides",
   "3": "Expo App Config (app.json)",
-  "4": "MyCCS Product, Auth & Architecture",
-  "5": "Governance, CI/CD & Agent Guides",
-  "6": "Dev & Test Dependencies",
-  "7": "NPM Scripts & Commands",
   "8": "Expo App Icon & Splash Assets",
   "11": "TypeScript Strict Config",
   "12": "MyCCS Plugin Metadata",

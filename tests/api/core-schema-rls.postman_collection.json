@@ -1,0 +1,594 @@
+{
+  "info": {
+    "name": "MyCCS Core Schema & 3-Role RBAC RLS (spec-02)",
+    "_postman_id": "2f9e0a6e-6b4d-4c8f-9d1a-020202020202",
+    "description": "Positive and negative PostgREST RLS verification across anon, student, officer, and admin roles for department_info, organizations, org_memberships, and announcements.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "SUPABASE_URL", "value": "" },
+    { "key": "SUPABASE_PUBLISHABLE_KEY", "value": "" },
+    { "key": "STUDENT_JWT", "value": "" },
+    { "key": "OFFICER_JWT", "value": "" },
+    { "key": "ADMIN_JWT", "value": "" },
+    { "key": "ORG_A_ID", "value": "" },
+    { "key": "ORG_B_ID", "value": "" },
+    { "key": "STUDENT_PROFILE_ID", "value": "" },
+    { "key": "DEPT_INFO_ID", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "department_info",
+      "item": [
+        {
+          "name": "[anon] GET department_info -> 401/403 denied",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" }
+            ],
+            "url": "{{SUPABASE_URL}}/rest/v1/department_info?select=*"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('anon denied read on department_info', function () {",
+                  "  pm.expect([401, 403]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[student] GET department_info -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" }
+            ],
+            "url": "{{SUPABASE_URL}}/rest/v1/department_info?select=*"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('student can read department_info', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[student] POST department_info -> 403 denied",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Unauthorized\",\"about_markdown\":\"Blocked\"}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/department_info"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('student denied write on department_info', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[officer] POST department_info -> 403 denied",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Officer Blocked\",\"about_markdown\":\"Blocked\"}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/department_info"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('officer denied write on department_info', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[admin] PATCH department_info -> 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ADMIN_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"about_markdown\":\"Updated by Department Admin\"}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/department_info?id=eq.{{DEPT_INFO_ID}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin can update department_info', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.be.an('array').with.lengthOf(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "organizations",
+      "item": [
+        {
+          "name": "[anon] GET organizations -> 401/403 denied",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" }
+            ],
+            "url": "{{SUPABASE_URL}}/rest/v1/organizations?select=*"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('anon denied read on organizations', function () {",
+                  "  pm.expect([401, 403]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[student] GET organizations -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" }
+            ],
+            "url": "{{SUPABASE_URL}}/rest/v1/organizations?select=*"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('student can list active organizations', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[officer] PATCH assigned Org A -> 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"details\":\"Updated by assigned officer\"}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/organizations?id=eq.{{ORG_A_ID}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('officer can customize assigned org', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.be.an('array').with.lengthOf(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[officer] PATCH other Org B -> 0 rows / 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"details\":\"Unauthorized cross-org edit\"}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/organizations?id=eq.{{ORG_B_ID}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('officer cannot modify another org', function () {",
+                  "  if (pm.response.code === 200) {",
+                  "    pm.expect(pm.response.json()).to.be.an('array').that.is.empty;",
+                  "  } else {",
+                  "    pm.response.to.have.status(403);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[admin] POST organization -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ADMIN_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"parent_org_id\":null,\"name\":\"Admin Created Org\",\"details\":\"Created via RLS test\"}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/organizations"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin can create organization', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "org_memberships",
+      "item": [
+        {
+          "name": "[anon] GET org_memberships -> 401/403 denied",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" }
+            ],
+            "url": "{{SUPABASE_URL}}/rest/v1/org_memberships?select=*"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('anon denied read on org_memberships', function () {",
+                  "  pm.expect([401, 403]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[student] POST self pending membership -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"profile_id\":\"{{STUDENT_PROFILE_ID}}\",\"organization_id\":\"{{ORG_A_ID}}\",\"role\":\"member\",\"status\":\"pending\"}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/org_memberships"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('student can apply as pending member', function () {",
+                  "  pm.expect([200, 201, 409]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[student] POST self approved officer -> 403 denied",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"profile_id\":\"{{STUDENT_PROFILE_ID}}\",\"organization_id\":\"{{ORG_B_ID}}\",\"role\":\"officer\",\"status\":\"approved\"}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/org_memberships"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('student cannot self-approve or claim officer role', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[officer] PATCH promote member to officer -> 403 denied",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"role\":\"officer\"}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/org_memberships?profile_id=eq.{{STUDENT_PROFILE_ID}}&organization_id=eq.{{ORG_A_ID}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('officer cannot promote member to officer', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[admin] GET org_memberships -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ADMIN_JWT}}" }
+            ],
+            "url": "{{SUPABASE_URL}}/rest/v1/org_memberships?select=*"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin can read org_memberships', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "announcements",
+      "item": [
+        {
+          "name": "[anon] GET announcements -> 401/403 denied",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" }
+            ],
+            "url": "{{SUPABASE_URL}}/rest/v1/announcements?select=*"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('anon denied read on announcements', function () {",
+                  "  pm.expect([401, 403]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[student] GET announcements -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" }
+            ],
+            "url": "{{SUPABASE_URL}}/rest/v1/announcements?select=*"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('student can read scoped announcements', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const rows = pm.response.json();",
+                  "  pm.expect(rows).to.be.an('array');",
+                  "  const orgBId = pm.collectionVariables.get('ORG_B_ID');",
+                  "  for (const row of rows) {",
+                  "    pm.expect(row.deleted_at).to.equal(null);",
+                  "    pm.expect(row.expires_at === null || Date.parse(row.expires_at) > Date.now()).to.equal(true);",
+                  "    pm.expect(row.global_visibility === true || row.organization_id !== orgBId).to.equal(true);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[officer] POST Org A announcement -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"organization_id\":\"{{ORG_A_ID}}\",\"title\":\"Org A Update\",\"content\":\"Scoped update\",\"global_visibility\":false}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/announcements"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('officer can publish assigned org announcement', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[officer] POST global announcement -> 403 denied",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"organization_id\":null,\"title\":\"Unauthorized Global\",\"content\":\"Blocked\",\"global_visibility\":true}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/announcements"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('officer cannot publish global announcement', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[admin] POST global announcement -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ADMIN_JWT}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"organization_id\":null,\"title\":\"CCS Department Notice\",\"content\":\"Global notice\",\"global_visibility\":true}"
+            },
+            "url": "{{SUPABASE_URL}}/rest/v1/announcements"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin can publish global announcement', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

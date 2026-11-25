@@ -23,9 +23,9 @@ rules:
 operations:
   apply:
     guidance:
-      - Follow ponytail rules: smallest complete diff, no unrequested abstractions
-      - Log any bugs discovered during implementation in `openspec/ROADMAP.md` (Implementation Bug Log)
-      - Run `bash .agents/skills/myccs-workflow/scripts/gates.sh` before finishing
+      - 'Follow ponytail rules: smallest complete diff, no unrequested abstractions'
+      - 'Log any bugs discovered during implementation in `openspec/ROADMAP.md` (Implementation Bug Log)'
+      - 'Run `bash .agents/skills/myccs-workflow/scripts/gates.sh` before finishing'
   archive:
     guidance:
-      - Check off the completed spec in `openspec/ROADMAP.md` and run `graphify update .`
+      - 'Check off the completed spec in `openspec/ROADMAP.md` and run `graphify update .`'
