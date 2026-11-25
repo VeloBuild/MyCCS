@@ -50,7 +50,7 @@ get_pr_head() {
 
 get_cr_status() {
   gh api "repos/${REPO}/commits/${HEAD_SHA}/check-runs" \
-    --jq '([.check_runs[] | select(.name == "CodeRabbit")] | sort_by(.id) | last) // empty | "\(.status // "none")|\(.conclusion // "none")|\(.started_at // "")|\(.completed_at // "")"'
+    --jq "([.check_runs[] | select(.name == \"CodeRabbit\" and (if ((.details_url // \"\") | test(\"/pull/[0-9]+([/?#]|$)\")) then ((.details_url // \"\") | test(\"/pull/${PR_NUMBER}([/?#]|$)\")) else ((.pull_requests // []) | any(.number == ${PR_NUMBER})) end))] | sort_by(.id) | last) // empty | \"\(.id // \"\")|\(.status // \"none\")|\(.conclusion // \"none\")|\(.started_at // \"\")|\(.completed_at // \"\")\""
 }
 
 iso_to_epoch() {
@@ -59,22 +59,25 @@ iso_to_epoch() {
 }
 
 CR_STATE=$(get_cr_status || true)
-IFS='|' read -r CR_STATUS CR_CONCLUSION CR_STARTED_AT CR_COMPLETED_AT <<< "${CR_STATE:-none|none||}"
+IFS='|' read -r CR_ID CR_STATUS CR_CONCLUSION CR_STARTED_AT CR_COMPLETED_AT <<< "${CR_STATE:-none|none|none||}"
+[[ "$CR_ID" == "none" ]] && CR_ID=""
+INITIAL_CR_ID="$CR_ID"
+INITIAL_CR_COMPLETED_AT="$CR_COMPLETED_AT"
 
 echo "PR #${PR_NUMBER} (${REPO}) | HEAD ${HEAD_SHA:0:7} | CodeRabbit: ${CR_STATUS:-none}/${CR_CONCLUSION:-none}"
 
 if [[ "$CR_STATUS" == "completed" && "$CR_CONCLUSION" == "success" ]]; then
-  echo "CodeRabbit review already completed for HEAD ${HEAD_SHA:0:7}."
+  echo "CodeRabbit review already completed for PR #${PR_NUMBER} at HEAD ${HEAD_SHA:0:7}."
 elif [[ "$CR_STATUS" == "in_progress" || "$CR_STATUS" == "queued" ]]; then
-  echo "CodeRabbit review is already ${CR_STATUS} for HEAD ${HEAD_SHA:0:7}."
+  echo "CodeRabbit review is already ${CR_STATUS} for PR #${PR_NUMBER} at HEAD ${HEAD_SHA:0:7}."
 else
   REQUEST_MARKER="<!-- coderabbit-pr-gate:head=${HEAD_SHA} -->"
   LAST_REQUEST_AT=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
     --jq ".[] | select((.body // \"\") | contains(\"${REQUEST_MARKER}\")) | .created_at" | tail -n 1)
 
   SHOULD_POST=true
+  CHECK_AFTER_REQUEST=false
   if [[ -n "$LAST_REQUEST_AT" ]]; then
-    CHECK_AFTER_REQUEST=false
     if [[ -n "$CR_COMPLETED_AT" && ! "$CR_COMPLETED_AT" < "$LAST_REQUEST_AT" ]]; then
       CHECK_AFTER_REQUEST=true
     elif [[ -n "$CR_STARTED_AT" && ! "$CR_STARTED_AT" < "$LAST_REQUEST_AT" ]]; then
@@ -93,13 +96,17 @@ else
   fi
 
   if [[ "$SHOULD_POST" == true ]]; then
+    REVIEW_CMD="@coderabbitai review"
+    if [[ "$CHECK_AFTER_REQUEST" == true || ( "$CR_STATUS" == "completed" && "$CR_CONCLUSION" != "skipped" && "$CR_CONCLUSION" != "none" ) ]]; then
+      REVIEW_CMD="@coderabbitai full review"
+    fi
     if [[ -n "$LAST_REQUEST_AT" ]]; then
-      echo "Previous review request for HEAD ${HEAD_SHA:0:7} (${LAST_REQUEST_AT}) did not produce a started or successful review; posting new '@coderabbitai review' on PR #${PR_NUMBER}..."
+      echo "Previous review request for HEAD ${HEAD_SHA:0:7} (${LAST_REQUEST_AT}) did not produce a started or successful review; posting '${REVIEW_CMD}' on PR #${PR_NUMBER}..."
     else
-      echo "Posting '@coderabbitai review' on PR #${PR_NUMBER} for HEAD ${HEAD_SHA:0:7}..."
+      echo "Posting '${REVIEW_CMD}' on PR #${PR_NUMBER} for HEAD ${HEAD_SHA:0:7}..."
     fi
     gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" --method POST \
-      -f body="@coderabbitai review"$'\n'"${REQUEST_MARKER}" --silent
+      -f body="${REVIEW_CMD}"$'\n'"${REQUEST_MARKER}" --silent
   fi
 fi
 
@@ -107,6 +114,9 @@ if [[ "$WAIT" == true ]]; then
   echo "Waiting for CodeRabbit review to complete (timeout: ${TIMEOUT_SEC}s)..."
   ELAPSED=0
   SEEN_ACTIVE=false
+  if [[ "$CR_STATUS" == "in_progress" || "$CR_STATUS" == "queued" ]]; then
+    SEEN_ACTIVE=true
+  fi
   REVIEW_DONE=false
   EXIT_CODE=0
 
@@ -118,10 +128,16 @@ if [[ "$WAIT" == true ]]; then
     fi
 
     CR_STATE=$(get_cr_status || true)
-    IFS='|' read -r CR_STATUS CR_CONCLUSION CR_STARTED_AT CR_COMPLETED_AT <<< "${CR_STATE:-none|none||}"
+    IFS='|' read -r CR_ID CR_STATUS CR_CONCLUSION CR_STARTED_AT CR_COMPLETED_AT <<< "${CR_STATE:-none|none|none||}"
+    [[ "$CR_ID" == "none" ]] && CR_ID=""
 
     if [[ "$CR_STATUS" == "in_progress" || "$CR_STATUS" == "queued" ]]; then
       SEEN_ACTIVE=true
+    fi
+
+    NEW_RUN_COMPLETED=false
+    if [[ "$CR_STATUS" == "completed" && ( ( -n "$CR_ID" && "$CR_ID" != "$INITIAL_CR_ID" ) || ( -n "$CR_COMPLETED_AT" && "$CR_COMPLETED_AT" != "$INITIAL_CR_COMPLETED_AT" ) ) ]]; then
+      NEW_RUN_COMPLETED=true
     fi
 
     if [[ "$CR_STATUS" == "completed" && "$CR_CONCLUSION" == "success" ]]; then
@@ -130,12 +146,12 @@ if [[ "$WAIT" == true ]]; then
         echo "ERROR: PR #${PR_NUMBER} head changed before completion (${HEAD_SHA:0:7} -> ${CURRENT_HEAD_SHA:0:7}); re-run for the new HEAD." >&2
         exit 1
       fi
-      echo "CodeRabbit review completed (success)."
+      echo "CodeRabbit review completed (success) for PR #${PR_NUMBER} at HEAD ${HEAD_SHA:0:7}."
       REVIEW_DONE=true
       break
     fi
 
-    if [[ "$SEEN_ACTIVE" == true && "$CR_STATUS" == "completed" ]]; then
+    if [[ ( "$SEEN_ACTIVE" == true || "$NEW_RUN_COMPLETED" == true ) && "$CR_STATUS" == "completed" ]]; then
       echo "ERROR: CodeRabbit review finished without succeeding (conclusion: ${CR_CONCLUSION:-none})." >&2
       REVIEW_DONE=true
       EXIT_CODE=1

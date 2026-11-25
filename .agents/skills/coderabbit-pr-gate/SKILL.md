@@ -31,10 +31,10 @@ bash .agents/skills/coderabbit-pr-gate/scripts/trigger-coderabbit-review.sh [PR_
 - Pass `--wait` to poll until the `CodeRabbit` check run completes (timeout: 300s).
 - What the script does:
   1. Resolves PR number, repo (`owner/name`), and head commit SHA.
-  2. Inspects the `CodeRabbit` check run on the head SHA:
-     - `completed` + `success` -> exits `0` (already reviewed for current HEAD).
+  2. Inspects the `CodeRabbit` check run associated with the requested PR on its head SHA:
+     - `completed` + `success` -> exits `0` (already reviewed for this PR at the current HEAD).
      - `in_progress` / `queued` -> skips re-commenting; waits if `--wait` is set.
-     - `skipped`, failed/non-success, or missing -> posts `@coderabbitai review` tagged with the current head SHA marker whenever no active/recent pending request exists or the latest request for that HEAD did not produce a started or successful review.
+     - `skipped`, failed/non-success, or missing -> posts `@coderabbitai review` (or `@coderabbitai full review` when retrying after a failed/non-skipped review on the same HEAD) tagged with the current head SHA marker whenever no active/recent pending request exists or the latest request for that HEAD did not produce a started or successful review.
   3. With `--wait`, polls until `CodeRabbit` completes (re-verifying the PR head SHA before reporting success, returning nonzero on head changes or non-success conclusions, and exiting `2` on timeout after a final status check) and prints all CodeRabbit inline review comments.
 
 ### 2. Inspect Findings Before Squashing
