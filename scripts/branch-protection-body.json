@@ -3,7 +3,7 @@
     "strict": true,
     "contexts": [
       "Phase 1 · Jira Ticket Validation",
-      "Phase 2 · CodeRabbit AI Review",
+      "CodeRabbit",
       "Phase 2 · CodeQL SAST",
       "Phase 2 · Snyk SCA",
       "Phase 3 · Jest Unit Tests",

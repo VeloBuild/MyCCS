@@ -1,29 +1,29 @@
-# Graph Report - MyCCS  (2026-11-23)
+# Graph Report - MyCCS  (2026-11-25)
 
 ## Corpus Check
-- 55 files · ~46,922 words
+- 81 files · ~75,276 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 12 file(s) not represented in the graph (top: (none) 11, .toml 1)
+- Unclassified: 13 file(s) not represented in the graph (top: (none) 11, .example 1, .toml 1)
 
 ## Summary
-- 207 nodes · 257 edges · 27 communities (13 shown, 14 thin omitted)
-- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 26 edges (avg confidence: 0.89)
+- 528 nodes · 764 edges · 33 communities (20 shown, 13 thin omitted)
+- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 36 edges (avg confidence: 0.89)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `26cd6f96`
+- Built from commit: `ff53a4bd`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - MyCCS Product, Auth & Architecture
-- Expo App Entry & Manifest
+- package.json
 - Governance, CI/CD & Agent Guides
 - Expo App Config (app.json)
-- MyCCS Product, Auth & Architecture
-- Governance, CI/CD & Agent Guides
-- Dev & Test Dependencies
-- NPM Scripts & Commands
+- auth-identity.test.ts
+- core-schema.ts
+- Design: Auth & Privacy-First Identity (`spec-01-auth-identity`)
+- Requirements
 - Expo App Icon & Splash Assets
 - Milestones & Per-Spec Checklist
 - MyCCS Claude Code Instructions
@@ -31,48 +31,55 @@
 - MyCCS Plugin Metadata
 - Env Command Guard Hook
 - Sensitive File Guard Hook
+- supabase.ts
 - Branch Protection Script
 - Skill Sync Script
 - Dependabot Configuration
 - OpenSpec Configuration
 - overrides
+- ADDED Requirements
+- identity-crypto.ts
+- devDependencies
+- Design: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`)
+- Requirements
+- ADDED Requirements
 
 ## God Nodes (most connected - your core abstractions)
 1. `Product Requirements Document (PRD_MyCCS.md)` - 17 edges
 2. `Root AGENTS.md Guide` - 16 edges
 3. `MyCCS Repository Rules (rules.md)` - 16 edges
 4. `CI/CD Pipeline Specification` - 15 edges
-5. `Software Architecture Baseline (SCRUM-9)` - 13 edges
-6. `expo` - 11 edges
-7. `Git Branching & Version Control Strategy` - 10 edges
-8. `Standalone Vite+React SPA web-admin/ on Cloudflare Pages` - 9 edges
-9. `Agile Project Brief & Proposal` - 8 edges
-10. `scripts` - 7 edges
+5. `AuthIdentityScreen()` - 13 edges
+6. `Software Architecture Baseline (SCRUM-9)` - 13 edges
+7. `expo` - 11 edges
+8. `createSecureStoreAdapter()` - 11 edges
+9. `Git Branching & Version Control Strategy` - 10 edges
+10. `Standalone Vite+React SPA web-admin/ on Cloudflare Pages` - 9 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `DevSecOps Sentinel Agent` --references--> `CI/CD Pipeline Specification`  [EXTRACTED]
-  .github/agents/devsecops-sentinel.agent.md → docs/jira/CI_CD Pipeline Specification_ Centralized Department Mobile App.md
-- `GitHub Actions Multi-Tiered DevSecOps CI/CD Pipeline` --implements--> `CI/CD Pipeline Specification`  [INFERRED]
-  .github/workflows/ci.yml → docs/jira/CI_CD Pipeline Specification_ Centralized Department Mobile App.md
-- `Jira-Git Workflow Agent` --references--> `Git Branching & Version Control Strategy`  [INFERRED]
-  .github/agents/jira-git-workflow.agent.md → docs/jira/Git Branching & Version Control Strategy.md
-- `MyCCS Documentation Synchronization & Architecture Re-Baseline Brief` --cites--> `Software Architecture Baseline (SCRUM-9)`  [EXTRACTED]
-  concepts_brief.md → docs/jira/Software_Architecture_Baseline.md
-- `MyCCS Documentation Synchronization & Architecture Re-Baseline Brief` --references--> `Product Requirements Document (PRD_MyCCS.md)`  [EXTRACTED]
-  concepts_brief.md → docs/jira/PRD_MyCCS.md
+- `Implementation Bug Log` --references--> `PublicProfileDto`  [INFERRED]
+  openspec/ROADMAP.md → shared/auth.ts
+- `1. Shared Core Schema Contracts & RBAC Helpers (`shared/`)` --references--> `canManageDepartmentInfo()`  [INFERRED]
+  openspec/changes/archive/2026-11-25-spec-02-core-schema-rls/tasks.md → shared/core-schema.ts
+- `1. Shared Core Schema Contracts & RBAC Helpers (`shared/`)` --references--> `canManageOrganization()`  [INFERRED]
+  openspec/changes/archive/2026-11-25-spec-02-core-schema-rls/tasks.md → shared/core-schema.ts
+- `1. Shared Core Schema Contracts & RBAC Helpers (`shared/`)` --references--> `canReviewMembership()`  [INFERRED]
+  openspec/changes/archive/2026-11-25-spec-02-core-schema-rls/tasks.md → shared/core-schema.ts
+- `1. Shared Core Schema Contracts & RBAC Helpers (`shared/`)` --references--> `canPublishAnnouncement()`  [INFERRED]
+  openspec/changes/archive/2026-11-25-spec-02-core-schema-rls/tasks.md → shared/core-schema.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (27 total, 14 thin omitted)
+## Communities (33 total, 13 thin omitted)
 
 ### Community 0 - "MyCCS Product, Auth & Architecture"
-Cohesion: 0.12
-Nodes (31): Root AGENTS.md Guide, Docs Directory AGENTS.md Guide (docs/), Documentation SSOT Boundaries, Phase 0 Dependabot Maintenance (Root + web-admin/), CI/CD Pipeline Specification, PR CI Phases 1-3 (Jira, CodeQL/Snyk/CodeRabbit, Jest/Newman/Playwright), Agile Project Brief & Proposal, 4-Sprint Agile Delivery Roadmap (+23 more)
+Cohesion: 0.06
+Nodes (57): Root AGENTS.md Guide, Shared Contracts (shared/), MyCCS Documentation Synchronization & Architecture Re-Baseline Brief, Docs Directory AGENTS.md Guide (docs/), Documentation SSOT Boundaries, Phase 0 Dependabot Maintenance (Root + web-admin/), CI/CD Pipeline Specification, Post-Merge CD Phases 4-5 (Expo EAS, Cloudflare Pages, Supabase) (+49 more)
 
-### Community 1 - "Expo App Entry & Manifest"
-Cohesion: 0.09
-Nodes (23): App(), styles, dependencies, expo, expo-status-bar, react, react-native, main (+15 more)
+### Community 1 - "package.json"
+Cohesion: 0.06
+Nodes (34): App(), dependencies, expo, expo-secure-store, expo-status-bar, react, react-native, @supabase/supabase-js (+26 more)
 
 ### Community 2 - "Governance, CI/CD & Agent Guides"
 Cohesion: 0.13
@@ -82,21 +89,21 @@ Nodes (11): DevSecOps Sentinel Agent, Jira-Git Workflow Agent, Postman API QA & 
 Cohesion: 0.10
 Nodes (19): backgroundColor, backgroundImage, foregroundImage, monochromeImage, adaptiveIcon, predictiveBackGestureEnabled, expo, android (+11 more)
 
-### Community 4 - "MyCCS Product, Auth & Architecture"
-Cohesion: 0.15
-Nodes (13): Shared Contracts (shared/), Post-Merge CD Phases 4-5 (Expo EAS, Cloudflare Pages, Supabase), SQL-Seeded Admin Bootstrapping & Faculty Promotion, Web Admin GMetrix CSV Key Distribution, Offline-First Permanent QR Attendance, Edge Function: compress-image (EXIF Strip & WebP), Content-Free Expo Push Notifications, Edge Function: import-gmetrix-keys (+5 more)
+### Community 4 - "auth-identity.test.ts"
+Cohesion: 0.09
+Nodes (45): react-native, INSTITUTIONAL_EMAIL_DOMAIN, InstitutionalEmailSchema, isInstitutionalEmail(), normalizeInstitutionalEmail(), OtpCodeSchema, ProfileProjectionInput, PublicProfileDto (+37 more)
 
-### Community 5 - "Governance, CI/CD & Agent Guides"
-Cohesion: 0.16
-Nodes (13): MyCCS Documentation Synchronization & Architecture Re-Baseline Brief, RA 10173 PII Encryption, HMAC-SHA256 Blind Index & key_version Rotation, DevSecOps Sentinel Agent, Jira-Git Workflow Agent, React Native QA Specialist Agent, Release Manager Agent, CI Phase 3: Automated QA (Jest, Newman, Playwright), CI Phase 5: Production Deploy (Web Admin & Supabase) (+5 more)
+### Community 5 - "core-schema.ts"
+Cohesion: 0.07
+Nodes (43): 1. Shared Core Schema Contracts & RBAC Helpers (`shared/`), UserRole, Announcement, AnnouncementCreateInput, AnnouncementCreateInputSchema, AnnouncementSchema, AnnouncementUpdateInput, AnnouncementUpdateInputSchema (+35 more)
 
-### Community 6 - "Dev & Test Dependencies"
-Cohesion: 0.22
-Nodes (9): devDependencies, husky, jest, jest-expo, jest-junit, @testing-library/react-native, @types/jest, @types/react (+1 more)
+### Community 6 - "Design: Auth & Privacy-First Identity (`spec-01-auth-identity`)"
+Cohesion: 0.07
+Nodes (26): 1. Server-Side `before-user-created` Auth Hook, 2. `public.profiles` Table Schema, 3. Explicit `GRANT`s & Row Level Security, 4. Encryption, Blind Index & Opaque QR Architecture, Context, Database Schema, RLS, Grants & Encryption, Decisions, Design: Auth & Privacy-First Identity (`spec-01-auth-identity`) (+18 more)
 
-### Community 7 - "NPM Scripts & Commands"
-Cohesion: 0.29
-Nodes (7): scripts, android, ios, prepare, start, test, web
+### Community 7 - "Requirements"
+Cohesion: 0.07
+Nodes (26): auth-identity Specification, Purpose, Requirement: Deterministic institutional email blind-index lookup, Requirement: Encrypted student profile provisioning and key versioning, Requirement: Mandatory 6-digit email OTP verification, Requirement: Permanent opaque QR token and student ID privacy, Requirement: Persistent mobile session storage, Requirement: Profile access control, role immutability, and admin bootstrapping (+18 more)
 
 ### Community 8 - "Expo App Icon & Splash Assets"
 Cohesion: 0.47
@@ -114,29 +121,57 @@ Nodes (5): expo/tsconfig.base, compilerOptions, strict, types, extends
 Cohesion: 0.50
 Nodes (3): description, name, $schema
 
+### Community 15 - "supabase.ts"
+Cohesion: 0.09
+Nodes (22): expo-secure-store, @supabase/supabase-js, encoder, Op, SimulatedCrash, summarizeSessionValue(), utf8Bytes(), chunkCountKey() (+14 more)
+
 ### Community 26 - "overrides"
 Cohesion: 0.22
 Nodes (9): minimatch, minimatch, minimatch, overrides, @expo/fingerprint, glob@10, glob@13, test-exclude@7 (+1 more)
 
+### Community 27 - "ADDED Requirements"
+Cohesion: 0.08
+Nodes (26): ADDED Requirements, Purpose, Requirement: Deterministic institutional email blind-index lookup, Requirement: Encrypted student profile provisioning and key versioning, Requirement: Mandatory 6-digit email OTP verification, Requirement: Permanent opaque QR token and student ID privacy, Requirement: Persistent mobile session storage, Requirement: Profile access control, role immutability, and admin bootstrapping (+18 more)
+
+### Community 28 - "identity-crypto.ts"
+Cohesion: 0.20
+Nodes (22): bytesToHex(), computeEmailBlindIndex(), constantTimeEqual(), decodeByteaHex(), DecryptedPiiPayload, decryptPii(), encodeByteaHex(), encodeKeyVersionHeader() (+14 more)
+
+### Community 29 - "devDependencies"
+Cohesion: 0.20
+Nodes (10): devDependencies, husky, jest, jest-expo, jest-junit, supabase, @testing-library/react-native, @types/jest (+2 more)
+
+### Community 30 - "Design: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`)"
+Cohesion: 0.07
+Nodes (26): 1. Anti-Recursion RBAC Helpers (`SECURITY DEFINER`, `STABLE`, `SET search_path = public`), 2. Tables, Triggers & Explicit `GRANT`s, 3. RLS Policy Matrix, Context, Database Schema, RLS, Grants & Encryption, Decisions, Design: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`), Goals / Non-Goals (+18 more)
+
+### Community 31 - "Requirements"
+Cohesion: 0.08
+Nodes (23): core-schema-rls Specification, Purpose, Requirement: Department Information Storage & Admin-Only Governance (`FR-DEPT-01`), Requirement: Mandatory Row Level Security & Explicit Grants (`ADR-005`), Requirement: Organization Membership Applications & Scoped Approval (`FR-ORG-03`), Requirement: Scoped Announcements with Expiration & Soft Delete (`FR-DEPT-02`, `FR-ORG-02`), Requirement: Two-Tier Organization Hierarchy (`FR-ORG-01`, `FR-ORG-02`), Requirements (+15 more)
+
+### Community 32 - "ADDED Requirements"
+Cohesion: 0.10
+Nodes (21): ADDED Requirements, Requirement: Department Information Storage & Admin-Only Governance (`FR-DEPT-01`), Requirement: Mandatory Row Level Security & Explicit Grants (`ADR-005`), Requirement: Organization Membership Applications & Scoped Approval (`FR-ORG-03`), Requirement: Scoped Announcements with Expiration & Soft Delete (`FR-DEPT-02`, `FR-ORG-02`), Requirement: Two-Tier Organization Hierarchy (`FR-ORG-01`, `FR-ORG-02`), Scenario: Admin updates department information, Scenario: Anonymous caller accesses core tables (+13 more)
+
 ## Knowledge Gaps
-- **25 isolated node(s):** `react`, `@testing-library/react-native`, `@types/jest`, `@types/react`, `husky` (+20 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 114 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **24 isolated node(s):** `@types/jest`, `@types/react`, `husky`, `jest`, `jest-expo` (+19 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 274 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Product Requirements Document (PRD_MyCCS.md)` connect `MyCCS Product, Auth & Architecture` to `MyCCS Product, Auth & Architecture`, `Governance, CI/CD & Agent Guides`?**
-  _High betweenness centrality (0.038) - this node is a cross-community bridge._
-- **What connects `react`, `@testing-library/react-native`, `@types/jest` to the rest of the system?**
-  _25 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `PublicProfileDto` connect `auth-identity.test.ts` to `Milestones & Per-Spec Checklist`?**
+  _High betweenness centrality (0.146) - this node is a cross-community bridge._
+- **What connects `@types/jest`, `@types/react`, `husky` to the rest of the system?**
+  _24 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `MyCCS Product, Auth & Architecture` be split into smaller, more focused modules?**
-  _Cohesion score 0.11587301587301588 - nodes in this community are weakly interconnected._
-- **Why does `MyCCS Repository Rules (rules.md)` connect `MyCCS Product, Auth & Architecture` to `MyCCS Product, Auth & Architecture`, `Governance, CI/CD & Agent Guides`?**
-  _High betweenness centrality (0.034) - this node is a cross-community bridge._
-- **Should `Expo App Entry & Manifest` be split into smaller, more focused modules?**
-  _Cohesion score 0.08615384615384615 - nodes in this community are weakly interconnected._
-- **Why does `CI/CD Pipeline Specification` connect `MyCCS Product, Auth & Architecture` to `MyCCS Product, Auth & Architecture`, `Governance, CI/CD & Agent Guides`?**
-  _High betweenness centrality (0.028) - this node is a cross-community bridge._
+  _Cohesion score 0.05789235639981909 - nodes in this community are weakly interconnected._
+- **Why does `MyCCS OpenSpec SDD Roadmap, Spec Checklist & Bug Tracker` connect `Milestones & Per-Spec Checklist` to `MyCCS Product, Auth & Architecture`?**
+  _High betweenness centrality (0.146) - this node is a cross-community bridge._
+- **Should `package.json` be split into smaller, more focused modules?**
+  _Cohesion score 0.059743954480796585 - nodes in this community are weakly interconnected._
+- **Why does `Implementation Bug Log` connect `Milestones & Per-Spec Checklist` to `auth-identity.test.ts`?**
+  _High betweenness centrality (0.144) - this node is a cross-community bridge._
 - **Should `Governance, CI/CD & Agent Guides` be split into smaller, more focused modules?**
   _Cohesion score 0.1286549707602339 - nodes in this community are weakly interconnected._

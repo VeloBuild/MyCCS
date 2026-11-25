@@ -20,7 +20,16 @@ else
   NOTES=$(git log --pretty=format:"- %s (%h)" -n 50)
 fi
 
+NOTES_BODY="## What's Changed
+
+${NOTES}
+
+### Deployment Targets
+- Mobile: Expo EAS
+- Web Admin: Cloudflare Pages (\`web-admin/\`)
+- Backend: Supabase (PostgreSQL + Edge Functions)"
+
 gh release create "$TAG" \
   --target main \
   --title "MyCCS ${TAG}" \
-  --notes "## What's Changed\n\n${NOTES}\n\n### Deployment Targets\n- Mobile: Expo EAS\n- Web Admin: Cloudflare Pages (\`web-admin/\`)\n- Backend: Supabase (PostgreSQL + Edge Functions)"
+  --notes "$NOTES_BODY"

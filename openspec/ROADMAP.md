@@ -22,16 +22,16 @@ Single living tracker for implementing MyCCS spec-by-spec using OpenSpec (`schem
 ### Milestone 1 — Foundation, Auth & Security (Sprint 1)
 *Exit gate: Verified `@lpunetwork.edu.ph` user can sign up with 6-digit OTP, receive encrypted profile + QR token, and `admin` can log into `web-admin/` on Cloudflare Pages.*
 
-- [ ] **`spec-01-auth-identity`** (`FR-AUTH`, `ADR-008`, `ADR-011`)
-  - [ ] Server-side `before-user-created` Auth Hook enforcing `@lpunetwork.edu.ph` (reject all other domains)
-  - [ ] Resend custom SMTP configured for 6-digit signup OTP (`enable_signup = true`, `enable_confirmations = true`)
-  - [ ] Encrypted `profiles` (`email_enc`, `full_name_enc`, `student_id_enc`, `email_blind_index`, `key_version`, `qr_token`, `role`) + RLS + explicit `GRANT`s
-  - [ ] SQL seed for initial Department Admin(s) + Expo SecureStore session flow
-  - [ ] Tests: domain rejection, OTP verification, blind-index lookup, `student_id` privacy
-- [ ] **`spec-02-core-schema-rls`** (`SAB §6`, `ADR-005`)
-  - [ ] Migrations for `department_info`, `organizations` (`parent_org_id` for Main -> Sub-Org), `org_memberships`, `announcements`
-  - [ ] 3-role RBAC RLS policies (`student | officer | admin`) + explicit `GRANT`s for `authenticated`
-  - [ ] Tests: Newman RLS positive/negative access checks per role
+- [x] **`spec-01-auth-identity`** (`FR-AUTH`, `ADR-008`, `ADR-011`)
+  - [x] Server-side `before-user-created` Auth Hook enforcing `@lpunetwork.edu.ph` (reject all other domains)
+  - [x] Resend custom SMTP configured for 6-digit signup OTP (`enable_signup = true`, `enable_confirmations = true`)
+  - [x] Encrypted `profiles` (`email_enc`, `full_name_enc`, `student_id_enc`, `email_blind_index`, `key_version`, `qr_token`, `role`) + RLS + explicit `GRANT`s
+  - [x] SQL seed for initial Department Admin(s) + Expo SecureStore session flow
+  - [x] Tests: domain rejection, OTP verification, blind-index lookup, `student_id` privacy
+- [x] **`spec-02-core-schema-rls`** (`SAB §6`, `ADR-005`)
+  - [x] Migrations for `department_info`, `organizations` (`parent_org_id` for Main -> Sub-Org), `org_memberships`, `announcements`
+  - [x] 3-role RBAC RLS policies (`student | officer | admin`) + explicit `GRANT`s for `authenticated`
+  - [x] Tests: Newman RLS positive/negative access checks per role
 - [ ] **`spec-03-web-admin-scaffold`** (`ADR-009`)
   - [ ] Standalone Vite + React + TypeScript SPA in `web-admin/` (strictly excluded from Metro/EAS bundle)
   - [ ] `shared/` directory for shared TypeScript DTOs and Zod schemas
@@ -58,7 +58,7 @@ Single living tracker for implementing MyCCS spec-by-spec using OpenSpec (`schem
 ---
 
 ### Milestone 3 — Events, Offline Attendance & Conditional Forms (Sprint 3)
-*Exit gate: Officers scan permanent student QRs offline with check-in/check-out, cooldown, and auto-checkout; orgs run conditional membership and post-event evaluation forms with host metrics.*
+*Exit gate: Officers scan permanent student QRs offline with check-in/check-out, cooldown, and auto-checkout; open events admit guests via pre-registered or walk-in guest passes; orgs run conditional membership and post-event evaluation forms with host metrics.*
 
 - [ ] **`spec-06-events-and-offline-qr`** (`FR-EVT`, `FR-ATT`, `ADR-004`, `ADR-006`)
   - [ ] Migrations for `events` (`modality`, `meeting_url`, window/cooldown/auto-checkout fields), `event_registrations`, `attendance_scans`, `attendance_records`
@@ -66,6 +66,14 @@ Single living tracker for implementing MyCCS spec-by-spec using OpenSpec (`schem
   - [ ] Offline SQLite `attendance_scans` queue (`client_scan_id` UUID), pre-event `clock_offset_ms` + minimal display-name roster cache
   - [ ] Opaque permanent QR (`v1.<profile_id>.<short_hmac>`) scanner with cooldown guard, visual name display, officer rescan check-out, and server-side reconciliation + auto-checkout job
   - [ ] Tests: Jest unit tests for `clock_offset_ms`, cooldown suppression, multi-officer reconciliation, and auto-checkout
+- [ ] **`spec-06b-guest-passes`** (`FR-GUEST`, `FR-ATT-06`) — *approved 2026-11-25; implement after `spec-06`*
+  - [ ] Migrations: `events.audience` (`ccs_only` default | `open`), `event_guests` (encrypted name/email + blind index, consent, `source`, `over_capacity`, `purged_at`), `event_kiosk_links` (hashed token, expiry, revoke), `attendance_records.guest_id` + one-of CHECK, rate-limit counter + RLS/explicit `GRANT`s (no `anon` table access)
+  - [ ] Shared Zod `GuestRegistrationSchema` + `parseAttendanceCode()` (`v1.` member / `g1.` guest)
+  - [ ] Edge Functions `register-guest` (Turnstile, rate limit, capacity, dedupe, pass email/kiosk display), `resend-guest-pass`, `create-kiosk-link`; extend attendance sync for walk-ins + `g1` HMAC verification; secrets `GUEST_PASS_HMAC_KEY`, `TURNSTILE_SECRET_KEY`
+  - [ ] Public `web-admin/` routes `/e/:eventId` (pre-registration) and `/e/:eventId/kiosk` (walk-in, QR on screen, 20 s reset) outside the admin guard, with no admin imports
+  - [ ] Mobile: audience toggle, kiosk link create/revoke, guest roster cache, scanner `g1` results + "unverified guest", offline "Add walk-in", "Rejected scans"
+  - [ ] `purge_guest_pii()` daily `pg_cron` job (`GUEST_RETENTION_DAYS`, default 30) + member/guest split in attendance summary
+  - [ ] Tests: Jest code parsing & guest scan classification; Newman `register-guest` / kiosk / sync / RLS negatives; SQL purge test; Playwright kiosk + pre-registration
 - [ ] **`spec-07-conditional-forms-metrics`** (`FR-FORM`, `ADR-010`)
   - [ ] Migrations for `forms` (`schema_json`), `form_submissions` (`UNIQUE(form_id, profile_id)`)
   - [ ] Shared Zod JSONB schema bounded to 4 field types (`short_text`, `single_choice`, `multi_choice`, `rating_1_5`) + 1-level `visibleIf: { fieldId, equals }`
@@ -99,6 +107,16 @@ Record every bug found during audit or implementation here so root causes are fi
 | **BUG-004** | 2026-11-23 | Auth Config (`supabase/config.toml`) | Email signup/confirmation disabled while MS 365 IdP OAuth clearance is unavailable | Spec originally assumed direct University Entra ID OAuth | **Fixed** — Enabled `[auth.email] enable_signup = true` & `enable_confirmations = true` for `@lpunetwork.edu.ph` OTP auth + server-side hook. |
 | **BUG-005** | 2026-11-22 | Docs (`docs/jira/Software_Architecture_Baseline.pdf`) | Stale v1.0 PDF lingered alongside v2.0 `.md` | Sandbox file-delete restriction on Windows | **Fixed** — Deleted stale `Software_Architecture_Baseline.pdf` and scrubbed remaining stale `Vercel`/`Netlify`/`Institutional SSO` lines across `docs/jira/*.md`. |
 | **BUG-006** | 2026-11-23 | TypeScript (`tsconfig.json`) | `npx tsc --noEmit` failed on `tests/unit/App.test.tsx` (`Cannot find name 'describe'/'it'/'expect'`) | TypeScript 6.0 defaults `compilerOptions.types` to `[]`, excluding `@types/jest` globals | **Fixed** — Added `"types": ["jest"]` to `tsconfig.json`. |
+| **BUG-007** | 2026-11-23 | OpenSpec Config (`openspec/config.yaml`) | `openspec` CLI warned `Guidance for operation 'apply' must be an array of strings, ignoring this operation's guidance` | Unquoted colon (`Follow ponytail rules: ...`) inside YAML list item under `operations.apply.guidance` parsed as a map instead of a string | **Fixed** — Quoted guidance strings under `operations.apply.guidance` and `operations.archive.guidance` in `openspec/config.yaml`. |
+| **BUG-008** | 2026-11-24 | Auth & RLS (`supabase/migrations/20261123000001_spec01_auth_identity.sql`) | `provision_profile`/`seed.sql` fell back to predictable `sha256(current_database())` secrets and `authenticated` had direct `INSERT`/unrestricted `UPDATE` | Missing Vault secret enforcement and overly broad table grants | **Fixed** — Added fail-closed `get_identity_secret()` (Vault-only), revoked direct `INSERT`, added `guard_profiles_immutable_columns()` trigger + `get_my_profile()`, and hardened `seed.sql`. |
+| **BUG-009** | 2026-11-24 | Mobile Client (`src/lib/supabase.ts`, `src/screens/AuthIdentityScreen.tsx`) | Dynamic `EXPO_PUBLIC_*` lookup broke Metro static inlining, mount ignored persisted SecureStore sessions, and sign-in omitted QR profile loading | Dynamic bracket env lookup + missing `useEffect` session restore and `get_my_profile` call | **Fixed** — Switched to static `process.env.EXPO_PUBLIC_*`, added 2048-byte SecureStore guard, restored sessions on mount, and loaded `PublicProfileDto` on sign-in. |
+| **BUG-010** | 2026-11-24 | Shell Scripts (`.agents/skills/myccs-workflow/scripts/*.sh`) | Git Bash on Windows failed with `set: pipefail\r: invalid option name` | CRLF checkout on `.sh` files without `*.sh text eol=lf` in `.gitattributes` | **Fixed** — Added `*.sh text eol=lf` to `.gitattributes` and normalized `.sh` scripts to LF. |
+| **BUG-011** | 2026-11-24 | Auth & RLS (`supabase/migrations/20261123000001_spec01_auth_identity.sql`, `supabase/seed.sql`) | `guard_profiles_immutable_columns` allowed `authenticated` mutations, concurrent soft-delete could race silently, and seeded admin lacked `email_verified` | Trigger ran as `SECURITY DEFINER` (`current_user` always `postgres`), soft-delete `UPDATE` lacked `IF NOT FOUND`, and `seed.sql` omitted `email_verified` | **Fixed** — Hardened `guard_profiles_immutable_columns` against `SECURITY DEFINER` bypass, added `IF NOT FOUND` on concurrent soft-delete, and set `email_verified` in `seed.sql`. |
+| **BUG-012** | 2026-11-24 | Mobile Auth (`src/lib/supabase.ts`, `src/screens/AuthIdentityScreen.tsx`) | Real Supabase JWT sessions (>2048 B) threw in SecureStore and interrupted OTP / unprovisioned profile trapped users in a dead-end UI | Hard 2048-byte SecureStore throw without chunking and missing recovery path for verified sessions without a provisioned profile | **Fixed** — Replaced hard 2048-byte throw with chunked SecureStore storage and added recovery flow for interrupted OTP / unprovisioned profiles. |
+| **BUG-013** | 2026-11-24 | Auth Config (`supabase/config.toml`) | Department signups hit hourly OTP email rate limit after 2 messages | `[auth.rate_limit] email_sent = 2` capped department-wide OTP delivery | **Fixed** — Raised `[auth.rate_limit] email_sent` in `supabase/config.toml` for department-scale Resend SMTP onboarding. |
+| **BUG-014** | 2026-11-24 | DevSecOps & Git Workflow (`scripts/protect-branches.sh`, `.gitattributes`, `.github/workflows/ci.yml`, `gh-release.sh`) | `protect-branches.sh` applied 5 stale checks, `.husky/*` risked Windows CRLF errors, Snyk soft-failed via `continue-on-error: true`, and `gh-release.sh` emitted literal `\n` | Duplicated inline JSON vs `scripts/branch-protection-body.json`, missing `.husky/*` LF rule, unconditional `continue-on-error`, and single-line `\n` `--notes` string | **Fixed** — Wired `protect-branches.sh` to `--input scripts/branch-protection-body.json` (7 checks), added `.husky/* text eol=lf`, enforced conditional Snyk gate without `continue-on-error`, and replaced literal `\n` in `gh-release.sh` with multi-line `NOTES_BODY`. |
+| **BUG-015** | 2026-11-24 | Auth Policy & Crypto Bounds (`supabase/config.toml`, `shared/identity-crypto.ts`) | Server allowed 6-char passwords (`minimum_password_length = 6`) & unauthenticated password changes (`secure_password_change = false`) vs 8-char client schema; `identity-crypto.ts` accepted `<16`-byte secrets and `keyVersion > 0xffffffff` | Default Supabase config weaker than `SignupRequestSchema`; missing `MIN_SECRET_BYTES` and 32-bit `keyVersion` upper-bound guards | **Fixed** — Set `minimum_password_length = 8` & `secure_password_change = true` in `config.toml`; enforced `>=16`-byte secrets, `1 <= keyVersion <= 0xffffffff`, and safe `keyRing` lookup in `shared/identity-crypto.ts`. |
+| **BUG-016** | 2026-11-24 | QA Config & Tests (`jest.config.js`, `tests/unit/App.test.tsx`, `tests/unit/auth-identity.test.ts`) | Jest lacked coverage threshold enforcement (initial branch coverage 56.07%), `App.test.tsx` was a placeholder (`expect(true)`), and RNTL v14 async `render`/`fireEvent` caused TS2339 errors | No `coverageThreshold` in `jest.config.js`, starter placeholder test, and `@testing-library/react-native` v14 Promise-returning APIs | **Fixed** — Enforced `80/75/80/80` thresholds in `jest.config.js`, wired real `<App />` render test, awaited RNTL v14 APIs, and expanded suite to 18 passing tests (99.15% stmts / 89% branches). |
 
 ---
 
@@ -108,6 +126,13 @@ Track intentional MVP shortcuts (`shortcut: <limit>, <when to upgrade>`) so debt
 
 | Spec | Shortcut (`limit`) | When to Upgrade |
 | :--- | :--- | :--- |
+| `spec-01-auth-identity` | Initial profile PII encryption runs in Postgres `SECURITY DEFINER` RPC (`pgcrypto`) rather than an Edge Function | `spec-05` if Edge Functions need to decrypt `profiles.full_name_enc` directly |
+| `spec-02-core-schema-rls` | `org_memberships.submission_id` is a nullable `uuid` without a foreign key constraint | `spec-07-conditional-forms-metrics` when `public.form_submissions` is created (add `REFERENCES public.form_submissions(id) ON DELETE SET NULL`) |
 | `spec-04-dept-and-org-pages` | Org pages are read-only chronological posts (no likes, comments, or drag-and-drop builder) | Phase 2 if orgs request interactive discussions |
 | `spec-05-gmetrix-csv-and-push` | Unregistered CSV rows are returned for manual email/MS Teams delivery (no automated email send) | Phase 2 when Resend transactional email notifications are added |
+| `spec-06b-guest-passes` | Guests get event-scoped passes only (no accounts, no post-event evaluation forms, no org membership) | Phase 2 if guest feedback is required (emailed evaluation link tied to the pass) |
+| `spec-06b-guest-passes` | Rate limiting uses a Postgres counter table | When public registration traffic makes DB writes a bottleneck (move to edge KV) |
+| `spec-06b-guest-passes` | Public guest routes share the `web-admin/` Cloudflare Pages origin | If public traffic grows or CSP needs diverge (split into `web-public/`) |
+| `spec-06b-guest-passes` | Guest PII retention fixed at 30 days after event end | Once the DPO confirms the official retention period |
+| `spec-06b-guest-passes` | Kiosk and officer walk-ins are not email-verified (tagged by `source`) | If walk-in abuse appears in reports (add email confirmation before pass) |
 | `spec-07-conditional-forms-metrics` | Form builder capped at 4 field types + 1-level `visibleIf` equality (no AND/OR trees or file uploads) | Phase 2 if complex multi-branch evaluations are required |
