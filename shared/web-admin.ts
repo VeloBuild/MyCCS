@@ -20,12 +20,18 @@ function isValidSupabaseUrl(value: string): boolean {
     return false;
   }
 
-  if (parsed.username !== '' || parsed.password !== '') {
+  if (
+    parsed.username !== '' ||
+    parsed.password !== '' ||
+    parsed.pathname !== '/' ||
+    parsed.search !== '' ||
+    parsed.hash !== ''
+  ) {
     return false;
   }
 
   if (parsed.protocol === 'https:') {
-    return SUPABASE_HOSTED_DOMAIN_REGEX.test(parsed.hostname.toLowerCase());
+    return parsed.port === '' && SUPABASE_HOSTED_DOMAIN_REGEX.test(parsed.hostname.toLowerCase());
   }
 
   return (

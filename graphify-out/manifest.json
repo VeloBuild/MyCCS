@@ -606,9 +606,9 @@
     "semantic_hash": ""
   },
   "shared/web-admin.ts": {
-    "mtime": 1795634562.4324985,
-    "seen": 1795634673.6849754,
-    "ast_hash": "64327d3948fd347fca4e0fd8e1de1816",
+    "mtime": 1795635052.830825,
+    "seen": 1795635105.0392349,
+    "ast_hash": "a508910e65a9734dfb4233c5bda02f1d",
     "semantic_hash": ""
   },
   "supabase/functions/_shared/cors.ts": {
@@ -624,9 +624,9 @@
     "semantic_hash": ""
   },
   "tests/unit/web-admin-scaffold.test.ts": {
-    "mtime": 1795634620.2873538,
-    "seen": 1795634673.68753,
-    "ast_hash": "dd72676d639825c0322a1c152f891825",
+    "mtime": 1795635056.0428333,
+    "seen": 1795635105.041924,
+    "ast_hash": "77327395cbd53b86c996e32f8dff451c",
     "semantic_hash": ""
   },
   "web-admin/package.json": {

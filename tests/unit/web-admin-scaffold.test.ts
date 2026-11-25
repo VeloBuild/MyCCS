@@ -76,10 +76,10 @@ describe('spec-03-web-admin-scaffold (SCRUM-12)', () => {
       expect(prodCo.VITE_SUPABASE_URL).toBe('https://myccs-project.supabase.co');
 
       const prodIn = WebAdminEnvSchema.parse({
-        VITE_SUPABASE_URL: 'https://myccs-project.supabase.in',
+        VITE_SUPABASE_URL: 'https://myccs-project.supabase.in:443',
         VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_valid_client_key',
       });
-      expect(prodIn.VITE_SUPABASE_URL).toBe('https://myccs-project.supabase.in');
+      expect(prodIn.VITE_SUPABASE_URL).toBe('https://myccs-project.supabase.in:443');
 
       const local = WebAdminEnvSchema.parse({
         VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
@@ -99,6 +99,11 @@ describe('spec-03-web-admin-scaffold (SCRUM-12)', () => {
         'https://custom.example.com',
         'https://supabase.co',
         'https://evil-supabase.co',
+        'https://myccs-project.supabase.co:8443',
+        'https://myccs-project.supabase.in:8443',
+        'https://myccs-project.supabase.co/extra',
+        'https://myccs-project.supabase.co?foo=bar',
+        'https://myccs-project.supabase.co#section',
         'http://myccs-project.supabase.co',
         'http://localhost.evil.com',
         'https://user:pass@myccs-project.supabase.co',
