@@ -12,6 +12,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@testing-library/react-native": "^14.1.0",
     "@types/jest": "30.0.0",
     "@types/react": "~19.3.0",
@@ -43,6 +44,9 @@
     "web": "expo start --web",
     "prepare": "husky",
     "test": "jest",
+    "test:e2e": "playwright test",
+    "web-admin:typecheck": "npm --prefix web-admin run typecheck",
+    "web-admin:build": "npm --prefix web-admin run build",
     "db:test": "npx supabase db reset && psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -f tests/api/auth-identity-rls.sql && psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -f tests/api/core-schema-rls.sql"
   },
   "private": true

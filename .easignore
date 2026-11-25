@@ -1,0 +1,82 @@
+# EAS Build ignore rules (replaces .gitignore during EAS archive upload)
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+# Supabase
+supabase/.temp/
+supabase/.branches/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Test reports & coverage
+/coverage/
+/reports/
+/playwright-report/
+/test-results/
+
+# Build artifacts
+*.apk
+*.ipa
+*.aab
+
+# Husky
+.husky/_/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Graphify machine-local paths, caches & backups
+graphify-out/.graphify_python
+graphify-out/.graphify_root
+graphify-out/.pending_full
+graphify-out/.rebuild.lock
+graphify-out/cache/
+graphify-out/20??-??-??/
+
+# Standalone Web Admin SPA & Playwright E2E (ADR-009)
+/web-admin/
+/tests/e2e/

@@ -111,15 +111,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Web Admin dependencies
+        run: npm --prefix web-admin ci
+
       # TODO: Add SNYK_TOKEN to repository secrets
       # Get your token from: https://app.snyk.io/account
-      - name: Run Snyk to check for vulnerabilities
+      - name: Run Snyk on root mobile workspace
         if: env.HAS_SNYK_TOKEN == 'true'
         uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
+
+      - name: Run Snyk on standalone web-admin workspace
+        if: env.HAS_SNYK_TOKEN == 'true'
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --file=web-admin/package.json --severity-threshold=high
 
       - name: Warn when SNYK_TOKEN is not configured
         if: env.HAS_SNYK_TOKEN != 'true'
@@ -151,8 +162,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # TODO: Configure Jest in package.json or jest.config.ts
-      # Add test scripts: "test": "jest --coverage"
+      - name: Run TypeScript typecheck
+        run: npx tsc --noEmit
+
       - name: Run Jest tests
         run: npm test -- --coverage --ci --reporters=default --reporters=jest-junit
         env:
@@ -241,18 +253,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # TODO: Install Playwright and configure tests
-      # npx playwright install --with-deps
-      # Create tests in /tests/e2e/
+      - name: Install Web Admin dependencies
+        run: npm --prefix web-admin ci
+
+      - name: Typecheck and build Web Admin
+        run: npm --prefix web-admin run build
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
-        continue-on-error: true
 
       - name: Run Playwright E2E tests
-        run: |
-          echo "🔧 Playwright E2E tests placeholder"
-          echo "   To activate, create test files at: tests/e2e/"
-          # npx playwright test --reporter=html
+        run: npx playwright test
 
       - name: Upload Playwright report
         if: always()
@@ -349,22 +360,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # ----- Web Admin Deployment (Vercel / Netlify) -----
-      # TODO: Choose deployment platform and configure
-      # Option A — Vercel:
-      #   1. Install Vercel CLI: npm i -g vercel
-      #   2. Add VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID to secrets
-      #   3. Run: vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
-      # Option B — Netlify:
-      #   1. Install Netlify CLI: npm i -g netlify-cli
-      #   2. Add NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID to secrets
-      #   3. Run: netlify deploy --prod
-      - name: "Placeholder: Deploy Web Admin"
+      - name: "Placeholder: Deploy Web Admin to Cloudflare Pages"
         id: deploy-web
         run: |
-          echo "🔧 Web admin deployment placeholder"
-          echo "   Configure Vercel or Netlify secrets to activate"
-          echo "url=https://myccs.example.com" >> $GITHUB_OUTPUT
+          echo "🔧 Cloudflare Pages Web Admin deployment placeholder"
+          echo "   Configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets to run wrangler pages deploy web-admin/dist"
+          echo "url=https://myccs-web-admin.pages.dev" >> $GITHUB_OUTPUT
 
       # ----- Supabase Database Migrations -----
       # TODO: Add SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD,
