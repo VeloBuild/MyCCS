@@ -32,12 +32,16 @@ create table events (
   data jsonb
 ) partition by range (created_at);
 
--- Create partitions for each month
+-- Create partitions ahead of time before writes reach their date ranges
 create table events_2024_01 partition of events
   for values from ('2024-01-01') to ('2024-02-01');
 
 create table events_2024_02 partition of events
   for values from ('2024-02-01') to ('2024-03-01');
+
+-- Optional safety net: a managed default partition catches unmatched dates
+-- (monitor and split/migrate rows out before attaching new overlapping ranges)
+create table events_default partition of events default;
 
 -- Queries only scan relevant partitions
 select * from events where created_at > '2024-01-15';  -- Only scans events_2024_01+

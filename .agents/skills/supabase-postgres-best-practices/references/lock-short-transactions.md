@@ -25,26 +25,43 @@ commit;  -- Lock held for entire duration
 **Correct (minimal transaction scope):**
 
 ```sql
--- Validate data and call APIs outside transaction
--- Application: response = await paymentAPI.charge(...)
+-- Step 1: Durably claim the pending order in a short transaction so concurrent
+-- callers cannot double-charge
+begin;
+update orders
+set status = 'charging', idempotency_key = coalesce(idempotency_key, gen_random_uuid())
+where id = $1 and status = 'pending'
+returning id, idempotency_key;
+commit;  -- Lock released before external HTTP call
 
--- Only hold lock for the actual update
+-- Step 2: Call external payment API outside any DB transaction using the
+-- persisted idempotency_key:
+-- response = await paymentAPI.charge({ orderId, idempotencyKey })
+
+-- Step 3: Record payment outcome in a second short transaction
 begin;
 update orders
 set status = 'paid', payment_id = $1
-where id = $2 and status = 'pending'
+where id = $2 and status = 'charging'
 returning *;
 commit;  -- Lock held for milliseconds
+
+-- Note: Run a background reconciliation/recovery job for orders stuck in
+-- 'charging' (e.g., if the app crashes after charging but before Step 3 commits)
+-- by querying paymentAPI with the persisted idempotency_key.
 ```
 
 Use `statement_timeout` to prevent runaway transactions:
 
 ```sql
--- Abort queries running longer than 30 seconds
+-- Session-wide timeout: abort queries running longer than 30 seconds
 set statement_timeout = '30s';
 
--- Or per-session
+-- Transaction-local timeout (must be set inside an active transaction)
+begin;
 set local statement_timeout = '5s';
+-- ... queries ...
+commit;
 ```
 
 Reference: [Transaction Management](https://www.postgresql.org/docs/current/tutorial-transactions.html)

@@ -32,10 +32,13 @@ create table users (
   id bigint generated always as identity primary key
 );
 
--- For distributed systems needing UUIDs, use UUIDv7 (time-ordered)
--- Requires pg_uuidv7 extension: create extension pg_uuidv7;
+-- For distributed systems needing UUIDv7 (time-ordered):
+-- Note: pg_uuidv7 is not available on standard Supabase Postgres images and
+-- cannot be installed into a running container. Use Supabase's custom Postgres
+-- extensions guide if you need pg_uuidv7, or prefer the extension-free identity
+-- column / time-prefixed text ID alternatives below.
 create table orders (
-  id uuid default uuid_generate_v7() primary key  -- Time-ordered, no fragmentation
+  id uuid default uuid_generate_v7() primary key  -- Time-ordered, no fragmentation (custom image)
 );
 
 -- Alternative: time-prefixed IDs for sortable, distributed IDs (no extension needed)

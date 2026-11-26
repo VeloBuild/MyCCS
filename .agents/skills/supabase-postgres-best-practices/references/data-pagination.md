@@ -37,10 +37,10 @@ select * from products where id > 20 order by id limit 20;
 select * from products where id > 199980 order by id limit 20;
 ```
 
-For multi-column sorting:
+For multi-column sorting (requires `NOT NULL` on all sort columns; if `created_at` can be `NULL`, either enforce `NOT NULL` or add explicit `NULL` handling in the cursor predicate to preserve ascending order):
 
 ```sql
--- Cursor must include all sort columns
+-- Cursor must include all non-null sort columns
 select * from products
 where (created_at, id) > ('2024-01-15 10:00:00', 12345)
 order by created_at, id

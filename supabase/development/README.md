@@ -2,7 +2,7 @@
 
 Local-only SQL seeds for manually testing `web-admin/` authentication, `role = 'admin'` route guarding, and core CCS tables (`department_info`, `organizations`, `org_memberships`, `announcements`).
 
-Files here run through `[db.seed].sql_paths` in `supabase/config.toml` during `npx supabase db reset`. They live outside `supabase/migrations/` so production `npx supabase db push` never applies test accounts or development passwords.
+Files here run through `[db.seed].sql_paths` in `supabase/config.toml` during `npx supabase db reset`. They live outside `supabase/migrations/` so ordinary `npx supabase db push` excludes these fixtures, but `npx supabase db push --include-seed` includes all configured seed files. Never run `--include-seed` against production with this seed configuration.
 
 ## Placeholder Accounts
 

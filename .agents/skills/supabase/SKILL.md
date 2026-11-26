@@ -45,7 +45,7 @@ When working on any Supabase task that touches auth, RLS, views, storage, or use
 - **RLS, views, and privileged database code**
   - **Views bypass RLS by default.** In Postgres 15 and above, use `CREATE VIEW ... WITH (security_invoker = true)`. In older versions of Postgres, protect your views by revoking access from the `anon` and `authenticated` roles, or by putting them in an unexposed schema.
   - **UPDATE requires a SELECT policy.** In Postgres RLS, an UPDATE needs to first SELECT the row. Without a SELECT policy, updates silently return 0 rows — no error, just no change.
-  - **`auth.role()` is deprecated — use the `TO` clause instead.** Supabase has deprecated `auth.role()` in favour of specifying the target role directly on the policy with `TO authenticated` or `TO anon`. Beyond deprecation, `auth.role() = 'authenticated'` breaks silently when anonymous sign-ins are enabled, because anonymous users carry the `authenticated` Postgres role and pass the check regardless of whether the user is genuinely signed in.
+  - **`auth.role()` is deprecated — use the `TO` clause instead.** Supabase has deprecated `auth.role()` in favour of specifying the target role directly on the policy with `TO authenticated` or `TO anon`. Note that `TO authenticated` also does not exclude anonymous Auth users when anonymous sign-ins are enabled (they carry the `authenticated` Postgres role). When access requires permanent (non-anonymous) users, add an `is_anonymous` check alongside your separate ownership checks: `((select (auth.jwt() ->> 'is_anonymous')::boolean) is false)`.
     ```sql
     -- Deprecated (do not use)
     create policy "example" on table_name for select
@@ -57,7 +57,7 @@ When working on any Supabase task that touches auth, RLS, views, storage, or use
     to authenticated
     using ( (select auth.uid()) = user_id );
     ```
-  - **UPDATE policies require both `USING` and `WITH CHECK`.** Without `WITH CHECK`, a user can reassign a row's `user_id` to another user:
+  - **Write explicit `USING` and `WITH CHECK` clauses on `UPDATE` policies.** PostgreSQL implicitly reuses `USING` as `WITH CHECK` when `WITH CHECK` is omitted, so adding an explicit `WITH CHECK` is for clarity and to make intended write invariants explicit (especially when update constraints differ from read visibility):
     ```sql
     create policy "example" on table_name for update
     to authenticated
@@ -128,13 +128,13 @@ First decide which schema workflow the project uses.
 
 ### Option A: Declarative schemas
 
-Use this when `supabase/schemas/` exists or `config.toml` sets `schema_paths`. Edit the desired schema state in those files, then generate and review the migration. Do not start by hand-writing a migration. See the [Declarative database schemas guide](https://supabase.com/docs/guides/local-development/declarative-database-schemas).
+Use this when `supabase/schemas/` exists or `config.toml` sets a non-empty `schema_paths` list (an empty `schema_paths = []` without `supabase/schemas/` selects the imperative migration workflow instead). Edit the desired schema state in those files, then generate and review the migration. Do not start by hand-writing a migration. See the [Declarative database schemas guide](https://supabase.com/docs/guides/local-development/declarative-database-schemas).
 
 ### Option B: Imperative migrations
 
 Use this when the project does not use declarative schemas.
 
-**To make schema changes, use `execute_sql` (MCP) or `supabase db query` (CLI).** These run SQL directly on the database without creating migration history entries, so you can iterate freely and generate a clean migration when ready.
+**To make schema changes, use `execute_sql` (MCP) or `supabase db query` (CLI).** These run SQL directly on the database without creating migration history entries, so you can iterate freely and generate a clean migration when ready. Ensure `execute_sql` and `supabase db pull` target the **same** database: prefer the local MCP endpoint (`http://localhost:54321/mcp`, or the URL reported by `supabase status` when the experimental stack setting is enabled) when pulling with `--local`, or omit `--local` to pull from the same hosted project that received `execute_sql`.
 
 Do NOT use `apply_migration` to change a local database schema — it writes a migration history entry on every call, which means you can't iterate, and `supabase db diff` / `supabase db pull` will produce empty or conflicting diffs. If you use it, you'll be stuck with whatever SQL you passed on the first try.
 
@@ -142,7 +142,7 @@ Do NOT use `apply_migration` to change a local database schema — it writes a m
 
 1. **Run advisors** → `supabase db advisors` (CLI v2.81.3+) or MCP `get_advisors`. Fix any issues.
 2. **Review the Security Checklist above** if your changes involve views, functions, triggers, or storage.
-3. **Generate the migration** → `supabase db pull <descriptive-name> --local --yes`
+3. **Generate the migration** → `supabase db pull <descriptive-name> --local --yes` (for changes applied to the local database via local MCP / CLI, or `supabase db pull <descriptive-name>` for changes applied to the linked hosted project)
 4. **Verify** → `supabase migration list --local`
 
 ## Debugging

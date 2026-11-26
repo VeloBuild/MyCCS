@@ -32,26 +32,28 @@ Use security definer functions for complex checks:
 `SECURITY DEFINER` functions run with the creator's privileges and bypass RLS on any tables they touch — which is what makes them useful for internal lookups, but also what makes them dangerous if misused. Always include an explicit `auth.uid()` check inside the function body, keep them in a non-exposed schema, and revoke `EXECUTE` from any role that shouldn't call them directly.
 
 ```sql
--- Create helper function in a private schema
-create or replace function private.is_team_member(team_id bigint)
-returns boolean
+-- Create an uncorrelated helper in a non-exposed private schema that returns
+-- the calling user's team IDs once per query
+create or replace function private.user_team_ids()
+returns bigint[]
 language sql
 security definer
 set search_path = ''
 as $$
-  select exists (
-    select 1 from public.team_members
-    -- always check the calling user's identity inside the function
-    where team_id = $1 and user_id = (select auth.uid())
-  );
+  select coalesce(array_agg(team_id), '{}')
+  from public.team_members
+  -- always check the calling user's identity inside the function
+  where user_id = (select auth.uid());
 $$;
 
--- Revoke direct execution from public roles
-revoke execute on function private.is_team_member(bigint) from PUBLIC, anon, authenticated, service_role;
+-- Restrict EXECUTE to only the roles that evaluate the RLS policy
+revoke execute on function private.user_team_ids() from PUBLIC, anon;
+grant execute on function private.user_team_ids() to authenticated;
 
--- Use in policy (indexed lookup, not per-row check)
+-- Use in policy (uncorrelated initPlan + indexed team_id lookup)
 create policy team_orders_policy on orders
-  using ((select private.is_team_member(team_id)));
+  to authenticated
+  using (team_id = any ((select private.user_team_ids())));
 ```
 
 Always add indexes on columns used in RLS policies:

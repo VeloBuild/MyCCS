@@ -22,29 +22,36 @@ select * from orders;  -- Returns ALL orders
 **Correct (database-enforced RLS):**
 
 ```sql
+-- Assume orders.user_id is uuid referencing auth.users(id)
 -- Enable RLS on the table
 alter table orders enable row level security;
 
--- Create policy for users to see only their orders
+-- Create policy comparing against trusted authenticated identity from auth.uid()
+-- (never trust client-settable session settings for authorization)
 create policy orders_user_policy on orders
   for all
-  using (user_id = current_setting('app.current_user_id')::bigint);
+  to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
 -- Force RLS even for table owners
 alter table orders force row level security;
 
--- Set user context and query
-set app.current_user_id = '123';
-select * from orders;  -- Only returns orders for user 123
+-- Query as a non-superuser role without BYPASSRLS (e.g. authenticated)
+-- so Postgres enforces the policy and returns only the signed-in user's orders
+set local role authenticated;
+select * from orders;
 ```
 
-Policy for authenticated role:
+Updating an existing policy (drop or alter in place to avoid duplicate-policy errors):
 
 ```sql
+drop policy if exists orders_user_policy on orders;
 create policy orders_user_policy on orders
   for all
   to authenticated
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 ```
 
 Reference: [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)

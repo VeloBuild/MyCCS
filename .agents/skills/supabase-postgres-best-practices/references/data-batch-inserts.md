@@ -35,15 +35,13 @@ insert into events (user_id, action) values
 -- One round trip for 1000 rows
 ```
 
-For large imports, use COPY:
+For large imports, use client-side `\copy` (or a driver COPY-from-STDIN stream) for local files, as server-side `COPY ... FROM '/path'` reads files on the database server filesystem:
 
 ```sql
--- COPY is fastest for bulk loading
-copy events (user_id, action, created_at)
-from '/path/to/data.csv'
-with (format csv, header true);
+-- Client-side CSV import from the developer's machine using psql \copy
+\copy events (user_id, action, created_at) from './data.csv' with (format csv, header true)
 
--- Or from stdin in application
+-- Or stream from STDIN via a client driver (COPY FROM STDIN)
 copy events (user_id, action) from stdin with (format csv);
 1,click
 1,view

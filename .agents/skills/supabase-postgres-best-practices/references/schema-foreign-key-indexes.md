@@ -52,7 +52,10 @@ join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
 where c.contype = 'f'
   and not exists (
     select 1 from pg_index i
-    where i.indrelid = c.conrelid and a.attnum = any(i.indkey)
+    where i.indrelid = c.conrelid
+      and i.indisvalid
+      and i.indpred is null  -- exclude partial indexes unless proven to cover all FK rows
+      and a.attnum = any((i.indkey::int2[])[1:i.indnkeyatts])  -- key columns only, excluding INCLUDE
   );
 ```
 

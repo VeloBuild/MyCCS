@@ -7,7 +7,7 @@ tags: full-text-search, tsvector, gin, search
 
 ## Use tsvector for Full-Text Search
 
-LIKE with wildcards can't use indexes. Full-text search with tsvector is orders of magnitude faster.
+LIKE with wildcards can't use standard B-tree indexes. Full-text search with `tsvector` is orders of magnitude faster for word/stem matching, though it does not preserve arbitrary substring semantics (for example, `'sql'` does not match `'postgresql'`). If you need true substring matching like `LIKE '%sql%'`, use `pg_trgm` with a GIN or GiST trigram index instead.
 
 **Incorrect (LIKE pattern matching):**
 

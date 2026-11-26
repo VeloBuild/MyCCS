@@ -26,10 +26,11 @@ execute get_user(123);
 -- Option 1: Use unnamed prepared statements (most ORMs do this automatically)
 -- The query is prepared and executed in a single protocol message
 
--- Option 2: Deallocate after use in transaction mode
-prepare get_user as select * from users where id = $1;
-execute get_user(123);
-deallocate get_user;
+-- Option 2: Avoid named PREPARE/EXECUTE/DEALLOCATE in transaction pooling
+-- With autocommit, the pooler can route PREPARE and EXECUTE to different backends.
+-- Wrapping them in an explicit transaction only keeps them together on poolers
+-- that support prepared statements; Supabase's shared transaction pooler (port 6543)
+-- does not support prepared statements, so use unnamed statements there instead.
 
 -- Option 3: Use session mode pooling (port 5432 vs 6543)
 -- Connection is held for entire session, prepared statements persist
@@ -39,7 +40,8 @@ Check your driver settings:
 
 ```sql
 -- Many drivers use prepared statements by default
--- Node.js pg: { prepare: false } to disable
+-- Node.js node-postgres (pg): omit the query `name` property to avoid named prepared statements
+-- (Postgres.js uses `{ prepare: false }` to disable prepared statements)
 -- JDBC: prepareThreshold=0 to disable
 ```
 

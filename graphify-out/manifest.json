@@ -553,32 +553,32 @@
   },
   "supabase/migrations/20261123000001_spec01_auth_identity.sql": {
     "mtime": 1795602990.6592996,
-    "seen": 1795623097.3493388,
-    "ast_hash": "",
+    "seen": 1795678966.887748,
+    "ast_hash": "b75309a0fd94e13f3f1f280da6ce6f04",
     "semantic_hash": ""
   },
   "supabase/migrations/20261125000001_spec02_core_schema_rls.sql": {
     "mtime": 1795602990.6603007,
-    "seen": 1795623097.3493402,
-    "ast_hash": "",
+    "seen": 1795678966.887753,
+    "ast_hash": "54dc79e35684c9b3242111878ee27515",
     "semantic_hash": ""
   },
   "supabase/seed.sql": {
     "mtime": 1795602990.660806,
-    "seen": 1795623097.3493419,
-    "ast_hash": "",
+    "seen": 1795678966.8877568,
+    "ast_hash": "cd21364826ee417f51407338e36c836b",
     "semantic_hash": ""
   },
   "tests/api/auth-identity-rls.sql": {
     "mtime": 1795602990.6618152,
-    "seen": 1795623097.3493433,
-    "ast_hash": "",
+    "seen": 1795678966.8877604,
+    "ast_hash": "6a9d0b6b5d27df8eb89100ac60947d89",
     "semantic_hash": ""
   },
   "tests/api/core-schema-rls.sql": {
     "mtime": 1795602990.6628149,
-    "seen": 1795623097.3493478,
-    "ast_hash": "",
+    "seen": 1795678966.8880765,
+    "ast_hash": "e6c9c07e4f022142fdca04d640d124f2",
     "semantic_hash": ""
   },
   ".agents/rules/coderabbit-pr-gate.md": {
@@ -747,6 +747,12 @@
     "mtime": 1795635538.9640758,
     "seen": 1795665787.7387755,
     "ast_hash": "9fac265d561da99a5c29789a0632e7a8",
+    "semantic_hash": ""
+  },
+  "skills-lock.json": {
+    "mtime": 1795673383.1269932,
+    "seen": 1795678966.8860974,
+    "ast_hash": "4ec4ec1c762093ebbb8e2a9c490563f0",
     "semantic_hash": ""
   }
 }

@@ -233,6 +233,13 @@ BEGIN
   )
   ON CONFLICT DO NOTHING;
 
+  SELECT id
+  INTO v_org_main_id
+  FROM public.organizations
+  WHERE name = 'CCS Student Council (Dev)'
+    AND parent_org_id IS NULL
+  LIMIT 1;
+
   INSERT INTO public.organizations (id, parent_org_id, name, details)
   VALUES
     (
@@ -248,6 +255,20 @@ BEGIN
       'Sub-organization focused on CTF competitions, AppSec, and cloud hardening.'
     )
   ON CONFLICT DO NOTHING;
+
+  SELECT id
+  INTO v_org_sub_dev_id
+  FROM public.organizations
+  WHERE name = 'LPU Web & Mobile Developers Guild (Dev)'
+    AND parent_org_id = v_org_main_id
+  LIMIT 1;
+
+  SELECT id
+  INTO v_org_sub_sec_id
+  FROM public.organizations
+  WHERE name = 'LPU Cybersecurity Society (Dev)'
+    AND parent_org_id = v_org_main_id
+  LIMIT 1;
 
   INSERT INTO public.org_memberships (profile_id, organization_id, role, status)
   VALUES

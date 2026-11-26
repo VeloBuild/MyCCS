@@ -35,15 +35,19 @@ update jobs set status = 'processing' where id = $1;
 commit;
 ```
 
-Complete queue pattern:
+Atomic claim step (pair with a lease/recovery job for abandoned `processing` rows):
 
 ```sql
--- Atomic claim-and-update in one statement
+-- Atomic claim-and-update with a visibility lease
 update jobs
-set status = 'processing', worker_id = $1, started_at = now()
+set status = 'processing',
+    worker_id = $1,
+    started_at = now(),
+    lease_expires_at = now() + interval '5 minutes'
 where id = (
   select id from jobs
   where status = 'pending'
+     or (status = 'processing' and lease_expires_at < now())
   order by created_at
   limit 1
   for update skip locked

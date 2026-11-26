@@ -30,9 +30,11 @@ show max_connections;  -- 500 (way too high for 4GB RAM)
 -- Recommended settings for 4GB RAM
 alter system set max_connections = 100;
 
--- Also set work_mem appropriately
--- work_mem * max_connections should not exceed 25% of RAM
-alter system set work_mem = '8MB';  -- 8MB * 100 = 800MB max
+-- Also size work_mem for concurrent sort/hash operations and parallel workers
+-- Each query can run multiple sort/hash nodes and spawn parallel workers, so
+-- work_mem * max_connections is NOT a reliable memory upper bound.
+-- Estimate concurrent operations and workers for your workload before choosing a value.
+alter system set work_mem = '4MB';  -- Adjust based on measured workload concurrency
 ```
 
 Monitor connection usage:

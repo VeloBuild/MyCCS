@@ -48,8 +48,14 @@ Common sources of mixed-case identifiers:
 -- Migrations from other databases may preserve original casing
 -- Some GUI tools quote identifiers by default - disable this
 
--- If stuck with mixed-case, create views as a compatibility layer
-CREATE VIEW users AS SELECT "userId" AS user_id, "firstName" AS first_name FROM "Users";
+-- If stuck with mixed-case, create a security_invoker compatibility view (Postgres 15+)
+-- so queries enforce the caller's permissions and "Users" RLS policies
+CREATE VIEW users WITH (security_invoker = true) AS
+  SELECT "userId" AS user_id, "firstName" AS first_name FROM "Users";
+
+-- Restrict grants on the view to only the intended API roles
+REVOKE ALL ON users FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON users TO authenticated;
 ```
 
 Reference: [Identifiers and Key Words](https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS)

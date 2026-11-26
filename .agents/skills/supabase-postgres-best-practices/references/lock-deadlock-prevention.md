@@ -39,11 +39,13 @@ update accounts set balance = balance + 100 where id = 2;
 commit;
 ```
 
-Alternative: use a single statement to update atomically:
+Alternative: combine the write into a single atomic `UPDATE` after ordered prelocking (note that a single `UPDATE` alone does not guarantee deadlock prevention because PostgreSQL acquires row locks incrementally as rows are processed):
 
 ```sql
--- Single statement acquires all locks atomically
+-- Pre-lock rows in deterministic ID order, then update atomically
 begin;
+select id from accounts where id in (1, 2) order by id for update;
+
 update accounts
 set balance = balance + case id
   when 1 then -100

@@ -24,6 +24,7 @@ insert into settings (user_id, key, value) values (123, 'theme', 'dark');
 **Correct (atomic UPSERT):**
 
 ```sql
+-- Requires a unique constraint or unique index on settings(user_id, key)
 -- Single atomic operation
 insert into settings (user_id, key, value)
 values (123, 'theme', 'dark')
@@ -41,6 +42,7 @@ returning *;
 Insert-or-ignore pattern:
 
 ```sql
+-- Requires a unique constraint or unique index on page_views(page_id, user_id)
 -- Insert only if not exists (no update)
 insert into page_views (page_id, user_id)
 values (1, 123)
