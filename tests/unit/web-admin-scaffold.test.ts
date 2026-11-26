@@ -524,13 +524,29 @@ describe('spec-03-web-admin-scaffold (SCRUM-12)', () => {
       expect(lines).toContain('/test-results/');
     });
 
-    it('registers local Vite redirect URLs in supabase/config.toml', () => {
+    it('registers local Vite redirect URLs and development seed glob in supabase/config.toml', () => {
       const configToml = nodeFs.readFileSync(
         nodePath.resolve(REPO_ROOT, 'supabase/config.toml'),
         'utf8'
       );
       expect(configToml).toContain('"http://127.0.0.1:5173"');
       expect(configToml).toContain('"http://localhost:5173"');
+      expect(configToml).toContain('sql_paths = ["./seed.sql", "./development/*.sql"]');
+
+      const devSeedSql = nodeFs.readFileSync(
+        nodePath.resolve(REPO_ROOT, 'supabase/development/01_web_admin_placeholder_data.sql'),
+        'utf8'
+      );
+      expect(devSeedSql).toContain('LOCAL DEVELOPMENT ONLY');
+      expect(devSeedSql).toContain('dev.admin@lpunetwork.edu.ph');
+      expect(devSeedSql).toContain('dev.student@lpunetwork.edu.ph');
+      expect(devSeedSql).toContain('dev.officer@lpunetwork.edu.ph');
+      expect(devSeedSql).toContain('dev.unprovisioned@lpunetwork.edu.ph');
+      expect(devSeedSql).toContain('public.get_identity_secret');
+      expect(devSeedSql).toContain('extensions.pgp_sym_encrypt');
+      expect(
+        nodeFs.existsSync(nodePath.resolve(REPO_ROOT, 'supabase/migrations/development'))
+      ).toBe(false);
     });
 
     it('configures Cloudflare Pages deployment securely with zero backend secrets', () => {
