@@ -217,7 +217,7 @@ a {
   color: var(--ink-primary);
 }
 
-.persona-btn[aria-selected="true"] {
+.persona-btn[aria-pressed="true"] {
   background: var(--bg-surface);
   color: var(--brand);
   box-shadow: 0 1px 3px rgba(24, 28, 35, 0.08);
@@ -1691,11 +1691,16 @@ a {
   margin: 10px 0 8px;
 }
 
-.toast {
+.toast-host {
   position: absolute;
   left: 16px;
   right: 16px;
   bottom: 76px;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.toast {
   background: var(--bg-dark);
   color: var(--ink-on-dark);
   padding: 11px 14px;
@@ -1706,7 +1711,6 @@ a {
   align-items: center;
   justify-content: space-between;
   box-shadow: 0 10px 24px rgba(19, 23, 29, 0.24);
-  z-index: 20;
   animation: slideReveal 180ms var(--ease-out);
 }
 
@@ -2163,8 +2167,8 @@ body[data-variation="concourse"] {
   --ink-on-dark: #F9FAFB;
   --ink-on-dark-muted: #9CA3AF;
 
-  --brand: #D9480F;
-  --brand-hover: #B83B0B;
+  --brand: #B83B0B;
+  --brand-hover: #962F08;
   --brand-soft: #FFF1EB;
   --brand-border: #F5B89E;
 
@@ -2190,6 +2194,13 @@ body[data-variation="concourse"] .btn--secondary,
 body[data-variation="concourse"] .officer-tile {
   border-color: #111827;
   border-width: 1.5px;
+}
+
+body[data-variation="concourse"] .input:focus-visible,
+body[data-variation="concourse"] .otp-box:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-color: var(--brand);
 }
 
 body[data-variation="concourse"] .chip {

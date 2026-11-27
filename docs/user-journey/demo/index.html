@@ -76,9 +76,9 @@
         </div>
       </div>
 
-      <div class="persona-switcher" role="tablist" aria-label="Select persona">
-        <button type="button" role="tab" class="persona-btn" id="tabStudent" aria-selected="true">Student (9)</button>
-        <button type="button" role="tab" class="persona-btn" id="tabOfficer" aria-selected="false">Org Officer (5)</button>
+      <div class="persona-switcher" role="group" aria-label="Select persona">
+        <button type="button" class="persona-btn" id="tabStudent" aria-pressed="true">Student (9)</button>
+        <button type="button" class="persona-btn" id="tabOfficer" aria-pressed="false">Org Officer (5)</button>
       </div>
 
       <nav aria-label="Journey screens">
@@ -108,6 +108,7 @@
           </div>
         </div>
         <div class="phone-screen" id="phoneScreen"></div>
+        <div class="toast-host" id="phoneToast" aria-live="polite"></div>
       </div>
     </section>
 

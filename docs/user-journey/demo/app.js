@@ -194,7 +194,8 @@
     otp: ['4', '8', '2', '0', '', ''],
     // Student 3
     feedFilter: 'all',
-    // Student 5
+    // Student 4 & 5
+    applyOrg: { id: 'guild', name: 'Web Dev Guild', sub: 'Sub-org of CCS Student Council' },
     appSection: 'BSIT 2-1',
     appBuiltSite: 'Yes',
     appPortfolio: 'github.com/juandc',
@@ -216,8 +217,8 @@
     // Officer 1
     orgIndex: 0,
     orgs: [
-      { code: 'WD', name: 'Web Dev Guild', role: 'Sub-org · You\'re President · 1 of 2 orgs', event: 'Hack Night is ready for offline scanning', roster: 42, offset: '+1.2 s' },
-      { code: 'SC', name: 'CCS Student Council', role: 'Main org · You\'re Secretary · 2 of 2 orgs', event: 'General Assembly is ready for offline scanning', roster: 148, offset: '+0.8 s' }
+      { code: 'WD', name: 'Web Dev Guild', role: 'Sub-org · You\'re President · 1 of 2 orgs', event: 'Hack Night is ready for offline scanning', eventTitle: 'Hack Night · Door A', roster: 42, offset: '+1.2 s', checkedIn: 41, checkedOut: 6, toSync: 12 },
+      { code: 'SC', name: 'CCS Student Council', role: 'Main org · You\'re Secretary · 2 of 2 orgs', event: 'General Assembly is ready for offline scanning', eventTitle: 'General Assembly · Main Hall', roster: 148, offset: '+0.8 s', checkedIn: 94, checkedOut: 14, toSync: 19 }
     ],
     // Officer 2
     evtTitle: 'Hack Night: Intro to Supabase',
@@ -228,10 +229,13 @@
     evtAutoOut: 180,
     evtLink: 'https://meet.google.com/ccs-hack-night',
     // Officer 3
+    scannerEvent: { title: 'Hack Night · Door A', org: 'Web Dev Guild', offset: '+1.2 s' },
     scanMode: 'present',
     checkedIn: 41,
     checkedOut: 6,
     toSync: 12,
+    writtenScans: new Set(),
+    scanRepeatNotice: '',
     // Officer 4
     applicantTab: 'pending',
     expandedApplicantId: 'a1',
@@ -246,14 +250,45 @@
     ]
   };
 
+  function hasOwnVariation(v) {
+    return typeof v === 'string' && Object.prototype.hasOwnProperty.call(VARIATIONS, v);
+  }
+
+  function isValidInstitutionalEmail(val, inputEl) {
+    const trimmed = String(val || '').trim();
+    const matchesDomain = /^[^\s@]+@lpunetwork\.edu\.ph$/i.test(trimmed);
+    const nativeValid = inputEl ? inputEl.checkValidity() : true;
+    return matchesDomain && nativeValid;
+  }
+
+  function isValidMeetingLink(val) {
+    return /^https:\/\/(meet\.google\.com|zoom\.us|teams\.microsoft\.com)\//i.test(String(val || '').trim());
+  }
+
+  function formatEventOffset(minutesFromStart) {
+    const startMins = 17 * 60; // 5:00 PM
+    const total = startMins + Math.max(0, Number(minutesFromStart) || 0);
+    const hr24 = Math.floor(total / 60) % 24;
+    const hr12 = hr24 % 12 || 12;
+    const min = String(total % 60).padStart(2, '0');
+    return `${hr12}:${min}`;
+  }
+
   let toastTimer = null;
+  function renderToast() {
+    if (!els.phoneToast) return;
+    els.phoneToast.innerHTML = state.toast
+      ? `<div class="toast" role="status"><span>${escapeHtml(state.toast)}</span></div>`
+      : '';
+  }
+
   function showToast(msg) {
     state.toast = msg;
-    renderPhone();
+    renderToast();
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       state.toast = null;
-      renderPhone();
+      renderToast();
     }, 2600);
   }
 
@@ -314,7 +349,7 @@
     switch (id) {
       /* --- S1: SIGN UP --- */
       case 's1': {
-        const validDomain = /@lpunetwork\.edu\.ph$/i.test(state.email.trim());
+        const validDomain = isValidInstitutionalEmail(state.email);
         return `
           <div class="screen-scroll">
             <div class="ed-deck-wrap">
@@ -346,10 +381,10 @@
             <div style="display:flex;flex-direction:column;gap:14px;">
               <label class="field">
                 <span class="field-label">Institutional email</span>
-                <input class="input ${validDomain ? '' : 'input--invalid'}" id="signupEmail" type="email" value="${escapeAttr(state.email)}" autocomplete="off" />
-                <span class="field-hint ${validDomain ? 'field-hint--ok' : 'field-hint--err'}">
+                <input class="input ${validDomain ? '' : 'input--invalid'}" id="signupEmail" type="email" required value="${escapeAttr(state.email)}" aria-invalid="${!validDomain}" aria-describedby="signupEmailHint" autocomplete="off" />
+                <span id="signupEmailHint" class="field-hint ${validDomain ? 'field-hint--ok' : 'field-hint--err'}">
                   ${ICONS.check}
-                  <span>${validDomain ? 'Only @lpunetwork.edu.ph addresses can sign up.' : 'Must end in @lpunetwork.edu.ph (enforced server-side).'}</span>
+                  <span id="signupEmailHintText">${validDomain ? 'Only @lpunetwork.edu.ph addresses can sign up.' : 'Enter a valid @lpunetwork.edu.ph address (enforced server-side).'}</span>
                 </span>
               </label>
 
@@ -363,7 +398,7 @@
                 <input class="input" type="password" value="••••••••••••" aria-label="Confirm password" />
               </label>
 
-              <button type="button" class="btn btn--primary btn--full" data-nav="s2" ${validDomain ? '' : 'disabled'}>Send verification code</button>
+              <button type="button" class="btn btn--primary btn--full" id="sendOtpBtn" data-nav="s2" ${validDomain ? '' : 'disabled'}>Send verification code</button>
 
               <div style="text-align:center;font-size:13px;color:var(--ink-secondary);">
                 Already have an account? <button type="button" class="text-action" data-nav="s3">Log in</button>
@@ -403,7 +438,7 @@
               <span class="field-hint">Didn't get it? Check Junk or Other. <button type="button" class="text-action" id="resendOtpBtn" style="padding:0;min-height:auto;">Resend code</button> in <span class="mono">0:42</span></span>
             </div>
 
-            <button type="button" class="btn btn--primary btn--full" data-nav="s3">Verify and continue</button>
+            <button type="button" class="btn btn--primary btn--full" id="verifyOtpBtn">Verify and continue</button>
 
             <div class="sheet sheet-pad" style="margin-top:auto;">
               <div style="font-size:13px;font-weight:700;color:var(--ink-primary);">After you verify</div>
@@ -522,7 +557,7 @@
               </div>
 
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                <button type="button" class="btn btn--primary" data-nav="s5">Apply to join</button>
+                <button type="button" class="btn btn--primary" data-apply-org="council">Apply to join</button>
                 <button type="button" class="btn btn--secondary" data-nav="s6">Events</button>
               </div>
 
@@ -536,7 +571,7 @@
                       <div style="font-size:12px;color:var(--status-present);font-weight:600;">Accepting applications</div>
                     </div>
                   </div>
-                  <button type="button" class="btn btn--sm" style="background:var(--brand-soft);color:var(--brand);" data-nav="s5">Apply</button>
+                  <button type="button" class="btn btn--sm" style="background:var(--brand-soft);color:var(--brand);" data-apply-org="guild">Apply</button>
                 </div>
 
                 <div class="ruled-row">
@@ -581,8 +616,8 @@
             <div style="display:flex;align-items:center;gap:8px;">
               <button type="button" class="icon-btn" data-nav="s4" aria-label="Back to org">${ICONS.back}</button>
               <div class="topbar-title-group">
-                <span class="topbar-title">Join Web Dev Guild</span>
-                <span class="topbar-sub">Sub-org of CCS Student Council</span>
+                <span class="topbar-title">Join ${escapeHtml(state.applyOrg.name)}</span>
+                <span class="topbar-sub">${escapeHtml(state.applyOrg.sub)}</span>
               </div>
             </div>
           </div>
@@ -594,7 +629,7 @@
                   ${ICONS.checkCircle} Application submitted
                 </div>
                 <div style="font-size:13px;color:var(--ink-primary);margin-top:6px;">
-                  Your status is <strong>Pending</strong> until a Web Dev Guild officer reviews your answers.
+                  Your status is <strong>Pending</strong> until a ${escapeHtml(state.applyOrg.name)} officer reviews your answers.
                 </div>
                 <button type="button" class="btn btn--secondary btn--sm" id="resetAppBtn" style="margin-top:12px;">Edit / submit another demo</button>
               </div>` : ''}
@@ -827,7 +862,7 @@
           <div class="screen-scroll">
             <h1 class="screen-h1">Certifications</h1>
 
-            <div class="segmented" role="tablist" aria-label="Certifications view">
+            <div class="segmented" role="group" aria-label="Certifications view">
               <button type="button" class="segmented-btn" data-cert-tab="dir" aria-pressed="${state.certTab === 'dir'}">Directory</button>
               <button type="button" class="segmented-btn" data-cert-tab="keys" aria-pressed="${state.certTab === 'keys'}">My Keys · 2</button>
             </div>
@@ -951,7 +986,7 @@
             </div>
 
             <div style="margin-top:auto;padding-top:8px;display:flex;flex-direction:column;gap:6px;">
-              <button type="button" class="btn btn--primary btn--full" id="submitEvalBtn">Submit feedback</button>
+              <button type="button" class="btn btn--primary btn--full" id="submitEvalBtn" ${state.evalSubmitted ? 'disabled' : ''}>${state.evalSubmitted ? 'Feedback submitted' : 'Submit feedback'}</button>
               <div style="text-align:center;font-size:12px;color:var(--ink-muted);">You can submit this once. Answers go to the host org.</div>
             </div>
           </div>`;
@@ -987,7 +1022,7 @@
                 <div style="display:flex;align-items:center;gap:7px;"><span style="color:var(--status-present);">${ICONS.check}</span><span class="tabular">${org.roster} registered names saved for visual check</span></div>
                 <div style="display:flex;align-items:center;gap:7px;"><span style="color:var(--status-present);">${ICONS.check}</span><span>Clock synced with server (<span class="mono">${org.offset}</span>)</span></div>
               </div>
-              <button type="button" class="btn btn--dark btn--full" data-nav="o3" style="margin-top:2px;">${ICONS.scan} Open scanner</button>
+              <button type="button" class="btn btn--dark btn--full" data-open-scanner="current" style="margin-top:2px;">${ICONS.scan} Open scanner</button>
             </div>
 
             <div class="officer-tile-grid">
@@ -1042,8 +1077,7 @@
       case 'o2': {
         const graceMin = Math.max(0, Number(state.evtGrace) || 0);
         const lateMin = Math.max(0, Number(state.evtLate) || 0);
-        const fmt = (m) => `5:${String(m).padStart(2, '0')}`;
-        const validLink = /^https:\/\/(meet\.google\.com|zoom\.us|teams\.microsoft\.com)\//i.test(state.evtLink.trim());
+        const validLink = isValidMeetingLink(state.evtLink);
         return `
           <div class="app-topbar">
             <button type="button" class="text-action" style="color:var(--ink-secondary);" data-nav="o1">Cancel</button>
@@ -1059,7 +1093,7 @@
 
             <div class="field">
               <span class="field-label">Where does it happen?</span>
-              <div class="segmented">
+              <div class="segmented" role="group" aria-label="Event modality">
                 <button type="button" class="segmented-btn" data-modality="onsite" aria-pressed="${state.evtModality === 'onsite'}">Onsite</button>
                 <button type="button" class="segmented-btn" data-modality="online" aria-pressed="${state.evtModality === 'online'}">Online</button>
               </div>
@@ -1082,11 +1116,11 @@
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                   <label class="field">
                     <span class="field-label" style="font-size:12px;color:var(--ink-secondary);">On-time grace (min)</span>
-                    <input class="input mono" id="evtGraceInput" type="number" min="0" max="45" value="${graceMin}" />
+                    <input class="input mono" id="evtGraceInput" type="number" min="0" max="120" value="${graceMin}" />
                   </label>
                   <label class="field">
                     <span class="field-label" style="font-size:12px;color:var(--ink-secondary);">Late window (min)</span>
-                    <input class="input mono" id="evtLateInput" type="number" min="0" max="45" value="${lateMin}" />
+                    <input class="input mono" id="evtLateInput" type="number" min="0" max="120" value="${lateMin}" />
                   </label>
                   <label class="field">
                     <span class="field-label" style="font-size:12px;color:var(--ink-secondary);">Scan cooldown (sec)</span>
@@ -1106,8 +1140,8 @@
                   </div>
                   <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-secondary);" class="tabular">
                     <span>5:00 present</span>
-                    <span>${fmt(graceMin)} late</span>
-                    <span>${fmt(graceMin + lateMin)} absent</span>
+                    <span id="evtTimelineLate">${formatEventOffset(graceMin)} late</span>
+                    <span id="evtTimelineAbsent">${formatEventOffset(graceMin + lateMin)} absent</span>
                   </div>
                 </div>
               </div>` : `
@@ -1115,10 +1149,10 @@
                 <div style="font-size:14px;font-weight:700;">Online meeting link</div>
                 <label class="field">
                   <span class="field-label" style="font-size:12px;color:var(--ink-secondary);">Validated Zoom, Meet, or Teams URL</span>
-                  <input class="input ${validLink ? '' : 'input--invalid'}" id="evtLinkInput" value="${escapeAttr(state.evtLink)}" />
-                  <span class="field-hint ${validLink ? 'field-hint--ok' : 'field-hint--err'}">
+                  <input class="input ${validLink ? '' : 'input--invalid'}" id="evtLinkInput" value="${escapeAttr(state.evtLink)}" aria-invalid="${!validLink}" aria-describedby="evtLinkHint" />
+                  <span id="evtLinkHint" class="field-hint ${validLink ? 'field-hint--ok' : 'field-hint--err'}">
                     ${ICONS.check}
-                    <span>${validLink ? 'Trusted meeting host · visible to registered students.' : 'Use a valid Google Meet, Zoom, or MS Teams HTTPS link.'}</span>
+                    <span id="evtLinkHintText">${validLink ? 'Trusted meeting host · visible to registered students.' : 'Use a valid Google Meet, Zoom, or MS Teams HTTPS link.'}</span>
                   </span>
                 </label>
               </div>`}
@@ -1131,23 +1165,24 @@
               </span>
             </button>
 
-            <button type="button" class="btn btn--primary btn--full" data-toast="Event published and cached for offline scanning">Publish event</button>
+            <button type="button" class="btn btn--primary btn--full" id="publishEvtBtn">Publish event</button>
           </div>
           ${renderOfficerNav('events')}`;
       }
 
       /* --- O3: OFFLINE QR SCANNER --- */
       case 'o3': {
+        const ev = state.scannerEvent;
         const scenarios = {
           present: {
             kicker: 'CHECKED IN', badgeClass: 'badge--present', badgeText: 'Present',
             name: 'Maria Santos', meta: '5:07 PM · within on-time window',
-            note: 'Scan again when she leaves to check her out.'
+            note: state.scanRepeatNotice || 'Scan again when she leaves to check her out.'
           },
           late: {
             kicker: 'CHECKED IN', badgeClass: 'badge--late', badgeText: 'Late',
             name: 'Carlo Mendoza', meta: '5:18 PM · inside 5-min late window',
-            note: 'Saved locally with server-adjusted clock (+1.2 s).'
+            note: state.scanRepeatNotice || `Saved locally with server-adjusted clock (${ev.offset}).`
           },
           cooldown: {
             kicker: 'IGNORED · COOLDOWN', badgeClass: 'badge--neutral', badgeText: 'Wait 42s',
@@ -1155,9 +1190,11 @@
             note: 'No duplicate row written to local SQLite queue.'
           },
           checkout: {
-            kicker: 'CHECKED OUT', badgeClass: 'badge--brand', badgeText: 'Scan out',
+            kicker: state.scanRepeatNotice ? 'ALREADY CHECKED OUT' : 'CHECKED OUT',
+            badgeClass: state.scanRepeatNotice ? 'badge--neutral' : 'badge--brand',
+            badgeText: state.scanRepeatNotice ? 'No-op' : 'Scan out',
             name: 'Juan Dela Cruz', meta: '7:52 PM · duration 2h 45m',
-            note: 'Queued for sync (checkout_source = scan).'
+            note: state.scanRepeatNotice || 'Queued for sync (checkout_source = scan).'
           },
           invalid: {
             kicker: 'REJECTED', badgeClass: 'badge--absent', badgeText: 'Invalid QR',
@@ -1172,8 +1209,8 @@
               <div style="display:flex;align-items:center;gap:10px;min-width:0;">
                 <button type="button" class="icon-btn" style="color:var(--ink-on-dark);" data-nav="o1" aria-label="Close scanner">${ICONS.close}</button>
                 <div style="min-width:0;">
-                  <div style="font-size:14.5px;font-weight:700;color:var(--ink-on-dark);">Hack Night · Door A</div>
-                  <div style="font-size:12px;color:var(--ink-on-dark-muted);">Web Dev Guild</div>
+                  <div style="font-size:14.5px;font-weight:700;color:var(--ink-on-dark);">${escapeHtml(ev.title)}</div>
+                  <div style="font-size:12px;color:var(--ink-on-dark-muted);">${escapeHtml(ev.org)}</div>
                 </div>
               </div>
               <span class="offline-pill tabular">
@@ -1252,7 +1289,7 @@
               <div style="font-size:13px;color:var(--ink-secondary);margin-top:2px;">Web Dev Guild · membership form v2</div>
             </div>
 
-            <div class="chip-row" role="tablist">
+            <div class="chip-row" role="group" aria-label="Filter applicants">
               <button type="button" class="chip tabular" data-app-tab="pending" aria-pressed="${state.applicantTab === 'pending'}">Pending · ${pending.length}</button>
               <button type="button" class="chip tabular" data-app-tab="approved" aria-pressed="${state.applicantTab === 'approved'}">Approved · ${approved.length}</button>
               <button type="button" class="chip tabular" data-app-tab="rejected" aria-pressed="${state.applicantTab === 'rejected'}">Rejected · ${rejected.length}</button>
@@ -1260,7 +1297,7 @@
 
             ${visible.length === 0 ? `
               <div class="sheet sheet-pad" style="text-align:center;color:var(--ink-secondary);font-size:13.5px;">
-                No ${state.applicantTab} applicants right now.
+                No ${escapeHtml(state.applicantTab)} applicants right now.
               </div>` : `
               <div class="sheet ruled-list">
                 ${visible.map((a) => {
@@ -1270,31 +1307,31 @@
                   const statusLabel = a.status.charAt(0).toUpperCase() + a.status.slice(1);
                   return `
                     <div class="ruled-row" style="flex-direction:column;align-items:stretch;gap:12px;">
-                      <button type="button" data-expand-applicant="${a.id}" style="border:0;background:transparent;padding:0;width:100%;display:flex;align-items:center;gap:11px;text-align:left;">
-                        <span class="org-monogram ${monoClass}">${a.initials}</span>
+                      <button type="button" data-expand-applicant="${escapeAttr(a.id)}" style="border:0;background:transparent;padding:0;width:100%;display:flex;align-items:center;gap:11px;text-align:left;">
+                        <span class="org-monogram ${monoClass}">${escapeHtml(a.initials)}</span>
                         <span style="flex:1;min-width:0;">
-                          <span style="display:block;font-size:14.5px;font-weight:700;color:var(--ink-primary);">${a.name}</span>
-                          <span style="display:block;font-size:12px;color:var(--ink-secondary);">Applied ${a.applied}</span>
+                          <span style="display:block;font-size:14.5px;font-weight:700;color:var(--ink-primary);">${escapeHtml(a.name)}</span>
+                          <span style="display:block;font-size:12px;color:var(--ink-secondary);">Applied ${escapeHtml(a.applied)}</span>
                         </span>
-                        <span class="badge ${statusBadge}">${statusLabel}</span>
+                        <span class="badge ${statusBadge}">${escapeHtml(statusLabel)}</span>
                       </button>
 
                       ${open ? `
                         <div style="display:flex;flex-direction:column;gap:9px;padding-top:8px;border-top:1px solid var(--border);font-size:13px;">
-                          <div><div style="color:var(--ink-muted);font-size:11.5px;">Year and section</div><strong>${a.section}</strong></div>
-                          <div><div style="color:var(--ink-muted);font-size:11.5px;">Built a website before?</div><strong>${a.built}</strong></div>
+                          <div><div style="color:var(--ink-muted);font-size:11.5px;">Year and section</div><strong>${escapeHtml(a.section)}</strong></div>
+                          <div><div style="color:var(--ink-muted);font-size:11.5px;">Built a website before?</div><strong>${escapeHtml(a.built)}</strong></div>
                           ${a.link ? `
                             <div style="padding:8px 10px;border-radius:8px;background:var(--brand-soft);border:1px solid var(--brand-border);">
                               <div style="font-size:11.5px;color:var(--brand);font-weight:600;">Link to your work · conditional</div>
-                              <div class="mono" style="font-size:12.5px;font-weight:600;color:var(--ink-primary);margin-top:2px;">${a.link}</div>
+                              <div class="mono" style="font-size:12.5px;font-weight:600;color:var(--ink-primary);margin-top:2px;">${escapeHtml(a.link)}</div>
                             </div>` : ''}
-                          <div><div style="color:var(--ink-muted);font-size:11.5px;">Tracks</div><strong>${a.tracks}</strong></div>
-                          <div><div style="color:var(--ink-muted);font-size:11.5px;">Git comfort</div><strong>${a.git}</strong></div>
+                          <div><div style="color:var(--ink-muted);font-size:11.5px;">Tracks</div><strong>${escapeHtml(a.tracks)}</strong></div>
+                          <div><div style="color:var(--ink-muted);font-size:11.5px;">Git comfort</div><strong>${escapeHtml(a.git)}</strong></div>
 
                           ${a.status === 'pending' ? `
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
-                              <button type="button" class="btn btn--danger-outline btn--sm" data-decide-applicant="${a.id}:rejected">Reject</button>
-                              <button type="button" class="btn btn--primary btn--sm" data-decide-applicant="${a.id}:approved">Approve</button>
+                              <button type="button" class="btn btn--danger-outline btn--sm" data-decide-applicant="${escapeAttr(a.id)}:rejected">Reject</button>
+                              <button type="button" class="btn btn--primary btn--sm" data-decide-applicant="${escapeAttr(a.id)}:approved">Approve</button>
                             </div>` : ''}
                         </div>` : ''}
                     </div>`;
@@ -1404,6 +1441,7 @@
     nextBtn: document.getElementById('nextBtn'),
     phoneFrame: document.getElementById('phoneFrame'),
     phoneScreen: document.getElementById('phoneScreen'),
+    phoneToast: document.getElementById('phoneToast'),
     ctxFr: document.getElementById('ctxFr'),
     ctxTitle: document.getElementById('ctxTitle'),
     ctxDesc: document.getElementById('ctxDesc'),
@@ -1415,7 +1453,7 @@
   };
 
   function setVariation(v) {
-    if (!VARIATIONS[v]) return;
+    if (!hasOwnVariation(v)) return;
     state.variation = v;
     document.body.dataset.variation = v;
     const url = new URL(window.location.href);
@@ -1429,7 +1467,7 @@
     document.querySelectorAll('[data-variation-pick]').forEach((btn) => {
       btn.setAttribute('aria-pressed', String(btn.dataset.variationPick === state.variation));
     });
-    const varMeta = VARIATIONS[state.variation] || VARIATIONS['ccs-crest'];
+    const varMeta = hasOwnVariation(state.variation) ? VARIATIONS[state.variation] : VARIATIONS['ccs-crest'];
     if (els.ctxVarCard) {
       els.ctxVarCard.innerHTML = `<strong>${varMeta.name}</strong>${varMeta.desc}`;
     }
@@ -1439,8 +1477,8 @@
 
     const active = currentScreen();
     const isStudent = active.persona === 'student';
-    els.tabStudent.setAttribute('aria-selected', String(isStudent));
-    els.tabOfficer.setAttribute('aria-selected', String(!isStudent));
+    els.tabStudent.setAttribute('aria-pressed', String(isStudent));
+    els.tabOfficer.setAttribute('aria-pressed', String(!isStudent));
 
     const personaScreens = SCREENS.filter((s) => s.persona === active.persona);
     let html = '';
@@ -1480,9 +1518,8 @@
   function renderPhone() {
     const active = currentScreen();
     els.phoneFrame.classList.toggle('phone-frame--dark', active.id === 'o3');
-    els.phoneScreen.innerHTML =
-      renderScreenHtml(active.id) +
-      (state.toast ? `<div class="toast" role="status"><span>${escapeHtml(state.toast)}</span></div>` : '');
+    els.phoneScreen.innerHTML = renderScreenHtml(active.id);
+    renderToast();
   }
 
   function renderAll() {
@@ -1503,6 +1540,36 @@
       const keys = Object.keys(VARIATIONS);
       const next = keys[(keys.indexOf(state.variation) + 1) % keys.length];
       setVariation(next);
+      return;
+    }
+    if (target.dataset.applyOrg) {
+      if (target.dataset.applyOrg === 'council') {
+        state.applyOrg = { id: 'council', name: 'CCS Student Council', sub: 'Main organization · CCS' };
+      } else {
+        state.applyOrg = { id: 'guild', name: 'Web Dev Guild', sub: 'Sub-org of CCS Student Council' };
+      }
+      goTo('s5');
+      return;
+    }
+    if (target.dataset.openScanner) {
+      const org = state.orgs[state.orgIndex] || state.orgs[0];
+      state.scannerEvent = { title: org.eventTitle, org: org.name, offset: org.offset };
+      state.checkedIn = org.checkedIn;
+      state.checkedOut = org.checkedOut;
+      state.toSync = org.toSync;
+      state.writtenScans = new Set();
+      state.scanRepeatNotice = '';
+      state.scanMode = 'present';
+      goTo('o3');
+      return;
+    }
+    if (target.id === 'verifyOtpBtn') {
+      const complete = state.otp.length === 6 && state.otp.every((d) => /^\d$/.test(d));
+      if (!complete) {
+        showToast('Enter all 6 digits of your verification code first');
+        return;
+      }
+      goTo('s3');
       return;
     }
     if (target.dataset.nav) {
@@ -1555,9 +1622,12 @@
     }
     if (target.dataset.track) {
       const t = target.dataset.track;
-      if (state.appTracks.has(t)) state.appTracks.delete(t);
-      else state.appTracks.add(t);
-      renderPhone();
+      const nowChecked = !state.appTracks.has(t);
+      if (nowChecked) state.appTracks.add(t);
+      else state.appTracks.delete(t);
+      target.setAttribute('aria-checked', String(nowChecked));
+      const box = target.querySelector('.check-box');
+      if (box) box.innerHTML = nowChecked ? ICONS.check : '';
       return;
     }
     if (target.dataset.gitRating) {
@@ -1567,11 +1637,31 @@
     }
     if (target.id === 'submitAppBtn') {
       state.appSubmitted = true;
-      showToast('Application submitted · Status: Pending');
+      if (state.applyOrg.id === 'guild') {
+        const juanRecord = {
+          id: 'a-juan',
+          initials: 'JD',
+          color: 'brand',
+          name: 'Juan Dela Cruz',
+          applied: 'Just now',
+          status: 'pending',
+          section: state.appSection.trim() || 'BSIT 2-1',
+          built: state.appBuiltSite,
+          link: state.appBuiltSite === 'Yes' ? state.appPortfolio.trim() : '',
+          tracks: Array.from(state.appTracks).join(', ') || 'None selected',
+          git: `${state.appGitRating} of 5`
+        };
+        const existingIdx = state.applicants.findIndex((a) => a.id === 'a-juan');
+        if (existingIdx >= 0) state.applicants[existingIdx] = juanRecord;
+        else state.applicants.unshift(juanRecord);
+      }
+      renderPhone();
+      showToast(`Application submitted to ${state.applyOrg.name} · Status: Pending`);
       return;
     }
     if (target.id === 'resetAppBtn') {
       state.appSubmitted = false;
+      state.applicants = state.applicants.filter((a) => a.id !== 'a-juan' || a.status !== 'pending');
       renderPhone();
       return;
     }
@@ -1599,9 +1689,12 @@
     }
     if (target.dataset.copyKey) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(target.dataset.copyKey).catch(() => {});
+        navigator.clipboard.writeText(target.dataset.copyKey)
+          .then(() => showToast('GMetrix key copied to clipboard'))
+          .catch(() => showToast('Clipboard unavailable — tap Reveal key to copy manually'));
+      } else {
+        showToast('Clipboard unavailable — tap Reveal key to copy manually');
       }
-      showToast('GMetrix key copied to clipboard');
       return;
     }
     if (target.dataset.evalRating) {
@@ -1616,13 +1709,18 @@
     }
     if (target.dataset.evalUseful) {
       const opt = target.dataset.evalUseful;
-      if (state.evalUseful.has(opt)) state.evalUseful.delete(opt);
-      else state.evalUseful.add(opt);
-      renderPhone();
+      const nowChecked = !state.evalUseful.has(opt);
+      if (nowChecked) state.evalUseful.add(opt);
+      else state.evalUseful.delete(opt);
+      target.setAttribute('aria-checked', String(nowChecked));
+      const box = target.querySelector('.check-box');
+      if (box) box.innerHTML = nowChecked ? ICONS.check : '';
       return;
     }
     if (target.id === 'submitEvalBtn') {
+      if (state.evalSubmitted) return;
       state.evalSubmitted = true;
+      renderPhone();
       showToast('Evaluation submitted once for Hack Night');
       return;
     }
@@ -1633,7 +1731,18 @@
     }
     if (target.id === 'switchOrgBtn') {
       state.orgIndex = (state.orgIndex + 1) % state.orgs.length;
+      renderPhone();
       showToast(`Switched to ${state.orgs[state.orgIndex].name}`);
+      return;
+    }
+    if (target.id === 'publishEvtBtn') {
+      if (state.evtModality === 'online' && !isValidMeetingLink(state.evtLink)) {
+        showToast('Enter a valid Google Meet, Zoom, or MS Teams HTTPS link before publishing');
+        return;
+      }
+      showToast(state.evtModality === 'online'
+        ? 'Online event published with validated meeting link'
+        : 'Onsite event published and cached for offline scanning');
       return;
     }
     if (target.dataset.modality) {
@@ -1644,12 +1753,23 @@
     if (target.dataset.scanSim) {
       const m = target.dataset.scanSim;
       state.scanMode = m;
+      state.scanRepeatNotice = '';
       if (m === 'present' || m === 'late') {
-        state.checkedIn += 1;
-        state.toSync += 1;
+        if (state.writtenScans.has(m)) {
+          state.scanRepeatNotice = 'Already recorded in local SQLite queue (duplicate ignored).';
+        } else {
+          state.writtenScans.add(m);
+          state.checkedIn += 1;
+          state.toSync += 1;
+        }
       } else if (m === 'checkout') {
-        state.checkedOut += 1;
-        state.toSync += 1;
+        if (state.writtenScans.has('checkout')) {
+          state.scanRepeatNotice = 'Already checked out — duplicate scan ignored (no-op).';
+        } else {
+          state.writtenScans.add('checkout');
+          state.checkedOut += 1;
+          state.toSync += 1;
+        }
       }
       renderPhone();
       return;
@@ -1674,19 +1794,32 @@
         person.status = nextStatus;
         const nextPending = state.applicants.find((a) => a.status === state.applicantTab);
         state.expandedApplicantId = nextPending ? nextPending.id : null;
+        renderPhone();
         showToast(`${person.name} marked ${nextStatus}`);
       }
     }
   });
 
-  // Delegated input handling
+  // Delegated input handling (in-place updates preserve keyboard focus)
   document.addEventListener('input', (e) => {
     const el = e.target;
     if (el.id === 'signupEmail') {
       state.email = el.value;
-      const valid = /@lpunetwork\.edu\.ph$/i.test(state.email.trim());
+      const valid = isValidInstitutionalEmail(state.email, el);
       el.classList.toggle('input--invalid', !valid);
-      const btn = document.querySelector('#phoneScreen [data-nav="s2"]');
+      el.setAttribute('aria-invalid', String(!valid));
+      const hint = document.getElementById('signupEmailHint');
+      const hintText = document.getElementById('signupEmailHintText');
+      if (hint) {
+        hint.classList.toggle('field-hint--ok', valid);
+        hint.classList.toggle('field-hint--err', !valid);
+      }
+      if (hintText) {
+        hintText.textContent = valid
+          ? 'Only @lpunetwork.edu.ph addresses can sign up.'
+          : 'Enter a valid @lpunetwork.edu.ph address (enforced server-side).';
+      }
+      const btn = document.getElementById('sendOtpBtn');
       if (btn) btn.disabled = !valid;
       return;
     }
@@ -1705,11 +1838,35 @@
     if (el.id === 'appPortfolioInput') { state.appPortfolio = el.value; return; }
     if (el.id === 'evalWhyNotInput') { state.evalWhyNot = el.value; return; }
     if (el.id === 'evtTitleInput') { state.evtTitle = el.value; return; }
-    if (el.id === 'evtGraceInput') { state.evtGrace = Number(el.value); renderPhone(); return; }
-    if (el.id === 'evtLateInput') { state.evtLate = Number(el.value); renderPhone(); return; }
+    if (el.id === 'evtGraceInput' || el.id === 'evtLateInput') {
+      if (el.id === 'evtGraceInput') state.evtGrace = Math.max(0, Number(el.value) || 0);
+      else state.evtLate = Math.max(0, Number(el.value) || 0);
+      const lateEl = document.getElementById('evtTimelineLate');
+      const absentEl = document.getElementById('evtTimelineAbsent');
+      if (lateEl) lateEl.textContent = `${formatEventOffset(state.evtGrace)} late`;
+      if (absentEl) absentEl.textContent = `${formatEventOffset(state.evtGrace + state.evtLate)} absent`;
+      return;
+    }
     if (el.id === 'evtCooldownInput') { state.evtCooldown = Number(el.value); return; }
     if (el.id === 'evtAutoOutInput') { state.evtAutoOut = Number(el.value); return; }
-    if (el.id === 'evtLinkInput') { state.evtLink = el.value; renderPhone(); return; }
+    if (el.id === 'evtLinkInput') {
+      state.evtLink = el.value;
+      const valid = isValidMeetingLink(state.evtLink);
+      el.classList.toggle('input--invalid', !valid);
+      el.setAttribute('aria-invalid', String(!valid));
+      const hint = document.getElementById('evtLinkHint');
+      const hintText = document.getElementById('evtLinkHintText');
+      if (hint) {
+        hint.classList.toggle('field-hint--ok', valid);
+        hint.classList.toggle('field-hint--err', !valid);
+      }
+      if (hintText) {
+        hintText.textContent = valid
+          ? 'Trusted meeting host · visible to registered students.'
+          : 'Use a valid Google Meet, Zoom, or MS Teams HTTPS link.';
+      }
+      return;
+    }
   });
 
   els.mobileScreenSelect.addEventListener('change', (e) => {
@@ -1726,7 +1883,7 @@
 
   // Support URL query ?v=variation and hash #s7 deep-linking
   const initialVar = new URLSearchParams(window.location.search).get('v');
-  if (initialVar && VARIATIONS[initialVar]) {
+  if (hasOwnVariation(initialVar)) {
     state.variation = initialVar;
   }
   document.body.dataset.variation = state.variation;

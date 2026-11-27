@@ -38,7 +38,7 @@ Unlike generic campus social apps or cloud-only event check-in tools, MyCCS comb
 
 - Name: **MyCCS** (College of Information Technology and Computer Science, Lyceum of the Philippines University — programs: IT, CS, and LIS).
 - Official CCS department crest palette is confirmed as the visual baseline: Deep Crest Navy (`#0B2E59`), Circuit Royal Blue (`#0052CC`), Shield Cyan (`#0EA5E9`), and Laurel Gold (`#D4A500`) — a separate standalone MyCCS app logo will be supplied later.
-- Existing PDF (`docs/user-journey/MyCCS-Screens-User-Journeys.pdf`) and `signup.html` serve as functional journey references.
+- Existing PDF (`docs/user-journey/MyCCS-Screens-User-Journeys.pdf`) and persona wireframe images serve as functional journey references.
 
 ## Evidence on Hand
 
