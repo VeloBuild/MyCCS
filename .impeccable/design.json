@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-27T11:58:00+08:00",
+  "title": "Design System: MyCCS",
+  "extensions": {
+    "colorMeta": {
+      "crest-navy": {
+        "role": "primary",
+        "displayName": "Deep Crest Navy",
+        "canonical": "#0B2E59",
+        "tonalRamp": ["#051428", "#08203F", "#0B2E59", "#154682", "#2D64A8", "#6593C9", "#B4CBE6", "#EBF3FF"]
+      },
+      "circuit-blue": {
+        "role": "primary",
+        "displayName": "Circuit Royal Blue",
+        "canonical": "#0052CC",
+        "tonalRamp": ["#001E4D", "#003280", "#003E9E", "#0052CC", "#2673E6", "#669DF2", "#ADC9FA", "#EBF3FF"]
+      },
+      "shield-cyan": {
+        "role": "secondary",
+        "displayName": "Shield Cyan",
+        "canonical": "#0EA5E9",
+        "tonalRamp": ["#05334A", "#075985", "#0284C7", "#0EA5E9", "#38BDF8", "#7DD3FC", "#BAE6FD", "#E0F2FE"]
+      },
+      "laurel-gold": {
+        "role": "secondary",
+        "displayName": "Laurel Gold",
+        "canonical": "#D4A500",
+        "tonalRamp": ["#423200", "#664E00", "#856404", "#B38A00", "#D4A500", "#EAB308", "#EDD477", "#FEF9E2"]
+      },
+      "present-emerald": {
+        "role": "secondary",
+        "displayName": "Present Emerald",
+        "canonical": "#067647",
+        "tonalRamp": ["#03291A", "#054F31", "#067647", "#129B62", "#3CC18A", "#7CE0B5", "#C1F2DC", "#ECFDF3"]
+      },
+      "absent-crimson": {
+        "role": "secondary",
+        "displayName": "Absent Crimson",
+        "canonical": "#B42318",
+        "tonalRamp": ["#450A0A", "#7A271A", "#B42318", "#D92D20", "#F04438", "#FDA29B", "#FECDCA", "#FEF3F2"]
+      },
+      "crest-canvas": {
+        "role": "neutral",
+        "displayName": "Crest Canvas",
+        "canonical": "#F6F9FD",
+        "tonalRamp": ["#0B192C", "#25354B", "#415166", "#5C6D82", "#8FA1B8", "#C2D1E5", "#DCE5F2", "#F6F9FD"]
+      },
+      "auditorium-navy": {
+        "role": "neutral",
+        "displayName": "Auditorium Navy",
+        "canonical": "#0B2545",
+        "tonalRamp": ["#061529", "#0B2545", "#133561", "#204A80", "#3C679E", "#6B90BD", "#9DB7D8", "#F4F8FD"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Primary screen headings across Student and Org Officer views." },
+      "headline": { "displayName": "Headline", "purpose": "Major sheet headings and panel titles." },
+      "title": { "displayName": "Title", "purpose": "Announcement headlines, org titles, and event rows." },
+      "body": { "displayName": "Body", "purpose": "Descriptions, notices, and form guidance (65–75ch max)." },
+      "label": { "displayName": "Label", "purpose": "Form labels, badges, metadata, and bottom tab text." },
+      "data-mono": { "displayName": "Data Mono", "purpose": "OTP digits, signed QR tokens, masked GMetrix keys, and clock offsets." }
+    },
+    "shadows": [
+      { "name": "lanyard-badge", "value": "0 12px 28px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.06)", "purpose": "Elevates the physical student QR ID lanyard badge." },
+      { "name": "crest-deck-peek", "value": "0 -6px 0 -2px #0EA5E9, 0 -11px 0 -5px #D4A500", "purpose": "Stacked Shield Cyan and Laurel Gold peek layers behind key hero decks." }
+    ],
+    "motion": [
+      { "name": "ease-out-crest", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Default exponential ease-out for state changes and 3D lanyard card flip." },
+      { "name": "dur-fast", "value": "160ms", "purpose": "Button, chip, and tab state transitions." },
+      { "name": "dur-flip", "value": "420ms", "purpose": "Physical Y-axis card flip on the My QR ID lanyard badge." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "768px" },
+      { "name": "compact-studio", "value": "1120px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Pill Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Deep Crest Navy full-pill CTA shifting to Circuit Royal Blue on hover.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Send verification code</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 20px; border-radius: 999px; border: 1px solid transparent; background: #0B2E59; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 160ms cubic-bezier(0.22, 1, 0.36, 1), transform 100ms ease; } .ds-btn-primary:hover { background: #0052CC; } .ds-btn-primary:active { transform: scale(0.985); } .ds-btn-primary:focus-visible { outline: 2px solid #0052CC; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Pill Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Paper White outlined full-pill secondary action button.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">Reveal key</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid #C2D1E5; background: #FFFFFF; color: #0B192C; font-family: 'Public Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 160ms ease; } .ds-btn-secondary:hover { background: #EDF2F9; } .ds-btn-secondary:focus-visible { outline: 2px solid #0052CC; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "44px input with Circuit Royal Blue focus ring.",
+      "html": "<input class=\"ds-input\" type=\"email\" value=\"juan.delacruz@lpunetwork.edu.ph\" aria-label=\"Institutional email\" />",
+      "css": ".ds-input { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border-radius: 12px; border: 1px solid #C2D1E5; background: #FFFFFF; color: #0B192C; font-family: 'Public Sans', sans-serif; font-size: 14px; caret-color: #0052CC; transition: border-color 160ms ease, box-shadow 160ms ease; } .ds-input:focus { outline: none; border-color: #0052CC; box-shadow: 0 0 0 3px #EBF3FF; }"
+    },
+    {
+      "name": "Stacked Crest Key Alert",
+      "kind": "custom",
+      "refersTo": "passbook-sheet",
+      "description": "Deep Crest Navy to Circuit Royal Blue deck with Shield Cyan and Laurel Gold peek layers.",
+      "html": "<div class=\"ds-crest-alert\"><span class=\"ds-crest-icon\">KEY</span><div><strong>Your GMetrix key is ready</strong><span>MOS Excel · open My Keys to view</span></div></div>",
+      "css": ".ds-crest-alert { margin-top: 12px; display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 20px; background: linear-gradient(135deg, #0B2E59 0%, #0052CC 100%); color: #FFFFFF; font-family: 'Public Sans', sans-serif; box-shadow: 0 -6px 0 -2px #0EA5E9, 0 -11px 0 -5px #D4A500; } .ds-crest-icon { width: 36px; height: 36px; border-radius: 999px; background: #D4A500; color: #0B192C; font-size: 10px; font-weight: 700; display: grid; place-items: center; } .ds-crest-alert strong { display: block; font-size: 14px; } .ds-crest-alert span { display: block; font-size: 12px; opacity: 0.9; }"
+    },
+    {
+      "name": "Ruled Crest Sheet",
+      "kind": "card",
+      "refersTo": "passbook-sheet",
+      "description": "Flat white ledger container with 1px cool-blue rules.",
+      "html": "<div class=\"ds-sheet\"><div class=\"ds-row\"><strong>Web Dev Guild</strong><span class=\"ds-badge-present\">Accepting</span></div><div class=\"ds-row\"><strong>Data Science Society</strong><span class=\"ds-badge-late\">Pending</span></div></div>",
+      "css": ".ds-sheet { background: #FFFFFF; border: 1px solid #DCE5F2; border-radius: 18px; overflow: hidden; font-family: 'Public Sans', sans-serif; color: #0B192C; } .ds-row { padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; border-top: 1px solid #DCE5F2; } .ds-row:first-child { border-top: 0; } .ds-badge-present { background: #ECFDF3; color: #067647; padding: 3px 8px; border-radius: 8px; font-size: 11.5px; font-weight: 600; } .ds-badge-late { background: #FEF9E2; color: #856404; padding: 3px 8px; border-radius: 8px; font-size: 11.5px; font-weight: 600; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The CCS Crest & Editorial Lanyard",
+    "overview": "MyCCS translates the official College of Information Technology and Computer Science (CCS — IT, CS, and LIS) crest—Deep Crest Navy, Circuit Royal Blue, Shield Cyan, and Laurel Gold—into a crisp, high-contrast academic utility built for sunlit hallways and zero-connectivity auditorium doors. Primary actions use authoritative full-pill Deep Crest Navy (#0B2E59) shifting to Circuit Royal Blue (#0052CC), while hero moments (onboarding crest deck and GMetrix key-ready alerts) layer Shield Cyan (#0EA5E9) and Laurel Gold (#D4A500) peek cards behind a saturated blue deck.",
+    "keyCharacteristics": [
+      "Official CCS crest color grammar: Deep Crest Navy (#0B2E59), Circuit Royal Blue (#0052CC), Shield Cyan (#0EA5E9), and Laurel Gold (#D4A500).",
+      "Full-pill primary and secondary buttons (999px) paired with editorial underline category tabs and stacked color-block hero decks (20px).",
+      "ISO-strict semantic status hues where Present (#067647), Late/Pending (#856404 on #FEF9E2), and Absent/Rejected (#B42318) each own one unshared hue + text label.",
+      "Identical 64px bottom tab registration across all post-auth Student and Org Officer screens.",
+      "Monospace typography reserved strictly for verifiable data: 6-digit OTPs, opaque signed QR tokens, masked GMetrix keys, and server clock offsets."
+    ],
+    "rules": [
+      { "name": "The 60:30:10 Proportion Rule", "body": "Every screen allocates 60% to dominant neutral ground (#F6F9FD/#FFFFFF in light mode; #0B2545 in dark scanner), 30% to Deep Crest Navy (#0B2E59) structure, wells, rules, and slate typography, and <=10% to Circuit Royal Blue (#0052CC), Shield Cyan (#0EA5E9), Laurel Gold (#D4A500/#856404), and semantic status accents.", "section": "colors" },
+      { "name": "The Laurel Gold Contrast Rule", "body": "Bright Laurel Gold (#D4A500) is reserved for graphic accents, peek decks, dark-background highlights, and icon badges with dark #0B192C ink—never as body text on white. On light surfaces, use Laurel Gold Ink (#856404) over #FEF9E2.", "section": "colors" },
+      { "name": "The Unshared Status Rule", "body": "Present Emerald (#067647), Laurel Gold Ink (#856404), and Absent Crimson (#B42318) always pair with explicit text labels (Present, Late, Absent, Pending, Approved, Rejected).", "section": "colors" },
+      { "name": "The Self-Hosted Fonts Rule (GDPR & RA 10173)", "body": "Never load fonts from Google Fonts CDN or any third-party font CDN. Bundle Public Sans and JetBrains Mono locally inside the application (expo-font / local assets in Expo mobile; self-hosted .woff2 or @fontsource/* in web-admin) so zero user IP addresses leak to external servers and offline rendering is guaranteed.", "section": "typography" },
+      { "name": "The Honest Mono Rule", "body": "Monospace is used strictly for code, tokens, OTP digits, keys, and measurements—never as decorative heading styling.", "section": "typography" },
+      { "name": "The Flat Ledger Rule", "body": "Standard lists, forms, announcements, and metric sheets carry zero drop shadow and zero nested cards—separate rows with 1px solid #DCE5F2 horizontal rules inside one container.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do enforce the 60:30:10 visual budget on every screen (60% #F6F9FD/#FFFFFF ground, 30% #0B2E59/slate structure, <=10% #0052CC/#0EA5E9/#D4A500 accents).",
+      "Do pair Laurel Gold (#D4A500) graphic accents with dark #0B192C foregrounds and use #856404 on #FEF9E2 for text badges.",
+      "Do maintain >=4.5:1 contrast across all daylight (#F6F9FD/#FFFFFF) and dark auditorium (#0B2545) surfaces.",
+      "Do use flat 1px rules (#DCE5F2) inside single white sheets instead of nested cards.",
+      "Do self-host and bundle Public Sans and JetBrains Mono locally in the app (expo-font / @fontsource/* / local .woff2) for GDPR and RA 10173 compliance and offline reliability.",
+      "Do reserve JetBrains Mono strictly for verifiable data and tabular-nums for live counts."
+    ],
+    "donts": [
+      "Don't flood full screens or multiple stacked sections with saturated #0052CC, #0EA5E9, or #D4A500 fills—keep accents within the 10% budget.",
+      "Don't set light yellow/gold text directly on white backgrounds.",
+      "Don't load fonts from Google Fonts CDN or any external third-party CDN (violates GDPR IP-disclosure rules and breaks offline venues).",
+      "Don't place marketing eyebrows above headings or add zero-offset glowing shadows on dark scanner elements.",
+      "Don't use Unicode emoji as UI icons—use 1.8px-stroke inline SVGs.",
+      "Don't expose raw PII in QR codes or raw GMetrix keys in push alerts."
+    ]
+  }
+}

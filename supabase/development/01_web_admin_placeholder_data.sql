@@ -214,7 +214,7 @@ BEGIN
   INSERT INTO public.department_info (id, title, about_markdown, leadership_json, contact_json)
   VALUES (
     v_dept_id,
-    'College of Computing Studies (CCS)',
+    'College of Information Technology and Computer Science (CCS)',
     E'## About CCS\nPlaceholder development profile for testing MyCCS Web Admin and mobile department screens.',
     '[
       {"name":"Dr. Elena Reyes","title":"Department Dean","email":"dev.admin@lpunetwork.edu.ph"},
@@ -229,7 +229,7 @@ BEGIN
     v_org_main_id,
     NULL,
     'CCS Student Council (Dev)',
-    'Main student governance body for the College of Computing Studies.'
+    'Main student governance body for the College of Information Technology and Computer Science (IT, CS, and LIS).'
   )
   ON CONFLICT DO NOTHING;
 

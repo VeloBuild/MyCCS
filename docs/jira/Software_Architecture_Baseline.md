@@ -34,7 +34,7 @@
 
 ## 1. Executive Summary & Architecture Vision
 
-MyCCS is the centralized digital platform for the College of Computing Studies (CCS). It replaces fragmented social media notices, manual attendance sheets, ad-hoc survey tools, and spreadsheet-based certification key distribution with two coordinated applications sharing a single Supabase backend:
+MyCCS is the centralized digital platform for the College of Information Technology and Computer Science (CCS), which offers Information Technology (IT), Computer Science (CS), and Library and Information Science (LIS). It replaces fragmented social media notices, manual attendance sheets, ad-hoc survey tools, and spreadsheet-based certification key distribution with two coordinated applications sharing a single Supabase backend:
 
 1. **MyCCS Mobile App (Expo React Native + TypeScript):** Used by CCS students and organization/sub-organization officers for department info, org pages, announcements, onsite/online events, offline-first QR attendance, conditional forms/evaluations, certification listings, and in-app GMetrix key viewing.
 2. **MyCCS Web Admin Portal (`web-admin/`):** A standalone Vite + React + TypeScript SPA in its own repository directory (excluded from the mobile bundle and deployed independently to **Cloudflare Pages** with zero backend secrets on Cloudflare) prioritized for faculty/admin GMetrix CSV key distribution, faculty admin promotion, and department governance.
