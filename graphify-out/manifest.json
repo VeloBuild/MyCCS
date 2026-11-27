@@ -954,9 +954,9 @@
     "semantic_hash": ""
   },
   "src/components/OrgDetailView.tsx": {
-    "mtime": 1795798562.6235769,
-    "seen": 1795798939.3125176,
-    "ast_hash": "9c1a25d8fac3c73e62976d6df24fc8c6",
+    "mtime": 1795800969.5688648,
+    "seen": 1795801054.9264872,
+    "ast_hash": "2ce7485cc27b7fb1cd082cd769cb5e02",
     "semantic_hash": ""
   },
   "src/components/OrgDirectoryView.tsx": {
@@ -966,15 +966,15 @@
     "semantic_hash": ""
   },
   "src/screens/MyCcsHubScreen.tsx": {
-    "mtime": 1795798561.304914,
-    "seen": 1795798939.31355,
-    "ast_hash": "9f02edbebbe9074b7546c4de277578f6",
+    "mtime": 1795800973.890908,
+    "seen": 1795801054.9273167,
+    "ast_hash": "5c21343aa760fa9242c2678a846d82ac",
     "semantic_hash": ""
   },
   "src/services/deptOrg.ts": {
-    "mtime": 1795798556.3146663,
-    "seen": 1795798939.3139591,
-    "ast_hash": "cd362756589675b1a6132f27fe1f3646",
+    "mtime": 1795800966.6780212,
+    "seen": 1795801054.9277315,
+    "ast_hash": "2876cc2bad7aadf8bd0f43d9141dba79",
     "semantic_hash": ""
   },
   "src/services/mediaUpload.ts": {
@@ -1020,9 +1020,9 @@
     "semantic_hash": ""
   },
   "tests/unit/dept-org-pages.test.ts": {
-    "mtime": 1795798725.0721421,
-    "seen": 1795798939.3164277,
-    "ast_hash": "12b09716de59ea387509f380ece4b47a",
+    "mtime": 1795801017.6710458,
+    "seen": 1795801054.9330132,
+    "ast_hash": "c9a493d963f87b09409d8c7052b09530",
     "semantic_hash": ""
   },
   ".kiro/steering/lean-ctx.md": {

@@ -46,6 +46,8 @@ export interface OrgDetailViewProps {
   actor: RbacActor;
   panel: 'posts' | 'edit_org' | 'new_post';
   busy?: boolean;
+  postsLoading?: boolean;
+  postsError?: string | null;
   now?: Date;
   onBack: () => void;
   onSelectOrg: (orgId: string) => void;
@@ -451,6 +453,8 @@ export function OrgDetailView({
   actor,
   panel,
   busy = false,
+  postsLoading = false,
+  postsError = null,
   now,
   onBack,
   onSelectOrg,
@@ -672,7 +676,16 @@ export function OrgDetailView({
       <View style={styles.sheet} testID="org-posts-section">
         <View style={styles.sectionBlock}>
           <Text style={styles.sectionHeading}>Posts</Text>
-          {posts.length === 0 ? (
+          {postsError ? (
+            <Text style={styles.errorText} testID="org-posts-error">
+              {postsError}
+            </Text>
+          ) : null}
+          {postsLoading && posts.length === 0 ? (
+            <Text style={styles.mutedText} testID="org-posts-loading">
+              Loading organization posts...
+            </Text>
+          ) : posts.length === 0 && !postsError ? (
             <Text style={styles.mutedText} testID="org-posts-empty">
               No organization posts yet.
             </Text>

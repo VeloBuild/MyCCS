@@ -22,6 +22,7 @@ import {
 const UuidSchema = z.string().uuid();
 
 export const DEFAULT_ANNOUNCEMENTS_LIMIT = 100;
+export const ORG_ANNOUNCEMENTS_PAGE_SIZE = 1000;
 
 export interface DeptOrgQueryResult<T> {
   data: T | null;
@@ -34,7 +35,12 @@ export interface DeptOrgSingleTerminal {
 
 export interface DeptOrgListTerminal
   extends PromiseLike<DeptOrgQueryResult<unknown[]>> {
+  order(
+    column: string,
+    options?: { ascending?: boolean }
+  ): DeptOrgListTerminal;
   limit(count: number): PromiseLike<DeptOrgQueryResult<unknown[]>>;
+  range(from: number, to: number): PromiseLike<DeptOrgQueryResult<unknown[]>>;
 }
 
 export interface DeptOrgEqFilterChain
@@ -251,22 +257,51 @@ export async function fetchAnnouncements(
 
 export async function fetchOrganizationAnnouncements(
   client: DeptOrgSupabaseClient,
-  organizationId: string
+  organizationId: string,
+  pageSize = ORG_ANNOUNCEMENTS_PAGE_SIZE
 ): Promise<Announcement[]> {
   const parsedOrgId = UuidSchema.parse(organizationId);
+  const effectivePageSize =
+    Number.isInteger(pageSize) && pageSize > 0
+      ? pageSize
+      : ORG_ANNOUNCEMENTS_PAGE_SIZE;
 
-  const { data, error } = await client
-    .from('announcements')
-    .select(ANNOUNCEMENT_COLUMNS)
-    .eq('organization_id', parsedOrgId)
-    .is('deleted_at', null)
-    .order('published_at', { ascending: false });
+  const collected: Announcement[] = [];
+  const seenIds = new Set<string>();
+  let from = 0;
 
-  if (error) {
-    throw new Error(error.message);
+  while (true) {
+    const to = from + effectivePageSize - 1;
+    const { data, error } = await client
+      .from('announcements')
+      .select(ANNOUNCEMENT_COLUMNS)
+      .eq('organization_id', parsedOrgId)
+      .is('deleted_at', null)
+      .order('published_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const batch = data ?? [];
+    for (const row of batch) {
+      const parsed = AnnouncementSchema.parse(row);
+      if (!seenIds.has(parsed.id)) {
+        seenIds.add(parsed.id);
+        collected.push(parsed);
+      }
+    }
+
+    if (batch.length < effectivePageSize) {
+      break;
+    }
+
+    from += batch.length;
   }
 
-  return (data ?? []).map((row) => AnnouncementSchema.parse(row));
+  return collected;
 }
 
 export async function createAnnouncement(

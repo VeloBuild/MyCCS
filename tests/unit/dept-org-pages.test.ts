@@ -47,6 +47,7 @@ import {
   fetchMyOrgMemberships,
   fetchOrganizationAnnouncements,
   loadHubSnapshot,
+  ORG_ANNOUNCEMENTS_PAGE_SIZE,
   updateDepartmentInfo,
   updateOrganizationProfile,
   type DeptOrgQueryResult,
@@ -258,6 +259,14 @@ interface MockDbState {
     data: Announcement[] | null;
     error: { message: string } | null;
   }>;
+  onFetchOrgAnnouncements?: (
+    orgId: string,
+    from: number,
+    to: number
+  ) => Promise<{
+    data: Announcement[] | null;
+    error: { message: string } | null;
+  }>;
   onInsertAnnouncement?: (values: Record<string, unknown>) => Promise<{
     data: Announcement | null;
     error: { message: string } | null;
@@ -306,6 +315,7 @@ function createMockDeptOrgClient(initial: MockDbState): {
     insertAnnouncement: jest.Mock;
     announcementsLimit: jest.Mock;
     fetchOrgAnnouncements: jest.Mock;
+    orgAnnouncementsRanges: jest.Mock;
   };
 } {
   const state: MockDbState = {
@@ -320,6 +330,7 @@ function createMockDeptOrgClient(initial: MockDbState): {
         ? 'jwt-mock-session'
         : initial.sessionAccessToken,
     onFetchAnnouncements: initial.onFetchAnnouncements,
+    onFetchOrgAnnouncements: initial.onFetchOrgAnnouncements,
     onInsertAnnouncement: initial.onInsertAnnouncement,
     onUpdateDepartment: initial.onUpdateDepartment,
   };
@@ -331,6 +342,7 @@ function createMockDeptOrgClient(initial: MockDbState): {
     insertAnnouncement: jest.fn(),
     announcementsLimit: jest.fn(),
     fetchOrgAnnouncements: jest.fn(),
+    orgAnnouncementsRanges: jest.fn(),
   };
 
   const client: DeptOrgSupabaseClient = {
@@ -378,16 +390,17 @@ function createMockDeptOrgClient(initial: MockDbState): {
           return { data: rows, error: null };
         }
         if (table === 'announcements') {
+          const compareStable = (a: Announcement, b: Announcement) => {
+            const diff = Date.parse(b.published_at) - Date.parse(a.published_at);
+            return diff !== 0 ? diff : a.id.localeCompare(b.id);
+          };
           if (eqCol === 'organization_id') {
             spies.fetchOrgAnnouncements(eqVal);
             const rows = state.announcements
               .filter(
                 (a) => a.deleted_at === null && a.organization_id === eqVal
               )
-              .sort(
-                (a, b) =>
-                  Date.parse(b.published_at) - Date.parse(a.published_at)
-              );
+              .sort(compareStable);
             return { data: rows, error: null };
           }
           if (state.onFetchAnnouncements) {
@@ -395,39 +408,59 @@ function createMockDeptOrgClient(initial: MockDbState): {
           }
           const rows = state.announcements
             .filter((a) => a.deleted_at === null)
-            .sort(
-              (a, b) =>
-                Date.parse(b.published_at) - Date.parse(a.published_at)
-            );
+            .sort(compareStable);
           return { data: rows, error: null };
         }
         return { data: [], error: null };
       };
 
-      const makeListTerminal = (eqCol?: string, eqVal?: unknown) => ({
-        then<TResult1 = DeptOrgQueryResult<unknown[]>, TResult2 = never>(
-          onfulfilled?:
-            | ((
-                value: DeptOrgQueryResult<unknown[]>
-              ) => TResult1 | PromiseLike<TResult1>)
-            | null,
-          onrejected?:
-            | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
-            | null
-        ) {
-          return resolveRows(eqCol, eqVal).then(onfulfilled, onrejected);
-        },
-        limit: async (count: number) => {
-          if (table === 'announcements') {
-            spies.announcementsLimit(count);
-          }
-          const res = await resolveRows(eqCol, eqVal);
-          return {
-            data: res.data ? res.data.slice(0, count) : null,
-            error: res.error,
-          };
-        },
-      });
+      const makeListTerminal = (eqCol?: string, eqVal?: unknown) => {
+        const terminal = {
+          then<TResult1 = DeptOrgQueryResult<unknown[]>, TResult2 = never>(
+            onfulfilled?:
+              | ((
+                  value: DeptOrgQueryResult<unknown[]>
+                ) => TResult1 | PromiseLike<TResult1>)
+              | null,
+            onrejected?:
+              | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
+              | null
+          ) {
+            return resolveRows(eqCol, eqVal).then(onfulfilled, onrejected);
+          },
+          order() {
+            return terminal;
+          },
+          limit: async (count: number) => {
+            if (table === 'announcements') {
+              spies.announcementsLimit(count);
+            }
+            const res = await resolveRows(eqCol, eqVal);
+            return {
+              data: res.data ? res.data.slice(0, count) : null,
+              error: res.error,
+            };
+          },
+          range: async (from: number, to: number) => {
+            if (table === 'announcements' && eqCol === 'organization_id') {
+              spies.orgAnnouncementsRanges(eqVal, from, to);
+              if (state.onFetchOrgAnnouncements) {
+                return state.onFetchOrgAnnouncements(String(eqVal), from, to);
+              }
+            }
+            const res = await resolveRows(eqCol, eqVal);
+            if (!res.data) {
+              return res;
+            }
+            const maxEnd = Math.min(to + 1, from + ORG_ANNOUNCEMENTS_PAGE_SIZE);
+            return {
+              data: res.data.slice(from, maxEnd),
+              error: res.error,
+            };
+          },
+        };
+        return terminal;
+      };
 
       return {
         select() {
@@ -1507,6 +1540,50 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
       await expect(
         fetchOrganizationAnnouncements(client, 'not-a-uuid')
       ).rejects.toThrow();
+
+      const pagedCount = 1005;
+      const manyOrgPosts: Announcement[] = Array.from(
+        { length: pagedCount },
+        (_, index) => ({
+          id: `88888888-8888-4888-9888-${String(index + 1).padStart(12, '0')}`,
+          organization_id: ORG_A_ID,
+          title: `Paged Org Post #${index + 1}`,
+          content: 'Paginated organization announcement.',
+          global_visibility: false,
+          published_at: new Date(
+            Date.parse('2026-11-20T00:00:00.000Z') - Math.floor(index / 2) * 60_000
+          ).toISOString(),
+          expires_at: null,
+          deleted_at: null,
+        })
+      );
+      const pagedMock = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [SAMPLE_ORG_A],
+        memberships: [],
+        announcements: manyOrgPosts,
+      });
+
+      const allPaged = await fetchOrganizationAnnouncements(
+        pagedMock.client,
+        ORG_A_ID
+      );
+      expect(allPaged).toHaveLength(pagedCount);
+      expect(allPaged[0].id).toBe(manyOrgPosts[0].id);
+      expect(allPaged[pagedCount - 1].id).toBe(manyOrgPosts[pagedCount - 1].id);
+      expect(pagedMock.spies.orgAnnouncementsRanges).toHaveBeenNthCalledWith(
+        1,
+        ORG_A_ID,
+        0,
+        999
+      );
+      expect(pagedMock.spies.orgAnnouncementsRanges).toHaveBeenNthCalledWith(
+        2,
+        ORG_A_ID,
+        1000,
+        1999
+      );
+      expect(pagedMock.spies.orgAnnouncementsRanges).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -2720,6 +2797,59 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
       expect(
         screen.getByTestId(`org-post-item-${deepOrgPost.id}`)
       ).toBeTruthy();
+
+      const pendingOrgPosts = createDeferred<DeptOrgQueryResult<Announcement[]>>();
+      const loadingMock = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [SAMPLE_ORG_A],
+        memberships: [],
+        announcements: bulkGlobal,
+        onFetchOrgAnnouncements: () => pendingOrgPosts.promise,
+      });
+
+      const loadingScreen = await render(
+        createElement(MyCcsHubScreen, {
+          profile: ADMIN_PROFILE,
+          busy: false,
+          errorMessage: null,
+          onSignOut: jest.fn(),
+          deptOrgClient: loadingMock.client,
+          now: NOW,
+        })
+      );
+      await waitFor(() => {
+        expect(
+          loadingScreen.getByTestId(`announcement-item-${bulkGlobal[0].id}`)
+        ).toBeTruthy();
+      });
+
+      await fireEvent.press(loadingScreen.getByTestId('tab-orgs'));
+      await fireEvent.press(loadingScreen.getByTestId(`org-row-${ORG_A_ID}`));
+      expect(loadingScreen.getByTestId('org-posts-loading')).toBeTruthy();
+      expect(loadingScreen.queryByTestId('org-posts-empty')).toBeNull();
+
+      await act(async () => {
+        pendingOrgPosts.resolve({
+          data: null,
+          error: { message: 'Org posts query timed out' },
+        });
+      });
+      await waitFor(() => {
+        expect(loadingScreen.getByTestId('org-posts-error').props.children).toBe(
+          'Org posts query timed out'
+        );
+      });
+      expect(loadingScreen.queryByTestId('org-posts-empty')).toBeNull();
+
+      loadingMock.state.onFetchOrgAnnouncements = undefined;
+      loadingMock.state.announcements = [...bulkGlobal, deepOrgPost];
+      await fireEvent.press(loadingScreen.getByTestId('hub-refresh-button'));
+      await waitFor(() => {
+        expect(
+          loadingScreen.getByTestId(`org-post-item-${deepOrgPost.id}`)
+        ).toBeTruthy();
+      });
+      expect(loadingScreen.queryByTestId('org-posts-error')).toBeNull();
     });
 
     it('updates organization cover_url in MyCcsHubScreen even when navigating back to org directory mid-upload', async () => {

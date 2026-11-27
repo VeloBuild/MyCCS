@@ -100,6 +100,8 @@ export function MyCcsHubScreen({
   const [orgAnnouncementsByOrgId, setOrgAnnouncementsByOrgId] = useState<
     Record<string, Announcement[]>
   >({});
+  const [orgPostsLoading, setOrgPostsLoading] = useState(false);
+  const [orgPostsError, setOrgPostsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [mutating, setMutating] = useState(false);
@@ -127,10 +129,19 @@ export function MyCcsHubScreen({
   const loadOrgAnnouncements = useCallback(
     async (orgId: string) => {
       if (!deptOrgClient && !isSupabaseConfigured()) {
+        if (mountedRef.current) {
+          setOrgPostsLoading(false);
+          setOrgPostsError(null);
+        }
         return;
       }
 
       const requestId = ++orgPostsReqIdRef.current;
+      if (mountedRef.current) {
+        setOrgPostsLoading(true);
+        setOrgPostsError(null);
+      }
+
       try {
         const posts = await fetchOrganizationAnnouncements(
           resolveClient(),
@@ -145,11 +156,15 @@ export function MyCcsHubScreen({
         }));
       } catch (err) {
         if (mountedRef.current && orgPostsReqIdRef.current === requestId) {
-          setHubError(
+          setOrgPostsError(
             err instanceof Error
               ? err.message
               : 'Failed to load organization announcements.'
           );
+        }
+      } finally {
+        if (mountedRef.current && orgPostsReqIdRef.current === requestId) {
+          setOrgPostsLoading(false);
         }
       }
     },
@@ -223,6 +238,8 @@ export function MyCcsHubScreen({
   useEffect(() => {
     if (!activeOrgId) {
       orgPostsReqIdRef.current += 1;
+      setOrgPostsLoading(false);
+      setOrgPostsError(null);
       return;
     }
     void loadOrgAnnouncements(activeOrgId);
@@ -444,17 +461,26 @@ export function MyCcsHubScreen({
             route.view.orgId
           );
           if (selectedOrg) {
+            const hasLoadedOrgPosts = Object.prototype.hasOwnProperty.call(
+              orgAnnouncementsByOrgId,
+              selectedOrg.id
+            );
+            const canFetchOrgPosts =
+              Boolean(deptOrgClient) || isSupabaseConfigured();
+            const isLoadingOrgPosts =
+              orgPostsLoading ||
+              (!hasLoadedOrgPosts && canFetchOrgPosts && orgPostsError === null);
             return (
               <OrgDetailView
                 organization={selectedOrg}
                 allOrganizations={organizations}
                 memberships={memberships}
-                announcements={
-                  orgAnnouncementsByOrgId[selectedOrg.id] ?? announcements
-                }
+                announcements={orgAnnouncementsByOrgId[selectedOrg.id] ?? []}
                 actor={actor}
                 panel={route.view.panel}
                 busy={mutating}
+                postsLoading={isLoadingOrgPosts}
+                postsError={orgPostsError}
                 now={now}
                 onBack={() =>
                   setRoute({ tab: 'orgs', view: { kind: 'directory' } })
