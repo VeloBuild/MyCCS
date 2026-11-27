@@ -1,17 +1,17 @@
-# Graph Report - MyCCS  (2026-11-26)
+# Graph Report - MyCCS  (2026-11-27)
 
 ## Corpus Check
-- 109 files · ~86,234 words
+- 117 files · ~157,447 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 18 file(s) not represented in the graph (top: (none) 13, .example 2, .toml 1)
+- Unclassified: 20 file(s) not represented in the graph (top: (none) 13, .example 2, .css 2)
 
 ## Summary
-- 773 nodes · 1123 edges · 51 communities (36 shown, 15 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 50 edges (avg confidence: 0.91)
+- 822 nodes · 1205 edges · 55 communities (38 shown, 17 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 51 edges (avg confidence: 0.9)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `afe5b18e`
+- Built from commit: `bbed4eb3`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -20,7 +20,7 @@
 - package.json
 - Governance, CI/CD & Agent Guides
 - Expo App Config (app.json)
-- auth-identity.test.ts
+- AuthIdentityScreen.tsx
 - core-schema.ts
 - Design: Auth & Privacy-First Identity (`spec-01-auth-identity`)
 - Requirements
@@ -48,17 +48,21 @@
 - Requirement: Admin-Only Institutional Login and Route Guard (`FR-AUTH-01`, `FR-AUTH-02`, `FR-CERT-02`)
 - Design: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`)
 - compilerOptions
-- Proposal: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`)
+- shared/auth.ts
 - web-admin.ts
-- 2026-11-25-spec-02-core-schema-rls/design.md
-- Requirement: Organization Membership Applications & Scoped Approval (`FR-ORG-03`)
+- Design System: MyCCS
+- app.js
+- Product
+- secure-store.verify.ts
+- auth-identity.test.ts
 - devDependencies
 - scripts
 - web-admin-guard.spec.ts
-- Requirement: Two-Tier Organization Hierarchy (`FR-ORG-01`, `FR-ORG-02`)
-- Tasks: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`)
+- metro.config.js
+- SupabaseStorageAdapter
 - dependencies
-- Requirement: Scoped Announcements with Expiration & Soft Delete (`FR-DEPT-02`, `FR-ORG-02`)
+- Surface Brief: MyCCS Mobile Journey Prototype (Student + Org Officer)
+- student/README.md
 - MyCCS Web Admin (`web-admin/`)
 - Development Placeholder Seeds (`supabase/development/`)
 
@@ -71,25 +75,25 @@
 6. `CI/CD Pipeline Specification` - 15 edges
 7. `AuthIdentityScreen()` - 13 edges
 8. `Software Architecture Baseline (SCRUM-9)` - 13 edges
-9. `createSecureStoreAdapter()` - 11 edges
-10. `expo` - 11 edges
+9. `Product` - 11 edges
+10. `createSecureStoreAdapter()` - 11 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Goals / Non-Goals` --references--> `AdminSessionState`  [INFERRED]
-  openspec/changes/archive/2026-11-26-spec-03-web-admin-scaffold/design.md → shared/web-admin.ts
-- `Decisions` --references--> `resolveWebAdminRoute()`  [INFERRED]
   openspec/changes/archive/2026-11-26-spec-03-web-admin-scaffold/design.md → shared/web-admin.ts
 - `Implementation Bug Log` --references--> `PublicProfileDto`  [INFERRED]
   openspec/ROADMAP.md → shared/auth.ts
 - `Implementation Bug Log` --references--> `formatWebAdminError()`  [INFERRED]
   openspec/ROADMAP.md → shared/web-admin.ts
+- `Decisions` --references--> `resolveWebAdminRoute()`  [INFERRED]
+  openspec/changes/archive/2026-11-26-spec-03-web-admin-scaffold/design.md → shared/web-admin.ts
 - `Surfaces Touched` --references--> `AdminSessionState`  [INFERRED]
   openspec/changes/archive/2026-11-26-spec-03-web-admin-scaffold/design.md → shared/web-admin.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (51 total, 15 thin omitted)
+## Communities (55 total, 17 thin omitted)
 
 ### Community 0 - "MyCCS Product, Auth & Architecture"
 Cohesion: 0.06
@@ -97,7 +101,7 @@ Nodes (57): Root AGENTS.md Guide, Shared Contracts (shared/), MyCCS Documentatio
 
 ### Community 1 - "package.json"
 Cohesion: 0.12
-Nodes (16): react, @supabase/supabase-js, @types/react, typescript, zod, main, name, private (+8 more)
+Nodes (15): react, @supabase/supabase-js, @types/react, typescript, zod, main, name, private (+7 more)
 
 ### Community 2 - "Governance, CI/CD & Agent Guides"
 Cohesion: 0.13
@@ -107,13 +111,13 @@ Nodes (11): DevSecOps Sentinel Agent, Jira-Git Workflow Agent, Postman API QA & 
 Cohesion: 0.10
 Nodes (19): backgroundColor, backgroundImage, foregroundImage, monochromeImage, adaptiveIcon, predictiveBackGestureEnabled, expo, android (+11 more)
 
-### Community 4 - "auth-identity.test.ts"
-Cohesion: 0.08
-Nodes (46): App(), expo-status-bar, react-native, @testing-library/react-native, INSTITUTIONAL_EMAIL_DOMAIN, InstitutionalEmailSchema, isInstitutionalEmail(), normalizeInstitutionalEmail() (+38 more)
+### Community 4 - "AuthIdentityScreen.tsx"
+Cohesion: 0.18
+Nodes (18): react-native, PublicProfileDto, toPublicProfileDto(), IdentityCard(), IdentityCardProps, styles, AuthIdentityScreen(), AuthIdentityScreenProps (+10 more)
 
 ### Community 5 - "core-schema.ts"
-Cohesion: 0.07
-Nodes (43): 1. Shared Core Schema Contracts & RBAC Helpers (`shared/`), UserRole, Announcement, AnnouncementCreateInput, AnnouncementCreateInputSchema, AnnouncementSchema, AnnouncementUpdateInput, AnnouncementUpdateInputSchema (+35 more)
+Cohesion: 0.08
+Nodes (42): 1. Shared Core Schema Contracts & RBAC Helpers (`shared/`), UserRole, Announcement, AnnouncementCreateInput, AnnouncementCreateInputSchema, AnnouncementSchema, AnnouncementUpdateInput, AnnouncementUpdateInputSchema (+34 more)
 
 ### Community 6 - "Design: Auth & Privacy-First Identity (`spec-01-auth-identity`)"
 Cohesion: 0.07
@@ -140,8 +144,8 @@ Cohesion: 0.50
 Nodes (3): description, name, $schema
 
 ### Community 15 - "src/lib/supabase.ts"
-Cohesion: 0.09
-Nodes (20): encoder, Op, SimulatedCrash, summarizeSessionValue(), utf8Bytes(), chunkCountKey(), chunkItemKey(), chunkUtf8() (+12 more)
+Cohesion: 0.20
+Nodes (14): expo-secure-store, chunkCountKey(), chunkItemKey(), chunkUtf8(), createSecureStoreAdapter(), expoSecureStoreAdapter, isSupabaseConfigured(), parseChunkCount() (+6 more)
 
 ### Community 26 - "overrides"
 Cohesion: 0.22
@@ -152,52 +156,68 @@ Cohesion: 0.08
 Nodes (26): ADDED Requirements, Purpose, Requirement: Deterministic institutional email blind-index lookup, Requirement: Encrypted student profile provisioning and key versioning, Requirement: Mandatory 6-digit email OTP verification, Requirement: Permanent opaque QR token and student ID privacy, Requirement: Persistent mobile session storage, Requirement: Profile access control, role immutability, and admin bootstrapping (+18 more)
 
 ### Community 28 - "identity-crypto.ts"
-Cohesion: 0.17
-Nodes (23): QrTokenSchema, bytesToHex(), computeEmailBlindIndex(), constantTimeEqual(), decodeByteaHex(), DecryptedPiiPayload, decryptPii(), encodeByteaHex() (+15 more)
+Cohesion: 0.13
+Nodes (28): QrTokenSchema, bytesToHex(), computeEmailBlindIndex(), constantTimeEqual(), decodeByteaHex(), DecryptedPiiPayload, decryptPii(), encodeByteaHex() (+20 more)
 
 ### Community 30 - "Design: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`)"
-Cohesion: 0.18
-Nodes (11): 1. Anti-Recursion RBAC Helpers (`SECURITY DEFINER`, `STABLE`, `SET search_path = public`), 2. Tables, Triggers & Explicit `GRANT`s, 3. RLS Policy Matrix, Context, Database Schema, RLS, Grants & Encryption, Decisions, Design: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`), Goals / Non-Goals (+3 more)
+Cohesion: 0.07
+Nodes (26): 1. Anti-Recursion RBAC Helpers (`SECURITY DEFINER`, `STABLE`, `SET search_path = public`), 2. Tables, Triggers & Explicit `GRANT`s, 3. RLS Policy Matrix, Context, Database Schema, RLS, Grants & Encryption, Decisions, Design: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`), Goals / Non-Goals (+18 more)
 
 ### Community 31 - "Requirements"
 Cohesion: 0.08
 Nodes (23): core-schema-rls Specification, Purpose, Requirement: Department Information Storage & Admin-Only Governance (`FR-DEPT-01`), Requirement: Mandatory Row Level Security & Explicit Grants (`ADR-005`), Requirement: Organization Membership Applications & Scoped Approval (`FR-ORG-03`), Requirement: Scoped Announcements with Expiration & Soft Delete (`FR-DEPT-02`, `FR-ORG-02`), Requirement: Two-Tier Organization Hierarchy (`FR-ORG-01`, `FR-ORG-02`), Requirements (+15 more)
 
 ### Community 32 - "ADDED Requirements"
-Cohesion: 0.29
-Nodes (7): ADDED Requirements, Requirement: Department Information Storage & Admin-Only Governance (`FR-DEPT-01`), Requirement: Mandatory Row Level Security & Explicit Grants (`ADR-005`), Scenario: Admin updates department information, Scenario: Anonymous caller accesses core tables, Scenario: Authenticated student reads department information, Scenario: Non-admin attempts to modify department information
+Cohesion: 0.10
+Nodes (21): ADDED Requirements, Requirement: Department Information Storage & Admin-Only Governance (`FR-DEPT-01`), Requirement: Mandatory Row Level Security & Explicit Grants (`ADR-005`), Requirement: Organization Membership Applications & Scoped Approval (`FR-ORG-03`), Requirement: Scoped Announcements with Expiration & Soft Delete (`FR-DEPT-02`, `FR-ORG-02`), Requirement: Two-Tier Organization Hierarchy (`FR-ORG-01`, `FR-ORG-02`), Scenario: Admin updates department information, Scenario: Anonymous caller accesses core tables (+13 more)
 
 ### Community 33 - "web-admin/package.json"
 Cohesion: 0.05
-Nodes (38): config, { getDefaultConfig }, path, webAdminAbsolutePattern, webAdminDir, expo, @types/node, @types/react-dom (+30 more)
+Nodes (36): @fontsource/jetbrains-mono, @fontsource/public-sans, react-dom, @types/node, @types/react, @types/react-dom, typescript, vite (+28 more)
 
 ### Community 34 - "web-admin-scaffold.test.ts"
-Cohesion: 0.10
-Nodes (17): appendVaryOrigin(), CorsResolution, DenoEnvGlobal, get(), getAllowedOriginsFromEnv(), handleCorsPreflight(), parseAllowedOrigins(), resolveCorsHeaders() (+9 more)
+Cohesion: 0.15
+Nodes (20): DepartmentInfoSchema, AdminProfileDtoSchema, WebAdminRouteSchema, appendVaryOrigin(), CorsResolution, DenoEnvGlobal, get(), getAllowedOriginsFromEnv() (+12 more)
 
 ### Community 35 - "Requirement: Admin-Only Institutional Login and Route Guard (`FR-AUTH-01`, `FR-AUTH-02`, `FR-CERT-02`)"
 Cohesion: 0.10
 Nodes (20): Purpose, Requirement: Admin-Only Institutional Login and Route Guard (`FR-AUTH-01`, `FR-AUTH-02`, `FR-CERT-02`), Requirement: Cloudflare Pages Root-Directory Deployment Configuration (`ADR-009`), Requirement: Fail-Closed Edge Function CORS Allowlist (`ADR-009`, `SAB §8`), Requirement: Shared TypeScript DTOs and Zod Contracts (`ADR-009`, `FR-AUTH-01`, `FR-CERT-02`), Requirement: Standalone Web Admin SPA Excluded from Mobile Bundle (`ADR-009`), Requirements, Scenario: Admin access evaluation enforces strict admin role (+12 more)
 
 ### Community 36 - "Design: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`)"
-Cohesion: 0.05
-Nodes (40): Context, Core Data Shapes, Database Schema, RLS, Grants & Encryption, Decisions, Design: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`), Goals / Non-Goals, Migration Plan, Risks / Trade-offs (+32 more)
+Cohesion: 0.06
+Nodes (32): Capabilities, Impact, Modified Capabilities, New Capabilities, Out of Scope, Proposal: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`), Why, ADDED Requirements (+24 more)
 
 ### Community 37 - "compilerOptions"
 Cohesion: 0.11
 Nodes (18): compilerOptions, isolatedModules, jsx, lib, module, moduleResolution, noEmit, noFallthroughCasesInSwitch (+10 more)
 
-### Community 38 - "Proposal: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`)"
-Cohesion: 0.25
-Nodes (8): Capabilities, Impact, Modified Capabilities, New Capabilities, Out of Scope, Proposal: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`), What Changes, Why
+### Community 38 - "shared/auth.ts"
+Cohesion: 0.13
+Nodes (18): INSTITUTIONAL_EMAIL_DOMAIN, OtpCodeSchema, ProfileProjectionInput, PublicProfileDtoSchema, RoleSchema, SignInRequest, SignInRequestSchema, SignupRequest (+10 more)
 
 ### Community 39 - "web-admin.ts"
-Cohesion: 0.07
-Nodes (44): Surfaces Touched, What Changes, 1. Shared Web-Admin Contracts & Edge Function CORS Allowlist (`shared/`, `supabase/`), react-dom, PublicProfileDtoSchema, assertPublishableClientKey(), isSecretSupabaseKeyPrefix(), isServiceRoleJwt() (+36 more)
+Cohesion: 0.08
+Nodes (44): Context, Core Data Shapes, Database Schema, RLS, Grants & Encryption, Decisions, Design: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`), Goals / Non-Goals, Migration Plan, Risks / Trade-offs (+36 more)
 
-### Community 44 - "Requirement: Organization Membership Applications & Scoped Approval (`FR-ORG-03`)"
-Cohesion: 0.40
-Nodes (5): Requirement: Organization Membership Applications & Scoped Approval (`FR-ORG-03`), Scenario: Organization officer approves a member application, Scenario: Organization officer attempts to promote a member to officer, Scenario: Student attempts to self-approve or claim officer role, Scenario: Student submits a pending membership application
+### Community 40 - "Design System: MyCCS"
+Cohesion: 0.09
+Nodes (21): Buttons, Colors, Components, Design System: MyCCS, Do:, Do's and Don'ts, Don't:, Elevation & Depth (+13 more)
+
+### Community 41 - "app.js"
+Cohesion: 0.22
+Nodes (19): currentScreen(), escapeAttr(), escapeHtml(), formatEventOffset(), goTo(), hasOwnVariation(), isValidInstitutionalEmail(), isValidMeetingLink() (+11 more)
+
+### Community 42 - "Product"
+Cohesion: 0.17
+Nodes (11): Accessibility & Inclusion, Brand Commitments, Capabilities and Constraints, Evidence on Hand, Operating Context, Platform, Positioning, Product (+3 more)
+
+### Community 43 - "secure-store.verify.ts"
+Cohesion: 0.18
+Nodes (6): encoder, Op, SimulatedCrash, summarizeSessionValue(), utf8Bytes(), SECURE_STORE_CHUNK_BYTES
+
+### Community 44 - "auth-identity.test.ts"
+Cohesion: 0.18
+Nodes (11): App(), expo-status-bar, @testing-library/react-native, InstitutionalEmailSchema, isInstitutionalEmail(), normalizeInstitutionalEmail(), createMyCcsSupabaseClient(), getSupabaseClient() (+3 more)
 
 ### Community 45 - "devDependencies"
 Cohesion: 0.18
@@ -211,21 +231,13 @@ Nodes (11): scripts, android, db:test, ios, prepare, start, test, test:e2e (+3 m
 Cohesion: 0.24
 Nodes (8): @playwright/test, createSyntheticAccessToken(), createSyntheticSessionPayload(), encodeBase64Url(), MockCounters, MockPersona, MockRouteOptions, setupSupabaseRoutes()
 
-### Community 48 - "Requirement: Two-Tier Organization Hierarchy (`FR-ORG-01`, `FR-ORG-02`)"
-Cohesion: 0.40
-Nodes (5): Requirement: Two-Tier Organization Hierarchy (`FR-ORG-01`, `FR-ORG-02`), Scenario: Assigned officer customizes their organization page, Scenario: Creating a Sub-Organization under a Main Organization, Scenario: Officer attempts to edit another organization, Scenario: Rejecting three-level nesting or self-parenting
-
-### Community 49 - "Tasks: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`)"
-Cohesion: 0.40
-Nodes (5): 2. Core Schema Migration, 3-Role RBAC RLS & Explicit `GRANT`s (`supabase/`), 3. Per-Role RLS Contract & Newman Verification Suites (`tests/api/`), 4. Integration Verification, Ponytail Audit & Local Gates, Tasks: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`), Workflow follow-up
+### Community 48 - "metro.config.js"
+Cohesion: 0.25
+Nodes (6): config, { getDefaultConfig }, path, webAdminAbsolutePattern, webAdminDir, expo
 
 ### Community 50 - "dependencies"
 Cohesion: 0.25
 Nodes (8): dependencies, expo, expo-secure-store, expo-status-bar, react, react-native, @supabase/supabase-js, zod
-
-### Community 53 - "Requirement: Scoped Announcements with Expiration & Soft Delete (`FR-DEPT-02`, `FR-ORG-02`)"
-Cohesion: 0.50
-Nodes (4): Requirement: Scoped Announcements with Expiration & Soft Delete (`FR-DEPT-02`, `FR-ORG-02`), Scenario: Officer attempts to publish a department-wide or cross-org announcement, Scenario: Officer publishes an announcement for their assigned organization, Scenario: Student reads active global and joined-organization announcements
 
 ### Community 54 - "MyCCS Web Admin (`web-admin/`)"
 Cohesion: 0.33
@@ -236,24 +248,24 @@ Cohesion: 0.50
 Nodes (3): Development Placeholder Seeds (`supabase/development/`), Placeholder Accounts, Usage
 
 ## Knowledge Gaps
-- **34 isolated node(s):** `react`, `@supabase/supabase-js`, `@types/react`, `typescript`, `zod` (+29 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 413 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **15 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **31 isolated node(s):** `@types/node`, `@types/react`, `@types/react-dom`, `typescript`, `react` (+26 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 430 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **17 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `MyCCS OpenSpec SDD Roadmap, Spec Checklist & Bug Tracker` connect `Milestones & Per-Spec Checklist` to `MyCCS Product, Auth & Architecture`?**
-  _High betweenness centrality (0.116) - this node is a cross-community bridge._
-- **What connects `react`, `@supabase/supabase-js`, `@types/react` to the rest of the system?**
-  _34 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _High betweenness centrality (0.100) - this node is a cross-community bridge._
+- **What connects `@types/node`, `@types/react`, `@types/react-dom` to the rest of the system?**
+  _31 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `MyCCS Product, Auth & Architecture` be split into smaller, more focused modules?**
   _Cohesion score 0.05789235639981909 - nodes in this community are weakly interconnected._
-- **Why does `Implementation Bug Log` connect `Milestones & Per-Spec Checklist` to `auth-identity.test.ts`, `web-admin.ts`?**
-  _High betweenness centrality (0.116) - this node is a cross-community bridge._
+- **Why does `Implementation Bug Log` connect `Milestones & Per-Spec Checklist` to `AuthIdentityScreen.tsx`, `web-admin.ts`?**
+  _High betweenness centrality (0.100) - this node is a cross-community bridge._
 - **Should `package.json` be split into smaller, more focused modules?**
-  _Cohesion score 0.11764705882352941 - nodes in this community are weakly interconnected._
-- **Why does `PublicProfileDto` connect `auth-identity.test.ts` to `Milestones & Per-Spec Checklist`, `web-admin-scaffold.test.ts`, `web-admin.ts`?**
-  _High betweenness centrality (0.101) - this node is a cross-community bridge._
+  _Cohesion score 0.125 - nodes in this community are weakly interconnected._
+- **Why does `PublicProfileDto` connect `AuthIdentityScreen.tsx` to `Milestones & Per-Spec Checklist`, `web-admin-scaffold.test.ts`, `shared/auth.ts`, `web-admin.ts`?**
+  _High betweenness centrality (0.083) - this node is a cross-community bridge._
 - **Should `Governance, CI/CD & Agent Guides` be split into smaller, more focused modules?**
   _Cohesion score 0.1286549707602339 - nodes in this community are weakly interconnected._
