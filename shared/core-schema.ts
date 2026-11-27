@@ -6,10 +6,14 @@ const IsoTimestampSchema = z.string().datetime({ offset: true });
 const SafeHttpUrlSchema = z
   .string()
   .url('Must be a valid URL.')
-  .refine(
-    (value) => value.startsWith('https://') || value.startsWith('http://'),
-    'URL must use http or https protocol.'
-  );
+  .refine((value) => {
+    try {
+      const protocol = new URL(value).protocol;
+      return protocol === 'https:' || protocol === 'http:';
+    } catch {
+      return false;
+    }
+  }, 'URL must use http or https protocol.');
 
 export const DepartmentLeadershipEntrySchema = z
   .object({
@@ -31,6 +35,16 @@ export const DepartmentInfoSchema = z
   })
   .strict();
 export type DepartmentInfo = z.infer<typeof DepartmentInfoSchema>;
+
+export const DepartmentInfoCreateInputSchema = z
+  .object({
+    title: z.string().trim().min(1, 'Department title is required.').max(200),
+    about_markdown: z.string().default(''),
+    leadership_json: z.array(DepartmentLeadershipEntrySchema).default([]),
+    contact_json: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type DepartmentInfoCreateInput = z.infer<typeof DepartmentInfoCreateInputSchema>;
 
 export const DepartmentInfoUpdateInputSchema = DepartmentInfoSchema.pick({
   title: true,

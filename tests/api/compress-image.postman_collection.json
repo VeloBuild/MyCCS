@@ -1,0 +1,438 @@
+{
+  "info": {
+    "name": "MyCCS compress-image Edge Function API (spec-04)",
+    "_postman_id": "4b8c1d2e-9a7f-4e3c-8b1a-040404040404",
+    "description": "End-to-end API security and functional verification for POST /functions/v1/compress-image covering CORS preflight, JWT claim & user verification, 3-role RBAC + cross-org scoping, MIME/magic-byte & 5 MiB size enforcement, and EXIF-stripped WebP uploads.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "SUPABASE_URL", "value": "" },
+    { "key": "SUPABASE_PUBLISHABLE_KEY", "value": "" },
+    { "key": "ALLOWED_ORIGIN", "value": "" },
+    { "key": "STUDENT_JWT", "value": "" },
+    { "key": "OFFICER_A_JWT", "value": "" },
+    { "key": "OFFICER_B_JWT", "value": "" },
+    { "key": "ADMIN_JWT", "value": "" },
+    { "key": "ORG_A_ID", "value": "" },
+    { "key": "VALID_PNG_PATH", "value": "" },
+    { "key": "OVERSIZED_FILE_PATH", "value": "" },
+    { "key": "SPOOFED_SVG_PATH", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "CORS & Auth (JWT)",
+      "item": [
+        {
+          "name": "[cors] OPTIONS disallowed origin -> 403",
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              { "key": "Origin", "value": "https://evil.example.com" },
+              { "key": "Access-Control-Request-Method", "value": "POST" }
+            ],
+            "url": "{{SUPABASE_URL}}/functions/v1/compress-image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('disallowed OPTIONS origin returns 403 without ACAO', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.headers.get('Access-Control-Allow-Origin')).to.be.undefined;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[anon] POST without Authorization -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Origin", "value": "{{ALLOWED_ORIGIN}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "organization_id", "value": "{{ORG_A_ID}}", "type": "text" },
+                { "key": "kind", "value": "logo", "type": "text" },
+                { "key": "file", "type": "file", "src": "{{VALID_PNG_PATH}}" }
+              ]
+            },
+            "url": "{{SUPABASE_URL}}/functions/v1/compress-image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('missing Authorization bearer token returns 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[invalid-jwt] POST malformed JWT -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer malformed.invalid.jwt" },
+              { "key": "Origin", "value": "{{ALLOWED_ORIGIN}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "organization_id", "value": "{{ORG_A_ID}}", "type": "text" },
+                { "key": "kind", "value": "logo", "type": "text" },
+                { "key": "file", "type": "file", "src": "{{VALID_PNG_PATH}}" }
+              ]
+            },
+            "url": "{{SUPABASE_URL}}/functions/v1/compress-image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('malformed JWT returns 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RBAC (Role & Org Scope)",
+      "item": [
+        {
+          "name": "[student] POST Org A media -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" },
+              { "key": "Origin", "value": "{{ALLOWED_ORIGIN}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "organization_id", "value": "{{ORG_A_ID}}", "type": "text" },
+                { "key": "kind", "value": "logo", "type": "text" },
+                { "key": "file", "type": "file", "src": "{{VALID_PNG_PATH}}" }
+              ]
+            },
+            "url": "{{SUPABASE_URL}}/functions/v1/compress-image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('student denied org media upload', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[officer-org-b] POST targeting Org A -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_B_JWT}}" },
+              { "key": "Origin", "value": "{{ALLOWED_ORIGIN}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "organization_id", "value": "{{ORG_A_ID}}", "type": "text" },
+                { "key": "kind", "value": "cover", "type": "text" },
+                { "key": "file", "type": "file", "src": "{{VALID_PNG_PATH}}" }
+              ]
+            },
+            "url": "{{SUPABASE_URL}}/functions/v1/compress-image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('officer from Org B denied upload to Org A', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MIME & Size Validation",
+      "item": [
+        {
+          "name": "[officer-org-a] POST unsupported image/svg+xml -> 415",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_A_JWT}}" },
+              { "key": "Origin", "value": "{{ALLOWED_ORIGIN}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "organization_id", "value": "{{ORG_A_ID}}", "type": "text" },
+                { "key": "kind", "value": "logo", "type": "text" },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{SPOOFED_SVG_PATH}}",
+                  "contentType": "image/svg+xml"
+                }
+              ]
+            },
+            "url": "{{SUPABASE_URL}}/functions/v1/compress-image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('unsupported MIME image/svg+xml rejected with 415', function () {",
+                  "  pm.response.to.have.status(415);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[officer-org-a] POST spoofed JPEG signature -> 415",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_A_JWT}}" },
+              { "key": "Origin", "value": "{{ALLOWED_ORIGIN}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "organization_id", "value": "{{ORG_A_ID}}", "type": "text" },
+                { "key": "kind", "value": "logo", "type": "text" },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{SPOOFED_SVG_PATH}}",
+                  "contentType": "image/jpeg"
+                }
+              ]
+            },
+            "url": "{{SUPABASE_URL}}/functions/v1/compress-image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('spoofed JPEG magic bytes rejected with 415', function () {",
+                  "  pm.response.to.have.status(415);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[officer-org-a] POST payload > 5 MiB -> 413",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_A_JWT}}" },
+              { "key": "Origin", "value": "{{ALLOWED_ORIGIN}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "organization_id", "value": "{{ORG_A_ID}}", "type": "text" },
+                { "key": "kind", "value": "cover", "type": "text" },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{OVERSIZED_FILE_PATH}}",
+                  "contentType": "image/png"
+                }
+              ]
+            },
+            "url": "{{SUPABASE_URL}}/functions/v1/compress-image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('payload exceeding 5 MiB rejected with 413', function () {",
+                  "  pm.response.to.have.status(413);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[officer-org-a] POST invalid organization_id -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_A_JWT}}" },
+              { "key": "Origin", "value": "{{ALLOWED_ORIGIN}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "organization_id", "value": "not-a-valid-uuid", "type": "text" },
+                { "key": "kind", "value": "logo", "type": "text" },
+                { "key": "file", "type": "file", "src": "{{VALID_PNG_PATH}}" }
+              ]
+            },
+            "url": "{{SUPABASE_URL}}/functions/v1/compress-image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('invalid organization_id rejected with 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Authorized WebP Upload",
+      "item": [
+        {
+          "name": "[officer-org-a] POST valid PNG -> 201 WebP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{OFFICER_A_JWT}}" },
+              { "key": "Origin", "value": "{{ALLOWED_ORIGIN}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "organization_id", "value": "{{ORG_A_ID}}", "type": "text" },
+                { "key": "kind", "value": "cover", "type": "text" },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{VALID_PNG_PATH}}",
+                  "contentType": "image/png"
+                }
+              ]
+            },
+            "url": "{{SUPABASE_URL}}/functions/v1/compress-image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('assigned officer uploads normalized EXIF-stripped WebP', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.bucket).to.equal('org-media');",
+                  "  pm.expect(body.mimeType).to.equal('image/webp');",
+                  "  pm.expect(body.exifStripped).to.equal(true);",
+                  "  pm.expect(body.sizeBytes).to.be.above(0);",
+                  "  pm.expect(body.sizeBytes).to.be.at.most(5242880);",
+                  "  pm.expect(body.path).to.match(/^orgs\\/.+\\/cover\\/.+\\.webp$/);",
+                  "  pm.expect(body.publicUrl).to.match(/^https?:\\/\\//);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[admin] POST valid PNG -> 201 WebP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{SUPABASE_PUBLISHABLE_KEY}}" },
+              { "key": "Authorization", "value": "Bearer {{ADMIN_JWT}}" },
+              { "key": "Origin", "value": "{{ALLOWED_ORIGIN}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "organization_id", "value": "{{ORG_A_ID}}", "type": "text" },
+                { "key": "kind", "value": "logo", "type": "text" },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{VALID_PNG_PATH}}",
+                  "contentType": "image/png"
+                }
+              ]
+            },
+            "url": "{{SUPABASE_URL}}/functions/v1/compress-image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin uploads normalized EXIF-stripped WebP', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.bucket).to.equal('org-media');",
+                  "  pm.expect(body.mimeType).to.equal('image/webp');",
+                  "  pm.expect(body.exifStripped).to.equal(true);",
+                  "  pm.expect(body.sizeBytes).to.be.above(0);",
+                  "  pm.expect(body.sizeBytes).to.be.at.most(5242880);",
+                  "  pm.expect(body.path).to.match(/^orgs\\/.+\\/logo\\/.+\\.webp$/);",
+                  "  pm.expect(body.publicUrl).to.match(/^https?:\\/\\//);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

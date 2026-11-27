@@ -8,7 +8,8 @@ module.exports = {
     "App.tsx",
     "shared/**/*.ts",
     "src/**/*.{ts,tsx}",
-    "supabase/functions/_shared/**/*.ts"
+    "supabase/functions/_shared/**/*.ts",
+    "supabase/functions/*/core.ts"
   ],
   coverageThreshold: {
     global: {

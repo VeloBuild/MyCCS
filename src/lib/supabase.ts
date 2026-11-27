@@ -1,5 +1,9 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
+import {
+  isSecretSupabaseKeyPrefix,
+  isSupabaseServiceRoleJwt,
+} from '../../shared/supabase-key-guard';
 
 declare const process: {
   env: {
@@ -191,8 +195,34 @@ function readClientPublishableKey(): string | undefined {
   );
 }
 
+function assertMobilePublishableKey(publishableKey: string): void {
+  if (isSecretSupabaseKeyPrefix(publishableKey)) {
+    throw new Error('SUPABASE_SECRET_KEY must never be used in the mobile client.');
+  }
+
+  if (isSupabaseServiceRoleJwt(publishableKey)) {
+    throw new Error('Supabase service_role JWT must never be used in the mobile client.');
+  }
+}
+
 export function isSupabaseConfigured(): boolean {
   return Boolean(readClientSupabaseUrl() && readClientPublishableKey());
+}
+
+export function getClientSupabaseConfig(): {
+  supabaseUrl: string;
+  publishableKey: string;
+} {
+  const supabaseUrl = readClientSupabaseUrl();
+  const publishableKey = readClientPublishableKey();
+  if (!supabaseUrl || !publishableKey) {
+    throw new Error(
+      'Missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY (or EXPO_PUBLIC_* equivalents).'
+    );
+  }
+
+  assertMobilePublishableKey(publishableKey);
+  return { supabaseUrl, publishableKey };
 }
 
 export function createMyCcsSupabaseClient(
@@ -206,9 +236,7 @@ export function createMyCcsSupabaseClient(
     );
   }
 
-  if (publishableKey.startsWith('sb_secret_')) {
-    throw new Error('SUPABASE_SECRET_KEY must never be used in the mobile client.');
-  }
+  assertMobilePublishableKey(publishableKey);
 
   return createClient(url, publishableKey, {
     auth: {
