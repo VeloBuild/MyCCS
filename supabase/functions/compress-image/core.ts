@@ -3,29 +3,32 @@ import {
   resolveCorsHeaders,
   withCorsJson,
 } from '../_shared/cors';
+import {
+  ALLOWED_INPUT_IMAGE_MIME_TYPES,
+  MAX_MEDIA_UPLOAD_BYTES,
+  MEDIA_STORAGE_BUCKET,
+  MEDIA_VARIANT_LIMITS,
+  OUTPUT_IMAGE_MIME_TYPE,
+  type AllowedInputImageMime,
+  type MediaKind,
+} from '../_shared/media-upload-constants';
 
-export const MAX_MEDIA_UPLOAD_BYTES = 5 * 1024 * 1024;
+export {
+  ALLOWED_INPUT_IMAGE_MIME_TYPES,
+  MAX_MEDIA_UPLOAD_BYTES,
+  MEDIA_STORAGE_BUCKET,
+  MEDIA_VARIANT_LIMITS,
+  OUTPUT_IMAGE_MIME_TYPE,
+  type AllowedInputImageMime,
+  type MediaKind,
+};
+
 export const MULTIPART_OVERHEAD_BYTES = 65536;
 export const MAX_BODY_BYTES = MAX_MEDIA_UPLOAD_BYTES + MULTIPART_OVERHEAD_BYTES;
-export const MEDIA_STORAGE_BUCKET = 'org-media' as const;
-export const ALLOWED_INPUT_IMAGE_MIME_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-] as const;
-export const OUTPUT_IMAGE_MIME_TYPE = 'image/webp' as const;
-
-export const MEDIA_VARIANT_LIMITS = {
-  logo: { maxWidth: 512, maxHeight: 512, compress: 0.8 },
-  cover: { maxWidth: 1600, maxHeight: 900, compress: 0.8 },
-  flyer: { maxWidth: 1600, maxHeight: 1600, compress: 0.82 },
-} as const;
-
-export type MediaKind = keyof typeof MEDIA_VARIANT_LIMITS;
-export type AllowedInputImageMime = (typeof ALLOWED_INPUT_IMAGE_MIME_TYPES)[number];
 
 export interface CompressImageRuntimeEnv {
   supabaseUrl: string;
+  publicStorageBaseUrl: string;
   serviceRoleKey: string;
   publishableKey: string;
   expectedJwtIssuer?: string;
@@ -62,6 +65,15 @@ export interface CompressImageDeps {
     bytes: Uint8Array;
     contentType: typeof OUTPUT_IMAGE_MIME_TYPE;
   }) => Promise<{ publicUrl: string }>;
+  persistOrganizationMediaUrl: (input: {
+    organizationId: string;
+    kind: 'logo' | 'cover';
+    publicUrl: string;
+  }) => Promise<void>;
+  deleteUploadedWebp?: (input: {
+    bucket: typeof MEDIA_STORAGE_BUCKET;
+    path: string;
+  }) => Promise<void>;
   generateAssetId?: () => string;
   nowSeconds?: () => number;
 }
@@ -83,6 +95,37 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const BASE64URL_SEGMENT_REGEX = /^[A-Za-z0-9_-]+$/;
 const BEARER_HEADER_REGEX = /^bearer\s+(\S+)$/i;
 
+export function resolvePublicStorageBaseUrl(
+  supabaseUrl: string,
+  configuredPublicUrl?: string | null,
+  configuredJwtIssuer?: string | null
+): string {
+  const trimmedPublicUrl = configuredPublicUrl?.trim().replace(/\/+$/, '') ?? '';
+  if (trimmedPublicUrl.length > 0) {
+    return trimmedPublicUrl;
+  }
+
+  const trimmedJwtIssuer = configuredJwtIssuer?.trim().replace(/\/+$/, '') ?? '';
+  if (trimmedJwtIssuer.length > 0) {
+    const strippedIssuer = trimmedJwtIssuer
+      .replace(/\/auth\/v1$/i, '')
+      .replace(/\/+$/, '');
+    if (strippedIssuer.length > 0) {
+      return strippedIssuer;
+    }
+  }
+
+  return supabaseUrl.trim().replace(/\/+$/, '');
+}
+
+export function buildPublicStorageObjectUrl(
+  publicStorageBaseUrl: string,
+  bucket: string,
+  path: string
+): string {
+  return `${publicStorageBaseUrl.trim().replace(/\/+$/, '')}/storage/v1/object/public/${bucket}/${path.replace(/^\/+/, '')}`;
+}
+
 export function resolveRuntimeEnv(
   readEnv: (key: string) => string | undefined
 ): CompressImageRuntimeEnv | null {
@@ -101,9 +144,16 @@ export function resolveRuntimeEnv(
     readEnv('SUPABASE_ANON_KEY')?.trim() ||
     serviceRoleKey;
   const expectedJwtIssuer = readEnv('SUPABASE_JWT_ISSUER')?.trim() || undefined;
+  const configuredPublicUrl = readEnv('SUPABASE_PUBLIC_URL')?.trim() || undefined;
+  const publicStorageBaseUrl = resolvePublicStorageBaseUrl(
+    supabaseUrl,
+    configuredPublicUrl,
+    expectedJwtIssuer
+  );
 
   return {
     supabaseUrl,
+    publicStorageBaseUrl,
     serviceRoleKey,
     publishableKey,
     expectedJwtIssuer,
@@ -525,6 +575,7 @@ export async function handleCompressImageRequest(
       return json({ error: 'Organization not found or inactive.' }, 404);
     }
   } else if (
+    authContext.profileRole !== 'officer' ||
     !authContext.isApprovedOfficer ||
     !authContext.orgExists ||
     !authContext.orgActive
@@ -601,6 +652,24 @@ export async function handleCompressImageRequest(
     });
   } catch {
     return json({ error: 'Failed to upload normalized image to Storage.' }, 500);
+  }
+
+  if (kind === 'logo' || kind === 'cover') {
+    try {
+      await deps.persistOrganizationMediaUrl({
+        organizationId,
+        kind,
+        publicUrl: uploaded.publicUrl,
+      });
+    } catch {
+      try {
+        await deps.deleteUploadedWebp?.({
+          bucket: MEDIA_STORAGE_BUCKET,
+          path: storagePath,
+        });
+      } catch {}
+      return json({ error: 'Failed to update organization media URL.' }, 500);
+    }
   }
 
   return json(

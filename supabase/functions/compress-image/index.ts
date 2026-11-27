@@ -8,6 +8,7 @@ import {
 } from '@imagemagick/magick-wasm';
 import { getAllowedOriginsFromEnv, withCorsJson } from '../_shared/cors.ts';
 import {
+  buildPublicStorageObjectUrl,
   handleCompressImageRequest,
   loadWasmBytes,
   resolveRuntimeEnv,
@@ -210,8 +211,31 @@ function getOrCreateRuntime(): RuntimeInitResult {
           throw new Error(error.message);
         }
 
-        const { data } = serviceClient.storage.from(bucket).getPublicUrl(path);
-        return { publicUrl: data.publicUrl };
+        return {
+          publicUrl: buildPublicStorageObjectUrl(
+            runtimeEnv.publicStorageBaseUrl,
+            bucket,
+            path
+          ),
+        };
+      },
+      persistOrganizationMediaUrl: async ({ organizationId, kind, publicUrl }) => {
+        const { data, error } = await serviceClient
+          .from('organizations')
+          .update(kind === 'logo' ? { logo_url: publicUrl } : { cover_url: publicUrl })
+          .eq('id', organizationId)
+          .is('deleted_at', null)
+          .select('id')
+          .single();
+        if (error || !data) {
+          throw new Error(error?.message ?? 'Organization not found or inactive.');
+        }
+      },
+      deleteUploadedWebp: async ({ bucket, path }) => {
+        const { error } = await serviceClient.storage.from(bucket).remove([path]);
+        if (error) {
+          throw new Error(error.message);
+        }
       },
     };
 

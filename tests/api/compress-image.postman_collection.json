@@ -7,6 +7,7 @@
   },
   "variable": [
     { "key": "SUPABASE_URL", "value": "" },
+    { "key": "SUPABASE_PUBLIC_URL", "value": "" },
     { "key": "SUPABASE_PUBLISHABLE_KEY", "value": "" },
     { "key": "ALLOWED_ORIGIN", "value": "" },
     { "key": "STUDENT_JWT", "value": "" },
@@ -15,6 +16,7 @@
     { "key": "ADMIN_JWT", "value": "" },
     { "key": "ORG_A_ID", "value": "" },
     { "key": "VALID_PNG_PATH", "value": "" },
+    { "key": "EXIF_JPEG_PATH", "value": "" },
     { "key": "OVERSIZED_FILE_PATH", "value": "" },
     { "key": "SPOOFED_SVG_PATH", "value": "" }
   ],
@@ -144,6 +146,8 @@
                 "exec": [
                   "pm.test('student denied org media upload', function () {",
                   "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.headers.get('Access-Control-Allow-Origin')).to.equal(pm.variables.get('ALLOWED_ORIGIN'));",
+                  "  pm.expect(pm.response.json().error).to.include('Only Department Admins or approved officers');",
                   "});"
                 ]
               }
@@ -177,6 +181,8 @@
                 "exec": [
                   "pm.test('officer from Org B denied upload to Org A', function () {",
                   "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.headers.get('Access-Control-Allow-Origin')).to.equal(pm.variables.get('ALLOWED_ORIGIN'));",
+                  "  pm.expect(pm.response.json().error).to.include('Only Department Admins or approved officers');",
                   "});"
                 ]
               }
@@ -341,7 +347,7 @@
       "name": "Authorized WebP Upload",
       "item": [
         {
-          "name": "[officer-org-a] POST valid PNG -> 201 WebP",
+          "name": "[officer-org-a] POST EXIF JPEG -> 201 WebP",
           "request": {
             "method": "POST",
             "header": [
@@ -357,8 +363,8 @@
                 {
                   "key": "file",
                   "type": "file",
-                  "src": "{{VALID_PNG_PATH}}",
-                  "contentType": "image/png"
+                  "src": "{{EXIF_JPEG_PATH}}",
+                  "contentType": "image/jpeg"
                 }
               ]
             },
@@ -373,14 +379,34 @@
                   "pm.test('assigned officer uploads normalized EXIF-stripped WebP', function () {",
                   "  pm.response.to.have.status(201);",
                   "  const body = pm.response.json();",
+                  "  const orgId = pm.variables.get('ORG_A_ID');",
+                  "  const escapedOrgId = orgId.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');",
+                  "  const pathRegex = new RegExp(`^orgs/${escapedOrgId}/cover/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\\\.webp$`, 'i');",
+                  "  const publicBase = (pm.variables.get('SUPABASE_PUBLIC_URL') || pm.variables.get('SUPABASE_URL')).replace(/\\/+$/, '');",
                   "  pm.expect(body.bucket).to.equal('org-media');",
                   "  pm.expect(body.mimeType).to.equal('image/webp');",
                   "  pm.expect(body.exifStripped).to.equal(true);",
                   "  pm.expect(body.sizeBytes).to.be.above(0);",
                   "  pm.expect(body.sizeBytes).to.be.at.most(5242880);",
-                  "  pm.expect(body.path).to.match(/^orgs\\/.+\\/cover\\/.+\\.webp$/);",
-                  "  pm.expect(body.publicUrl).to.match(/^https?:\\/\\//);",
-                  "});"
+                  "  pm.expect(body.path).to.match(pathRegex);",
+                  "  pm.expect(body.publicUrl).to.equal(`${publicBase}/storage/v1/object/public/org-media/${body.path}`);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "  const officerBody = pm.response.json();",
+                  "  pm.sendRequest({ url: officerBody.publicUrl, method: 'GET' }, function (err, res) {",
+                  "    pm.test('officer uploaded publicUrl serves EXIF-stripped WebP bytes', function () {",
+                  "      pm.expect(err).to.not.be.ok;",
+                  "      pm.expect(res.code).to.equal(200);",
+                  "      pm.expect((res.headers.get('Content-Type') || '').toLowerCase()).to.include('image/webp');",
+                  "      const bytes = Buffer.from(res.stream);",
+                  "      pm.expect(bytes.length).to.be.above(12);",
+                  "      pm.expect(bytes.slice(0, 4).toString('ascii')).to.equal('RIFF');",
+                  "      pm.expect(bytes.slice(8, 12).toString('ascii')).to.equal('WEBP');",
+                  "      pm.expect(bytes.indexOf(Buffer.from('Exif\\u0000\\u0000', 'ascii'))).to.equal(-1);",
+                  "      pm.expect(bytes.indexOf(Buffer.from('EXIF', 'ascii'))).to.equal(-1);",
+                  "    });",
+                  "  });",
+                  "}"
                 ]
               }
             }
@@ -419,14 +445,34 @@
                   "pm.test('admin uploads normalized EXIF-stripped WebP', function () {",
                   "  pm.response.to.have.status(201);",
                   "  const body = pm.response.json();",
+                  "  const orgId = pm.variables.get('ORG_A_ID');",
+                  "  const escapedOrgId = orgId.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');",
+                  "  const pathRegex = new RegExp(`^orgs/${escapedOrgId}/logo/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\\\.webp$`, 'i');",
+                  "  const publicBase = (pm.variables.get('SUPABASE_PUBLIC_URL') || pm.variables.get('SUPABASE_URL')).replace(/\\/+$/, '');",
                   "  pm.expect(body.bucket).to.equal('org-media');",
                   "  pm.expect(body.mimeType).to.equal('image/webp');",
                   "  pm.expect(body.exifStripped).to.equal(true);",
                   "  pm.expect(body.sizeBytes).to.be.above(0);",
                   "  pm.expect(body.sizeBytes).to.be.at.most(5242880);",
-                  "  pm.expect(body.path).to.match(/^orgs\\/.+\\/logo\\/.+\\.webp$/);",
-                  "  pm.expect(body.publicUrl).to.match(/^https?:\\/\\//);",
-                  "});"
+                  "  pm.expect(body.path).to.match(pathRegex);",
+                  "  pm.expect(body.publicUrl).to.equal(`${publicBase}/storage/v1/object/public/org-media/${body.path}`);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "  const adminBody = pm.response.json();",
+                  "  pm.sendRequest({ url: adminBody.publicUrl, method: 'GET' }, function (err, res) {",
+                  "    pm.test('admin uploaded publicUrl serves EXIF-stripped WebP bytes', function () {",
+                  "      pm.expect(err).to.not.be.ok;",
+                  "      pm.expect(res.code).to.equal(200);",
+                  "      pm.expect((res.headers.get('Content-Type') || '').toLowerCase()).to.include('image/webp');",
+                  "      const bytes = Buffer.from(res.stream);",
+                  "      pm.expect(bytes.length).to.be.above(12);",
+                  "      pm.expect(bytes.slice(0, 4).toString('ascii')).to.equal('RIFF');",
+                  "      pm.expect(bytes.slice(8, 12).toString('ascii')).to.equal('WEBP');",
+                  "      pm.expect(bytes.indexOf(Buffer.from('Exif\\u0000\\u0000', 'ascii'))).to.equal(-1);",
+                  "      pm.expect(bytes.indexOf(Buffer.from('EXIF', 'ascii'))).to.equal(-1);",
+                  "    });",
+                  "  });",
+                  "}"
                 ]
               }
             }

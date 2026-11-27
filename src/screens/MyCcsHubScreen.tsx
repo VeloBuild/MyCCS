@@ -31,6 +31,7 @@ import {
   adaptSupabaseClient,
   createAnnouncement,
   createDepartmentInfo,
+  fetchOrganizationAnnouncements,
   loadHubSnapshot,
   updateDepartmentInfo,
   updateOrganizationProfile,
@@ -96,12 +97,18 @@ export function MyCcsHubScreen({
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [memberships, setMemberships] = useState<OrgMembership[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [orgAnnouncementsByOrgId, setOrgAnnouncementsByOrgId] = useState<
+    Record<string, Announcement[]>
+  >({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [mutating, setMutating] = useState(false);
   const [hubError, setHubError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
+  const hasLoadedRef = useRef(false);
   const refreshIdRef = useRef(0);
+  const orgPostsReqIdRef = useRef(0);
   const mutatingRef = useRef(false);
   const routeRef = useRef(route);
   routeRef.current = route;
@@ -117,22 +124,71 @@ export function MyCcsHubScreen({
     return deptOrgClient ?? adaptSupabaseClient(getSupabaseClient());
   }, [deptOrgClient]);
 
+  const loadOrgAnnouncements = useCallback(
+    async (orgId: string) => {
+      if (!deptOrgClient && !isSupabaseConfigured()) {
+        return;
+      }
+
+      const requestId = ++orgPostsReqIdRef.current;
+      try {
+        const posts = await fetchOrganizationAnnouncements(
+          resolveClient(),
+          orgId
+        );
+        if (!mountedRef.current || orgPostsReqIdRef.current !== requestId) {
+          return;
+        }
+        setOrgAnnouncementsByOrgId((current) => ({
+          ...current,
+          [orgId]: posts,
+        }));
+      } catch (err) {
+        if (mountedRef.current && orgPostsReqIdRef.current === requestId) {
+          setHubError(
+            err instanceof Error
+              ? err.message
+              : 'Failed to load organization announcements.'
+          );
+        }
+      }
+    },
+    [deptOrgClient, resolveClient]
+  );
+
   const refreshHub = useCallback(async () => {
     if (!deptOrgClient && !isSupabaseConfigured()) {
+      hasLoadedRef.current = true;
       if (mountedRef.current) {
         setLoading(false);
+        setRefreshing(false);
       }
       return;
     }
 
     const requestId = ++refreshIdRef.current;
+    const isInitialLoad = !hasLoadedRef.current;
     if (mountedRef.current) {
-      setLoading(true);
+      if (isInitialLoad) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       setHubError(null);
     }
 
     try {
-      const snapshot = await loadHubSnapshot(resolveClient(), profile.id);
+      const currentRoute = routeRef.current;
+      const activeDetailOrgId =
+        currentRoute.tab === 'orgs' && currentRoute.view.kind === 'detail'
+          ? currentRoute.view.orgId
+          : null;
+      const [snapshot] = await Promise.all([
+        loadHubSnapshot(resolveClient(), profile.id),
+        activeDetailOrgId
+          ? loadOrgAnnouncements(activeDetailOrgId)
+          : Promise.resolve(),
+      ]);
       if (!mountedRef.current || refreshIdRef.current !== requestId) {
         return;
       }
@@ -148,14 +204,29 @@ export function MyCcsHubScreen({
       }
     } finally {
       if (mountedRef.current && refreshIdRef.current === requestId) {
+        hasLoadedRef.current = true;
         setLoading(false);
+        setRefreshing(false);
       }
     }
-  }, [deptOrgClient, profile.id, resolveClient]);
+  }, [deptOrgClient, loadOrgAnnouncements, profile.id, resolveClient]);
 
   useEffect(() => {
     void refreshHub();
   }, [refreshHub]);
+
+  const activeOrgId =
+    route.tab === 'orgs' && route.view.kind === 'detail'
+      ? route.view.orgId
+      : null;
+
+  useEffect(() => {
+    if (!activeOrgId) {
+      orgPostsReqIdRef.current += 1;
+      return;
+    }
+    void loadOrgAnnouncements(activeOrgId);
+  }, [activeOrgId, loadOrgAnnouncements]);
 
   const actor: RbacActor = {
     profileId: profile.id,
@@ -213,7 +284,26 @@ export function MyCcsHubScreen({
     await runMutation(async () => {
       const created = await createAnnouncement(resolveClient(), input);
       if (mountedRef.current) {
-        setAnnouncements((current) => [created, ...current]);
+        setAnnouncements((current) => [
+          created,
+          ...current.filter((item) => item.id !== created.id),
+        ]);
+        if (created.organization_id !== null) {
+          const orgId = created.organization_id;
+          setOrgAnnouncementsByOrgId((current) => {
+            const existing = current[orgId];
+            if (!existing) {
+              return current;
+            }
+            return {
+              ...current,
+              [orgId]: [
+                created,
+                ...existing.filter((item) => item.id !== created.id),
+              ],
+            };
+          });
+        }
       }
     });
   };
@@ -242,26 +332,46 @@ export function MyCcsHubScreen({
     localUri: string
   ): Promise<CompressImageResponse> => {
     return runMutation(async () => {
+      let uploaded: CompressImageResponse;
       if (onUploadOrgMedia) {
-        return onUploadOrgMedia(organizationId, kind, localUri);
+        uploaded = await onUploadOrgMedia(organizationId, kind, localUri);
+      } else {
+        const client = resolveClient();
+        const sessionResult = await client.auth?.getSession();
+        const accessToken = sessionResult?.data.session?.access_token ?? '';
+        if (!accessToken) {
+          throw new Error(
+            'Active session token required before uploading media.'
+          );
+        }
+
+        const { supabaseUrl, publishableKey } = getClientSupabaseConfig();
+        uploaded = await uploadCompressedOrgMedia({
+          localUri,
+          organizationId,
+          kind,
+          accessToken,
+          supabaseUrl,
+          publishableKey,
+        });
       }
 
-      const client = resolveClient();
-      const sessionResult = await client.auth?.getSession();
-      const accessToken = sessionResult?.data.session?.access_token ?? '';
-      if (!accessToken) {
-        throw new Error('Active session token required before uploading media.');
+      if (mountedRef.current) {
+        setOrganizations((current) =>
+          current.map((org) =>
+            org.id === organizationId
+              ? {
+                  ...org,
+                  ...(kind === 'cover'
+                    ? { cover_url: uploaded.publicUrl }
+                    : { logo_url: uploaded.publicUrl }),
+                }
+              : org
+          )
+        );
       }
 
-      const { supabaseUrl, publishableKey } = getClientSupabaseConfig();
-      return uploadCompressedOrgMedia({
-        localUri,
-        organizationId,
-        kind,
-        accessToken,
-        supabaseUrl,
-        publishableKey,
-      });
+      return uploaded;
     });
   };
 
@@ -339,7 +449,9 @@ export function MyCcsHubScreen({
                 organization={selectedOrg}
                 allOrganizations={organizations}
                 memberships={memberships}
-                announcements={announcements}
+                announcements={
+                  orgAnnouncementsByOrgId[selectedOrg.id] ?? announcements
+                }
                 actor={actor}
                 panel={route.view.panel}
                 busy={mutating}
@@ -394,10 +506,12 @@ export function MyCcsHubScreen({
           <Pressable
             style={styles.refreshButton}
             onPress={() => void refreshHub()}
-            disabled={loading || mutating}
+            disabled={loading || refreshing || mutating}
             testID="hub-refresh-button"
           >
-            <Text style={styles.refreshButtonText}>Refresh</Text>
+            <Text style={styles.refreshButtonText}>
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Text>
           </Pressable>
         </View>
       ) : null}

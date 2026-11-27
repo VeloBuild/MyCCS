@@ -37,8 +37,21 @@ export interface DeptOrgListTerminal
   limit(count: number): PromiseLike<DeptOrgQueryResult<unknown[]>>;
 }
 
+export interface DeptOrgEqFilterChain
+  extends PromiseLike<DeptOrgQueryResult<unknown[]>> {
+  is(
+    column: string,
+    value: null
+  ): {
+    order(
+      column: string,
+      options?: { ascending?: boolean }
+    ): DeptOrgListTerminal;
+  };
+}
+
 export interface DeptOrgSelectChain {
-  eq(column: string, value: unknown): PromiseLike<DeptOrgQueryResult<unknown[]>>;
+  eq(column: string, value: unknown): DeptOrgEqFilterChain;
   is(
     column: string,
     value: null
@@ -228,6 +241,26 @@ export async function fetchAnnouncements(
     .is('deleted_at', null)
     .order('published_at', { ascending: false })
     .limit(limit);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((row) => AnnouncementSchema.parse(row));
+}
+
+export async function fetchOrganizationAnnouncements(
+  client: DeptOrgSupabaseClient,
+  organizationId: string
+): Promise<Announcement[]> {
+  const parsedOrgId = UuidSchema.parse(organizationId);
+
+  const { data, error } = await client
+    .from('announcements')
+    .select(ANNOUNCEMENT_COLUMNS)
+    .eq('organization_id', parsedOrgId)
+    .is('deleted_at', null)
+    .order('published_at', { ascending: false });
 
   if (error) {
     throw new Error(error.message);

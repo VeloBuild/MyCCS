@@ -168,16 +168,7 @@ function OrgEditPanel({
     submittingRef.current = true;
     setUploadingKind(kind);
     try {
-      const uploaded = await onUploadMedia(organization.id, kind, trimmedUri);
-      if (!mountedRef.current) {
-        return;
-      }
-      await onUpdateOrg(
-        organization.id,
-        kind === 'cover'
-          ? { cover_url: uploaded.publicUrl }
-          : { logo_url: uploaded.publicUrl }
-      );
+      await onUploadMedia(organization.id, kind, trimmedUri);
       if (!mountedRef.current) {
         return;
       }

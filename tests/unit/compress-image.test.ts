@@ -9,6 +9,7 @@ import {
 } from '../../shared/media-upload';
 import {
   ALLOWED_INPUT_IMAGE_MIME_TYPES as CORE_ALLOWED_MIMES,
+  buildPublicStorageObjectUrl,
   detectImageMimeFromMagicBytes as coreDetectMagicBytes,
   handleCompressImageRequest,
   loadWasmBytes,
@@ -18,6 +19,7 @@ import {
   MEDIA_VARIANT_LIMITS as CORE_LIMITS,
   OUTPUT_IMAGE_MIME_TYPE as CORE_OUTPUT_MIME,
   resolveExpectedJwtIssuer,
+  resolvePublicStorageBaseUrl,
   resolveRuntimeEnv,
   validateJwtClaims,
   type CompressImageDeps,
@@ -32,6 +34,9 @@ const nodeFs = require('node:fs') as {
 const nodePath = require('node:path') as {
   resolve(...segments: string[]): string;
   join(...segments: string[]): string;
+};
+const { ReadableStream: NativeReadableStream } = require('node:stream/web') as {
+  ReadableStream: typeof ReadableStream;
 };
 
 const REPO_ROOT = nodePath.resolve(__dirname, '..', '..');
@@ -191,6 +196,8 @@ function makeDeps(overrides: Partial<CompressImageDeps> = {}): CompressImageDeps
     uploadWebp: jest.fn().mockImplementation(async ({ bucket, path }) => ({
       publicUrl: `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`,
     })),
+    persistOrganizationMediaUrl: jest.fn().mockResolvedValue(undefined),
+    deleteUploadedWebp: jest.fn().mockResolvedValue(undefined),
     generateAssetId: jest.fn().mockReturnValue(ASSET_ID),
     nowSeconds: () => NOW_SECONDS,
     ...overrides,
@@ -273,8 +280,42 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
     expect(coreDetectMagicBytes(webpBadChunk)).toBeNull();
   });
 
-  it('resolves runtime environment variables with empty-string fallbacks and optional JWT issuer', () => {
+  it('resolves public Storage base URLs, Storage object URLs, and runtime environment variables with fallbacks', () => {
     const readFrom = (map: Record<string, string | undefined>) => (key: string) => map[key];
+
+    expect(
+      resolvePublicStorageBaseUrl(
+        'http://kong:8000',
+        '  http://127.0.0.1:54321///  ',
+        'http://ignored-issuer:54321/auth/v1'
+      )
+    ).toBe('http://127.0.0.1:54321');
+
+    expect(
+      resolvePublicStorageBaseUrl(
+        'http://kong:8000',
+        '   ',
+        '  http://127.0.0.1:54321/auth/v1/  '
+      )
+    ).toBe('http://127.0.0.1:54321');
+
+    expect(
+      resolvePublicStorageBaseUrl('http://kong:8000/', undefined, 'http://127.0.0.1:54321/AUTH/V1')
+    ).toBe('http://127.0.0.1:54321');
+
+    expect(resolvePublicStorageBaseUrl('https://myccs.supabase.co///', null, null)).toBe(
+      'https://myccs.supabase.co'
+    );
+
+    expect(
+      buildPublicStorageObjectUrl(
+        'http://127.0.0.1:54321/',
+        'org-media',
+        `/orgs/${ORG_A_ID}/logo/${ASSET_ID}.webp`
+      )
+    ).toBe(
+      `http://127.0.0.1:54321/storage/v1/object/public/org-media/orgs/${ORG_A_ID}/logo/${ASSET_ID}.webp`
+    );
 
     expect(
       resolveRuntimeEnv(
@@ -289,6 +330,7 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
       )
     ).toEqual({
       supabaseUrl: 'http://kong:8000',
+      publicStorageBaseUrl: 'http://127.0.0.1:54321',
       serviceRoleKey: 'srk-legacy',
       publishableKey: 'anon-legacy',
       expectedJwtIssuer: 'http://127.0.0.1:54321/auth/v1',
@@ -297,15 +339,34 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
     expect(
       resolveRuntimeEnv(
         readFrom({
-          SUPABASE_URL: SUPABASE_URL,
+          SUPABASE_URL: 'http://kong:8000',
+          SUPABASE_PUBLIC_URL: '  https://public.myccs.example/  ',
+          SUPABASE_SECRET_KEY: 'sb_secret_modern',
+          SUPABASE_JWT_ISSUER: 'http://127.0.0.1:54321/auth/v1',
+        })
+      )
+    ).toEqual({
+      supabaseUrl: 'http://kong:8000',
+      publicStorageBaseUrl: 'https://public.myccs.example',
+      serviceRoleKey: 'sb_secret_modern',
+      publishableKey: 'sb_secret_modern',
+      expectedJwtIssuer: 'http://127.0.0.1:54321/auth/v1',
+    });
+
+    expect(
+      resolveRuntimeEnv(
+        readFrom({
+          SUPABASE_URL: `${SUPABASE_URL}/`,
           SUPABASE_SECRET_KEY: 'sb_secret_modern',
           SUPABASE_PUBLISHABLE_KEY: '',
           SUPABASE_ANON_KEY: '',
           SUPABASE_JWT_ISSUER: '   ',
+          SUPABASE_PUBLIC_URL: '   ',
         })
       )
     ).toEqual({
-      supabaseUrl: SUPABASE_URL,
+      supabaseUrl: `${SUPABASE_URL}/`,
+      publicStorageBaseUrl: SUPABASE_URL,
       serviceRoleKey: 'sb_secret_modern',
       publishableKey: 'sb_secret_modern',
       expectedJwtIssuer: undefined,
@@ -553,12 +614,12 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
     }
   });
 
-  it('aborts chunked streaming bodies exceeding MAX_BODY_BYTES with 413 before parsing formData and handles stream errors with 400', async () => {
+  it('aborts oversized chunked streaming bodies with 413, cancels early, and skips formData and downstream deps', async () => {
     const deps = makeDeps();
     const cancelSpy = jest.fn();
     let chunksEmitted = 0;
     const chunkSize = 1024 * 1024;
-    const oversizedStream = new ReadableStream<Uint8Array>({
+    const oversizedStream = new NativeReadableStream<Uint8Array>({
       pull(controller) {
         chunksEmitted += 1;
         if (chunksEmitted <= 8) {
@@ -589,8 +650,13 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
     expect(formDataSpy).not.toHaveBeenCalled();
     expect(deps.loadAuthorizationContext).not.toHaveBeenCalled();
     expect(deps.processImage).not.toHaveBeenCalled();
+    expect(deps.uploadWebp).not.toHaveBeenCalled();
+    expect(deps.persistOrganizationMediaUrl).not.toHaveBeenCalled();
+  });
 
-    const erroringStream = new ReadableStream<Uint8Array>({
+  it('returns 400 when an errored chunked streaming request body fails mid-read', async () => {
+    const deps = makeDeps();
+    const erroringStream = new NativeReadableStream<Uint8Array>({
       start(controller) {
         controller.error(new Error('network reset'));
       },
@@ -607,14 +673,17 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
     } as RequestInit);
     const brokenStreamRes = await handleCompressImageRequest(brokenStreamReq, deps);
     expect(brokenStreamRes.status).toBe(400);
+    expect(deps.loadAuthorizationContext).not.toHaveBeenCalled();
+  });
 
-    const serializedForm = await new Response(
+  it('accepts a valid chunked streaming body with a 0-byte chunk and split payload chunks with 201', async () => {
+    const serializedForm = new Response(
       buildValidFormData({ kind: 'logo', file: makeBlobFile(PNG_BYTES, 'image/png') })
     );
     const rawContentType = serializedForm.headers.get('content-type') ?? '';
     const payloadBytes = new Uint8Array(await serializedForm.arrayBuffer());
     expect(payloadBytes.byteLength).toBeLessThanOrEqual(MAX_BODY_BYTES);
-    const validStream = new ReadableStream<Uint8Array>({
+    const validStream = new NativeReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(new Uint8Array(0));
         controller.enqueue(payloadBytes.subarray(0, 64));
@@ -632,8 +701,14 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
       body: validStream,
       duplex: 'half',
     } as RequestInit);
-    const validStreamRes = await handleCompressImageRequest(validStreamReq, makeDeps());
+    const deps = makeDeps();
+    const validStreamRes = await handleCompressImageRequest(validStreamReq, deps);
     expect(validStreamRes.status).toBe(201);
+    expect(deps.persistOrganizationMediaUrl).toHaveBeenCalledWith({
+      organizationId: ORG_A_ID,
+      kind: 'logo',
+      publicUrl: `${SUPABASE_URL}/storage/v1/object/public/org-media/orgs/${ORG_A_ID}/logo/${ASSET_ID}.webp`,
+    });
   });
 
   it('rejects invalid Content-Type (400), oversized Content-Length (413), malformed formData (400), and invalid fields/file bounds', async () => {
@@ -783,6 +858,26 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
     await expect(studentRes.json()).resolves.toEqual({
       error: 'Only Department Admins or approved officers of this organization may upload media.',
     });
+
+    const demotedStudentFile = makeBlobFile(PNG_BYTES, 'image/png');
+    const demotedStudentArrayBufferSpy = jest.spyOn(demotedStudentFile, 'arrayBuffer');
+    const demotedStudentDeps = makeDeps({
+      loadAuthorizationContext: jest.fn().mockResolvedValue({
+        profileRole: 'student',
+        profileActive: true,
+        orgExists: true,
+        orgActive: true,
+        isApprovedOfficer: true,
+      }),
+    });
+    const demotedStudentRes = await handleCompressImageRequest(
+      makeMultipartRequest({ formData: buildValidFormData({ file: demotedStudentFile }) }),
+      demotedStudentDeps
+    );
+    expect(demotedStudentRes.status).toBe(403);
+    expect(demotedStudentArrayBufferSpy).not.toHaveBeenCalled();
+    expect(demotedStudentDeps.uploadWebp).not.toHaveBeenCalled();
+    expect(demotedStudentDeps.persistOrganizationMediaUrl).not.toHaveBeenCalled();
 
     const studentMissingOrgFile = makeBlobFile(PNG_BYTES, 'image/png');
     const studentMissingSpy = jest.spyOn(studentMissingOrgFile, 'arrayBuffer');
@@ -968,6 +1063,37 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
         )
       ).status
     ).toBe(500);
+    expect(uploadFailDeps.persistOrganizationMediaUrl).not.toHaveBeenCalled();
+
+    const persistFailDeps = makeDeps({
+      persistOrganizationMediaUrl: jest.fn().mockRejectedValue(new Error('db write failed')),
+    });
+    const persistFailRes = await handleCompressImageRequest(
+      makeMultipartRequest({ formData: buildValidFormData({ kind: 'cover' }) }),
+      persistFailDeps
+    );
+    expect(persistFailRes.status).toBe(500);
+    await expect(persistFailRes.json()).resolves.toEqual({
+      error: 'Failed to update organization media URL.',
+    });
+    expect(persistFailDeps.deleteUploadedWebp).toHaveBeenCalledWith({
+      bucket: 'org-media',
+      path: `orgs/${ORG_A_ID}/cover/${ASSET_ID}.webp`,
+    });
+
+    const rollbackAlsoFailsDeps = makeDeps({
+      persistOrganizationMediaUrl: jest.fn().mockRejectedValue(new Error('db write failed')),
+      deleteUploadedWebp: jest.fn().mockRejectedValue(new Error('storage delete failed')),
+    });
+    const rollbackFailRes = await handleCompressImageRequest(
+      makeMultipartRequest({ formData: buildValidFormData({ kind: 'logo' }) }),
+      rollbackAlsoFailsDeps
+    );
+    expect(rollbackFailRes.status).toBe(500);
+    expect(rollbackAlsoFailsDeps.deleteUploadedWebp).toHaveBeenCalledWith({
+      bucket: 'org-media',
+      path: `orgs/${ORG_A_ID}/logo/${ASSET_ID}.webp`,
+    });
   });
 
   it('succeeds with 201 WebP payload for assigned officer and admin across logo, cover, and flyer variants', async () => {
@@ -1012,6 +1138,11 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
       bytes: WEBP_VP8_BYTES,
       contentType: 'image/webp',
     });
+    expect(officerDeps.persistOrganizationMediaUrl).toHaveBeenCalledWith({
+      organizationId: ORG_A_ID,
+      kind: 'cover',
+      publicUrl: `${SUPABASE_URL}/storage/v1/object/public/org-media/orgs/${ORG_A_ID}/cover/${ASSET_ID}.webp`,
+    });
 
     const adminDeps = makeDeps({
       loadAuthorizationContext: jest.fn().mockResolvedValue({
@@ -1054,6 +1185,7 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
       maxHeight: 1600,
       quality: 82,
     });
+    expect(adminDeps.persistOrganizationMediaUrl).not.toHaveBeenCalled();
 
     const realForm = buildValidFormData({
       kind: 'logo',
@@ -1067,10 +1199,16 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
       },
       body: realForm,
     });
-    const realRes = await handleCompressImageRequest(realReq, makeDeps({ nowSeconds: undefined }));
+    const realDeps = makeDeps({ nowSeconds: undefined });
+    const realRes = await handleCompressImageRequest(realReq, realDeps);
     expect(realRes.status).toBe(201);
     const realBody = CompressImageResponseSchema.parse(await realRes.json());
     expect(realBody.path).toBe(`orgs/${ORG_A_ID}/logo/${ASSET_ID}.webp`);
+    expect(realDeps.persistOrganizationMediaUrl).toHaveBeenCalledWith({
+      organizationId: ORG_A_ID,
+      kind: 'logo',
+      publicUrl: `${SUPABASE_URL}/storage/v1/object/public/org-media/orgs/${ORG_A_ID}/logo/${ASSET_ID}.webp`,
+    });
   });
 });
 
@@ -1127,24 +1265,59 @@ describe('spec-04 migration, config, Deno entrypoint, SQL test, and Postman cont
     expect(migrationSql).toContain(
       'REVOKE ALL ON FUNCTION public.guard_organizations_media_urls() FROM PUBLIC, anon, authenticated;'
     );
+    expect(migrationSql).toContain('GRANT SELECT, UPDATE ON TABLE public.organizations TO service_role;');
     expect(migrationSql).toContain('CREATE TRIGGER trg_organizations_guard_media_urls');
     expect(migrationSql).toContain('BEFORE INSERT OR UPDATE ON public.organizations');
-    expect(migrationSql).toContain('/storage/v1/object/public/org-media/orgs/');
-    expect(migrationSql).toContain('/logo/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp$');
-    expect(migrationSql).toContain('/cover/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp$');
+    expect(migrationSql).toContain("IF current_user = 'authenticated' THEN");
+    expect(migrationSql).toContain('regexp_match(');
+    expect(migrationSql).toContain('/storage/v1/object/public/org-media/(orgs/');
+    expect(migrationSql).toContain('/logo/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp)$');
+    expect(migrationSql).toContain('/cover/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp)$');
+    expect(migrationSql).toContain('FROM storage.objects');
+    expect(migrationSql).toContain("WHERE bucket_id = 'org-media'");
+    expect(migrationSql).toContain('AND name = v_object_name');
     expect(migrationSql).toContain("USING ERRCODE = '23514'");
   });
 
-  it('configures org-media bucket and compress-image function in supabase/config.toml', () => {
+  it('configures org-media bucket, local edge_runtime secrets, and compress-image function in supabase/config.toml', () => {
     expect(configToml).toMatch(
       /\[storage\.buckets\.org-media\][\s\S]*public\s*=\s*true[\s\S]*file_size_limit\s*=\s*"5MiB"[\s\S]*allowed_mime_types\s*=\s*\["image\/webp"\]/
+    );
+    expect(configToml).toMatch(
+      /\[edge_runtime\.secrets\]\s*\r?\nSUPABASE_JWT_ISSUER\s*=\s*"http:\/\/127\.0\.0\.1:54321\/auth\/v1"\s*\r?\nSUPABASE_PUBLIC_URL\s*=\s*"http:\/\/127\.0\.0\.1:54321"/
     );
     expect(configToml).toMatch(/\[functions\.compress-image\]\s*\r?\nverify_jwt\s*=\s*false/);
   });
 
-  it('wires magick-wasm ResourceLimits, explicit MagickFormat, isolate caching, runtime helpers, and Deno.serve in index.ts & deno.json', () => {
+  it('wires magick-wasm >= 0.0.43 ResourceLimits, shared constants, public Storage URLs, DB persistence, and Deno.serve in index.ts & deno.json', () => {
     expect(denoConfig.imports['@supabase/supabase-js']).toMatch(/^npm:@supabase\/supabase-js@/);
-    expect(denoConfig.imports['@imagemagick/magick-wasm']).toMatch(/^npm:@imagemagick\/magick-wasm@/);
+    expect(denoConfig.imports['../_shared/media-upload-constants']).toBe(
+      '../_shared/media-upload-constants.ts'
+    );
+
+    const mainMagick = denoConfig.imports['@imagemagick/magick-wasm'];
+    const subpathMagick = denoConfig.imports['@imagemagick/magick-wasm/'];
+    const mainMatch = /^npm:@imagemagick\/magick-wasm@(\d+)\.(\d+)\.(\d+)$/.exec(mainMagick ?? '');
+    const subpathMatch = /^npm:@imagemagick\/magick-wasm@(\d+)\.(\d+)\.(\d+)\/$/.exec(
+      subpathMagick ?? ''
+    );
+    expect(mainMatch).not.toBeNull();
+    expect(subpathMatch).not.toBeNull();
+    const [major, minor, patch] = [
+      Number(mainMatch![1]),
+      Number(mainMatch![2]),
+      Number(mainMatch![3]),
+    ];
+    expect([major, minor, patch]).toEqual([
+      Number(subpathMatch![1]),
+      Number(subpathMatch![2]),
+      Number(subpathMatch![3]),
+    ]);
+    expect(
+      major > 0 || (major === 0 && minor > 0) || (major === 0 && minor === 0 && patch >= 43)
+    ).toBe(true);
+    expect(mainMagick).toBe('npm:@imagemagick/magick-wasm@0.0.46');
+    expect(subpathMagick).toBe('npm:@imagemagick/magick-wasm@0.0.46/');
 
     expect(denoEntrypoint).toContain('initializeImageMagick');
     expect(denoEntrypoint).toContain('ResourceLimits');
@@ -1163,6 +1336,12 @@ describe('spec-04 migration, config, Deno entrypoint, SQL test, and Postman cont
     expect(denoEntrypoint).toContain('image.strip()');
     expect(denoEntrypoint).toContain('geometry.greater = true');
     expect(denoEntrypoint).toContain('resolveRuntimeEnv');
+    expect(denoEntrypoint).toContain('buildPublicStorageObjectUrl');
+    expect(denoEntrypoint).toContain('runtimeEnv.publicStorageBaseUrl');
+    expect(denoEntrypoint).not.toContain('getPublicUrl(');
+    expect(denoEntrypoint).toContain('persistOrganizationMediaUrl');
+    expect(denoEntrypoint).toContain('deleteUploadedWebp');
+    expect(denoEntrypoint).toContain('.remove([path])');
     expect(denoEntrypoint).toContain('loadWasmBytes');
     expect(denoEntrypoint).toContain('cachedRuntime');
     expect(denoEntrypoint).toContain('expectedJwtIssuer: runtimeEnv.expectedJwtIssuer');
@@ -1176,6 +1355,7 @@ describe('spec-04 migration, config, Deno entrypoint, SQL test, and Postman cont
     expect(storageTestSql).toMatch(/ROLLBACK;\s*$/);
     expect(storageTestSql).toContain('storage.buckets');
     expect(storageTestSql).toContain('pg_policies');
+    expect(storageTestSql).toContain("ARRAY['public', 'anon', 'authenticated']::name[]");
     expect(storageTestSql).toContain('org_media_select_authenticated');
     expect(storageTestSql).toContain('guard_organizations_media_urls');
     expect(storageTestSql).toContain('prosecdef');
@@ -1183,8 +1363,14 @@ describe('spec-04 migration, config, Deno entrypoint, SQL test, and Postman cont
     expect(storageTestSql).toContain('https://evil.example/track.png');
     expect(storageTestSql).toContain('Cross-org org-media logo_url');
     expect(storageTestSql).toContain('SET LOCAL ROLE authenticated');
+    expect(storageTestSql).toContain('SET LOCAL ROLE anon');
+    expect(storageTestSql).toContain('SET LOCAL ROLE service_role');
+    expect(storageTestSql).toContain('UPDATE storage.objects');
+    expect(storageTestSql).toContain('DELETE FROM storage.objects');
     expect(storageTestSql).toContain('insufficient_privilege');
     expect(storageTestSql).toContain('check_violation');
+    expect(storageTestSql).toContain('SET details =');
+    expect(storageTestSql).toContain('SET logo_url = NULL');
   });
 
   it('validates compress-image Postman v2.1 collection structure, assertions, and zero secrets', () => {
@@ -1211,6 +1397,7 @@ describe('spec-04 migration, config, Deno entrypoint, SQL test, and Postman cont
     const variableKeys = collection.variable.map((v) => v.key);
     for (const requiredVar of [
       'SUPABASE_URL',
+      'SUPABASE_PUBLIC_URL',
       'SUPABASE_PUBLISHABLE_KEY',
       'ALLOWED_ORIGIN',
       'STUDENT_JWT',
@@ -1219,6 +1406,7 @@ describe('spec-04 migration, config, Deno entrypoint, SQL test, and Postman cont
       'ADMIN_JWT',
       'ORG_A_ID',
       'VALID_PNG_PATH',
+      'EXIF_JPEG_PATH',
       'OVERSIZED_FILE_PATH',
       'SPOOFED_SVG_PATH',
     ]) {
@@ -1237,9 +1425,16 @@ describe('spec-04 migration, config, Deno entrypoint, SQL test, and Postman cont
     for (const expectedStatus of ['403', '401', '415', '413', '400', '201']) {
       expect(scripts).toContain(`have.status(${expectedStatus})`);
     }
+    expect(scripts).toContain("Access-Control-Allow-Origin");
+    expect(scripts).toContain('Only Department Admins or approved officers');
     expect(scripts).toContain("to.equal('image/webp')");
     expect(scripts).toContain("to.equal('org-media')");
     expect(scripts).toContain('exifStripped');
     expect(scripts).toContain('5242880');
+    expect(scripts).toContain('pm.sendRequest');
+    expect(scripts).toContain("to.equal('RIFF')");
+    expect(scripts).toContain("to.equal('WEBP')");
+    expect(scripts).toContain('Exif\\u0000\\u0000');
+    expect(scripts).toContain("Buffer.from('EXIF'");
   });
 });

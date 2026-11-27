@@ -1,8 +1,9 @@
 {
   "imports": {
     "../_shared/cors": "../_shared/cors.ts",
+    "../_shared/media-upload-constants": "../_shared/media-upload-constants.ts",
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2.119.2",
-    "@imagemagick/magick-wasm": "npm:@imagemagick/magick-wasm@0.0.35",
-    "@imagemagick/magick-wasm/": "npm:@imagemagick/magick-wasm@0.0.35/"
+    "@imagemagick/magick-wasm": "npm:@imagemagick/magick-wasm@0.0.46",
+    "@imagemagick/magick-wasm/": "npm:@imagemagick/magick-wasm@0.0.46/"
   }
 }

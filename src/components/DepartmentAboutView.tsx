@@ -39,40 +39,110 @@ export interface DepartmentAboutViewProps {
   onSave: (id: string, input: DepartmentInfoUpdateInput) => Promise<void>;
 }
 
+function escapeLeadershipField(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n');
+}
+
+function unescapeLeadershipField(rawField: string): string {
+  let result = '';
+  for (let i = 0; i < rawField.length; i += 1) {
+    const ch = rawField[i];
+    if (ch === '\\' && i + 1 < rawField.length) {
+      const next = rawField[i + 1];
+      if (next === '\\' || next === '|') {
+        result += next;
+        i += 1;
+        continue;
+      }
+      if (next === 'r') {
+        result += '\r';
+        i += 1;
+        continue;
+      }
+      if (next === 'n') {
+        result += '\n';
+        i += 1;
+        continue;
+      }
+    }
+    result += ch;
+  }
+  return result;
+}
+
+function splitLeadershipFields(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let escaping = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (escaping) {
+      current += ch;
+      escaping = false;
+      continue;
+    }
+    if (ch === '\\') {
+      current += ch;
+      escaping = true;
+      continue;
+    }
+    if (ch === '|') {
+      fields.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+
+  fields.push(current);
+  return fields;
+}
+
 export function formatLeadershipLines(
   entries: readonly DepartmentLeadershipEntry[]
 ): string {
   return entries
-    .map((entry) =>
-      entry.email
-        ? `${entry.name} | ${entry.title} | ${entry.email}`
-        : `${entry.name} | ${entry.title}`
-    )
+    .map((entry) => {
+      const name = escapeLeadershipField(entry.name);
+      const title = escapeLeadershipField(entry.title);
+      return entry.email
+        ? `${name} | ${title} | ${escapeLeadershipField(entry.email)}`
+        : `${name} | ${title}`;
+    })
     .join('\n');
 }
 
 export function parseLeadershipLines(raw: string): DepartmentLeadershipEntry[] {
   const entries: DepartmentLeadershipEntry[] = [];
-  for (const rawLine of raw.split('\n')) {
+  for (const rawLine of raw.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (line.length === 0) {
       continue;
     }
 
-    const parts = line.split('|').map((part) => part.trim());
+    const parts = splitLeadershipFields(line).map((part) =>
+      unescapeLeadershipField(part.trim())
+    );
     const [name = '', title = '', email = ''] = parts;
     if (
       parts.length < 2 ||
       parts.length > 3 ||
-      name.length === 0 ||
-      title.length === 0
+      name.trim().length === 0 ||
+      title.trim().length === 0
     ) {
       throw new Error(
         'Each leadership line must use "Name | Title" or "Name | Title | email".'
       );
     }
 
-    entries.push(email.length > 0 ? { name, title, email } : { name, title });
+    entries.push(
+      email.trim().length > 0 ? { name, title, email } : { name, title }
+    );
   }
   return entries;
 }
@@ -107,9 +177,11 @@ function DepartmentEditForm({
   const [contactOffice, setContactOffice] = useState(
     departmentInfo ? readContactString(departmentInfo.contact_json, 'office') : ''
   );
+  const [officeDirty, setOfficeDirty] = useState(false);
   const [contactEmail, setContactEmail] = useState(
     departmentInfo ? readContactString(departmentInfo.contact_json, 'email') : ''
   );
+  const [emailDirty, setEmailDirty] = useState(false);
   const [leadershipText, setLeadershipText] = useState(
     departmentInfo ? formatLeadershipLines(departmentInfo.leadership_json) : ''
   );
@@ -148,15 +220,19 @@ function DepartmentEditForm({
       : {};
     const trimmedOffice = contactOffice.trim();
     const trimmedEmail = contactEmail.trim();
-    if (trimmedOffice.length > 0) {
-      nextContacts.office = trimmedOffice;
-    } else {
-      delete nextContacts.office;
+    if (officeDirty || (isCreating && trimmedOffice.length > 0)) {
+      if (trimmedOffice.length > 0) {
+        nextContacts.office = trimmedOffice;
+      } else {
+        delete nextContacts.office;
+      }
     }
-    if (trimmedEmail.length > 0) {
-      nextContacts.email = trimmedEmail;
-    } else {
-      delete nextContacts.email;
+    if (emailDirty || (isCreating && trimmedEmail.length > 0)) {
+      if (trimmedEmail.length > 0) {
+        nextContacts.email = trimmedEmail;
+      } else {
+        delete nextContacts.email;
+      }
     }
 
     const rawPayload = {
@@ -244,7 +320,10 @@ function DepartmentEditForm({
         <TextInput
           style={styles.input}
           value={contactOffice}
-          onChangeText={setContactOffice}
+          onChangeText={(value) => {
+            setOfficeDirty(true);
+            setContactOffice(value);
+          }}
           placeholder="CCS Faculty Room, 3F"
           testID="dept-edit-office-input"
         />
@@ -253,7 +332,10 @@ function DepartmentEditForm({
         <TextInput
           style={styles.input}
           value={contactEmail}
-          onChangeText={setContactEmail}
+          onChangeText={(value) => {
+            setEmailDirty(true);
+            setContactEmail(value);
+          }}
           autoCapitalize="none"
           keyboardType="email-address"
           placeholder="ccs@lpunetwork.edu.ph"

@@ -354,9 +354,9 @@
     "semantic_hash": ""
   },
   "openspec/ROADMAP.md": {
-    "mtime": 1795794744.171894,
-    "seen": 1795794884.6930187,
-    "ast_hash": "dd9733bb0e97b362518e1b216a9f612e",
+    "mtime": 1795798572.7271411,
+    "seen": 1795798939.3379655,
+    "ast_hash": "a63201b0d806b655036bc8bf0c1f4373",
     "semantic_hash": ""
   },
   ".husky/post-checkout": {
@@ -936,9 +936,9 @@
     "semantic_hash": ""
   },
   "shared/media-upload.ts": {
-    "mtime": 1795792382.0945108,
-    "seen": 1795794884.6789386,
-    "ast_hash": "ee16ff17cd8eddd30d029852febf3bca",
+    "mtime": 1795798615.917826,
+    "seen": 1795798939.3107991,
+    "ast_hash": "78fa036626f56fe09295e66d2e22503d",
     "semantic_hash": ""
   },
   "src/components/AnnouncementsFeedView.tsx": {
@@ -948,15 +948,15 @@
     "semantic_hash": ""
   },
   "src/components/DepartmentAboutView.tsx": {
-    "mtime": 1795792845.1095736,
-    "seen": 1795794884.6797047,
-    "ast_hash": "d0b97f0d4e85e70c4bafb564e324cc53",
+    "mtime": 1795798567.4106965,
+    "seen": 1795798939.3121917,
+    "ast_hash": "7998dd50ed1ca68a798d064516e2564b",
     "semantic_hash": ""
   },
   "src/components/OrgDetailView.tsx": {
-    "mtime": 1795794659.1386056,
-    "seen": 1795794884.6800265,
-    "ast_hash": "b42fbd8cae75c8417188921084d82bfc",
+    "mtime": 1795798562.6235769,
+    "seen": 1795798939.3125176,
+    "ast_hash": "9c1a25d8fac3c73e62976d6df24fc8c6",
     "semantic_hash": ""
   },
   "src/components/OrgDirectoryView.tsx": {
@@ -966,15 +966,15 @@
     "semantic_hash": ""
   },
   "src/screens/MyCcsHubScreen.tsx": {
-    "mtime": 1795792848.5471828,
-    "seen": 1795794884.6800406,
-    "ast_hash": "15ed458cb4ee1fedfd109d624539ed24",
+    "mtime": 1795798561.304914,
+    "seen": 1795798939.31355,
+    "ast_hash": "9f02edbebbe9074b7546c4de277578f6",
     "semantic_hash": ""
   },
   "src/services/deptOrg.ts": {
-    "mtime": 1795792843.6849675,
-    "seen": 1795794884.6803164,
-    "ast_hash": "350426dc52389dd139823ce3c5474a36",
+    "mtime": 1795798556.3146663,
+    "seen": 1795798939.3139591,
+    "ast_hash": "cd362756589675b1a6132f27fe1f3646",
     "semantic_hash": ""
   },
   "src/services/mediaUpload.ts": {
@@ -990,39 +990,39 @@
     "semantic_hash": ""
   },
   "supabase/functions/compress-image/core.ts": {
-    "mtime": 1795792736.960842,
-    "seen": 1795794884.6805484,
-    "ast_hash": "ab11229930a6fb1e25f6bf171f4b4041",
+    "mtime": 1795798756.9145336,
+    "seen": 1795798939.3147917,
+    "ast_hash": "e01bf6ab97ad4eaf3da4c58897bedd07",
     "semantic_hash": ""
   },
   "supabase/functions/compress-image/deno.json": {
-    "mtime": 1795790942.6995053,
-    "seen": 1795794884.6805508,
-    "ast_hash": "d17730791330f744e105df9cecc32b26",
+    "mtime": 1795798617.2891903,
+    "seen": 1795798939.314794,
+    "ast_hash": "587b06ce354a9f4c9db5cb2f4bb35f11",
     "semantic_hash": ""
   },
   "supabase/functions/compress-image/index.ts": {
-    "mtime": 1795792738.2422533,
-    "seen": 1795794884.6805527,
-    "ast_hash": "dbb0e4fe22430373841f1e3d0844e2d1",
+    "mtime": 1795798758.4897196,
+    "seen": 1795798939.3147967,
+    "ast_hash": "c1b4c1b12d2dffc32bb8e4c0789f7271",
     "semantic_hash": ""
   },
   "tests/api/compress-image.postman_collection.json": {
-    "mtime": 1795790867.4687266,
-    "seen": 1795794884.6805544,
-    "ast_hash": "c1dd8605e50fb00ca9cefa86369d5a67",
+    "mtime": 1795798927.8846493,
+    "seen": 1795798939.314799,
+    "ast_hash": "4196c862f66dcf05e9aaa9e09261e7fc",
     "semantic_hash": ""
   },
   "tests/unit/compress-image.test.ts": {
-    "mtime": 1795794604.620831,
-    "seen": 1795794884.6815147,
-    "ast_hash": "85c9ce315da6bdeb9c7368cf90b1a2c9",
+    "mtime": 1795798775.1353538,
+    "seen": 1795798939.3160472,
+    "ast_hash": "4c971976708b50eedec8798cbcee0ef9",
     "semantic_hash": ""
   },
   "tests/unit/dept-org-pages.test.ts": {
-    "mtime": 1795794631.4824245,
-    "seen": 1795794884.6817987,
-    "ast_hash": "5e29e5c7da09a9828b17619c66b9ce64",
+    "mtime": 1795798725.0721421,
+    "seen": 1795798939.3164277,
+    "ast_hash": "12b09716de59ea387509f380ece4b47a",
     "semantic_hash": ""
   },
   ".kiro/steering/lean-ctx.md": {
@@ -1044,9 +1044,9 @@
     "semantic_hash": ""
   },
   "openspec/changes/archive/2026-11-27-spec-04-dept-and-org-pages/design.md": {
-    "mtime": 1795792385.7960706,
-    "seen": 1795794884.697145,
-    "ast_hash": "1af3aa53e8cbf3f42e7a1e0b343e24ee",
+    "mtime": 1795798571.3938296,
+    "seen": 1795798939.3439634,
+    "ast_hash": "d1d929343ff6a180c0140532d0c80ebd",
     "semantic_hash": ""
   },
   "openspec/changes/archive/2026-11-27-spec-04-dept-and-org-pages/proposal.md": {
@@ -1071,6 +1071,12 @@
     "mtime": 1795794772.8143892,
     "seen": 1795794884.6978343,
     "ast_hash": "4be15b635077c102ecd82e8e483d628d",
+    "semantic_hash": ""
+  },
+  "supabase/functions/_shared/media-upload-constants.ts": {
+    "mtime": 1795798614.6227434,
+    "seen": 1795798939.3147886,
+    "ast_hash": "9bbfdeb6a270c719ad01bdfd0b30e136",
     "semantic_hash": ""
   }
 }

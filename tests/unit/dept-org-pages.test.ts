@@ -45,9 +45,11 @@ import {
   fetchAnnouncements,
   fetchDepartmentInfo,
   fetchMyOrgMemberships,
+  fetchOrganizationAnnouncements,
   loadHubSnapshot,
   updateDepartmentInfo,
   updateOrganizationProfile,
+  type DeptOrgQueryResult,
   type DeptOrgSupabaseClient,
 } from '../../src/services/deptOrg';
 import {
@@ -303,6 +305,7 @@ function createMockDeptOrgClient(initial: MockDbState): {
     updateOrg: jest.Mock;
     insertAnnouncement: jest.Mock;
     announcementsLimit: jest.Mock;
+    fetchOrgAnnouncements: jest.Mock;
   };
 } {
   const state: MockDbState = {
@@ -327,6 +330,7 @@ function createMockDeptOrgClient(initial: MockDbState): {
     updateOrg: jest.fn(),
     insertAnnouncement: jest.fn(),
     announcementsLimit: jest.fn(),
+    fetchOrgAnnouncements: jest.fn(),
   };
 
   const client: DeptOrgSupabaseClient = {
@@ -346,7 +350,10 @@ function createMockDeptOrgClient(initial: MockDbState): {
           ? { message: state.failErrorMessage ?? `Failed query on ${table}` }
           : null;
 
-      const resolveRows = async (eqCol?: string, eqVal?: unknown) => {
+      const resolveRows = async (
+        eqCol?: string,
+        eqVal?: unknown
+      ): Promise<DeptOrgQueryResult<unknown[]>> => {
         const err = makeError();
         if (err) {
           return { data: null, error: err };
@@ -371,38 +378,85 @@ function createMockDeptOrgClient(initial: MockDbState): {
           return { data: rows, error: null };
         }
         if (table === 'announcements') {
+          if (eqCol === 'organization_id') {
+            spies.fetchOrgAnnouncements(eqVal);
+            const rows = state.announcements
+              .filter(
+                (a) => a.deleted_at === null && a.organization_id === eqVal
+              )
+              .sort(
+                (a, b) =>
+                  Date.parse(b.published_at) - Date.parse(a.published_at)
+              );
+            return { data: rows, error: null };
+          }
           if (state.onFetchAnnouncements) {
             return state.onFetchAnnouncements();
           }
-          return {
-            data: state.announcements.filter((a) => a.deleted_at === null),
-            error: null,
-          };
+          const rows = state.announcements
+            .filter((a) => a.deleted_at === null)
+            .sort(
+              (a, b) =>
+                Date.parse(b.published_at) - Date.parse(a.published_at)
+            );
+          return { data: rows, error: null };
         }
         return { data: [], error: null };
       };
 
-      const makeListTerminal = () => {
-        const run = resolveRows();
-        return Object.assign(run, {
-          limit: async (count: number) => {
-            if (table === 'announcements') {
-              spies.announcementsLimit(count);
-            }
-            const res = await run;
-            return {
-              data: res.data ? res.data.slice(0, count) : null,
-              error: res.error,
-            };
-          },
-        });
-      };
+      const makeListTerminal = (eqCol?: string, eqVal?: unknown) => ({
+        then<TResult1 = DeptOrgQueryResult<unknown[]>, TResult2 = never>(
+          onfulfilled?:
+            | ((
+                value: DeptOrgQueryResult<unknown[]>
+              ) => TResult1 | PromiseLike<TResult1>)
+            | null,
+          onrejected?:
+            | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
+            | null
+        ) {
+          return resolveRows(eqCol, eqVal).then(onfulfilled, onrejected);
+        },
+        limit: async (count: number) => {
+          if (table === 'announcements') {
+            spies.announcementsLimit(count);
+          }
+          const res = await resolveRows(eqCol, eqVal);
+          return {
+            data: res.data ? res.data.slice(0, count) : null,
+            error: res.error,
+          };
+        },
+      });
 
       return {
         select() {
           return {
             eq(col: string, val: unknown) {
-              return resolveRows(col, val);
+              return {
+                then<
+                  TResult1 = DeptOrgQueryResult<unknown[]>,
+                  TResult2 = never,
+                >(
+                  onfulfilled?:
+                    | ((
+                        value: DeptOrgQueryResult<unknown[]>
+                      ) => TResult1 | PromiseLike<TResult1>)
+                    | null,
+                  onrejected?:
+                    | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
+                    | null
+                ) {
+                  return resolveRows(col, val).then(onfulfilled, onrejected);
+                },
+                is() {
+                  return {
+                    order() {
+                      return makeListTerminal(col, val);
+                    },
+                  };
+                },
+              };
             },
             is() {
               return {
@@ -526,12 +580,44 @@ function createMockDeptOrgClient(initial: MockDbState): {
   return { client, state, spies };
 }
 
+const SUPABASE_ENV_KEYS = [
+  'EXPO_PUBLIC_SUPABASE_URL',
+  'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_URL',
+  'SUPABASE_PUBLISHABLE_KEY',
+] as const;
+
 describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
+  let savedSupabaseEnv: Record<
+    (typeof SUPABASE_ENV_KEYS)[number],
+    string | undefined
+  >;
+
+  beforeEach(() => {
+    savedSupabaseEnv = {
+      EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+        process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      SUPABASE_URL: process.env.SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY,
+    };
+    for (const key of SUPABASE_ENV_KEYS) {
+      delete process.env[key];
+    }
+    supabaseLib.resetSupabaseClientForTesting();
+  });
+
   afterEach(() => {
-    delete process.env.EXPO_PUBLIC_SUPABASE_URL;
-    delete process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    delete process.env.SUPABASE_URL;
-    delete process.env.SUPABASE_PUBLISHABLE_KEY;
+    for (const key of SUPABASE_ENV_KEYS) {
+      const original = savedSupabaseEnv[key];
+      if (original === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = original;
+      }
+    }
     supabaseLib.resetSupabaseClientForTesting();
     jest.restoreAllMocks();
     jest.clearAllMocks();
@@ -730,6 +816,24 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
           'Dr. Maria Santos | Dean | maria@lpunetwork.edu.ph | extra'
         )
       ).toThrow(/Name \| Title/);
+      expect(() => parseLeadershipLines('\\n | Dean')).toThrow(/Name \| Title/);
+
+      const specialLeadershipEntries = [
+        {
+          name: 'Dr. Maria | Santos',
+          title: 'College Dean',
+        },
+        {
+          name: 'Prof. Jose\nRizalino',
+          title: 'CS Program Chair\r\nAI \\ Systems',
+          email: 'jose.rizalino@lpunetwork.edu.ph',
+        },
+      ];
+      const formattedSpecial = formatLeadershipLines(specialLeadershipEntries);
+      expect(formattedSpecial.split('\n')).toHaveLength(2);
+      expect(parseLeadershipLines(formattedSpecial)).toEqual(
+        specialLeadershipEntries
+      );
 
       expect(parseOptionalExpiryInput('')).toBeNull();
       expect(parseOptionalExpiryInput('2026-12-31')).toBe(
@@ -1232,6 +1336,11 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
         [
           'announcements',
           (c: DeptOrgSupabaseClient) =>
+            fetchOrganizationAnnouncements(c, ORG_A_ID),
+        ],
+        [
+          'announcements',
+          (c: DeptOrgSupabaseClient) =>
             createAnnouncement(c, {
               organization_id: null,
               title: 'Err',
@@ -1321,6 +1430,83 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
       expect(updatedUppercase.logo_url).toBe(
         'HTTPS://CDN.EXAMPLE.EDU/org-a-logo.webp'
       );
+    });
+
+    it('fetches uncapped chronological per-org announcements independently of hub feed limit', async () => {
+      const bulkGlobalAnnouncements: Announcement[] = Array.from(
+        { length: 105 },
+        (_, index) => ({
+          id: `88888888-8888-4888-8888-${String(index + 1).padStart(12, '0')}`,
+          organization_id: null,
+          title: `Global Notice #${index + 1}`,
+          content: 'Department-wide notice.',
+          global_visibility: true,
+          published_at: new Date(
+            Date.parse('2026-11-27T00:00:00.000Z') - index * 60_000
+          ).toISOString(),
+          expires_at: null,
+          deleted_at: null,
+        })
+      );
+      const olderOrgPost1: Announcement = {
+        id: '88888888-8888-4888-8888-999999999901',
+        organization_id: ORG_A_ID,
+        title: 'Older Council Update #1',
+        content: 'Older post pushed past the 100-item hub feed window.',
+        global_visibility: false,
+        published_at: '2026-10-10T08:00:00.000Z',
+        expires_at: null,
+        deleted_at: null,
+      };
+      const olderOrgPost2: Announcement = {
+        id: '88888888-8888-4888-8888-999999999902',
+        organization_id: ORG_A_ID,
+        title: 'Older Council Update #2',
+        content: 'Newer than #1 but still outside top 100 global notices.',
+        global_visibility: false,
+        published_at: '2026-10-15T08:00:00.000Z',
+        expires_at: null,
+        deleted_at: null,
+      };
+      const otherOrgPost: Announcement = {
+        id: '88888888-8888-4888-8888-999999999903',
+        organization_id: ORG_B_ID,
+        title: 'ACM Exclusive',
+        content: 'Belongs to Org B.',
+        global_visibility: false,
+        published_at: '2026-10-20T08:00:00.000Z',
+        expires_at: null,
+        deleted_at: null,
+      };
+
+      const { client, spies } = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [SAMPLE_ORG_A, SAMPLE_ORG_B],
+        memberships: [],
+        announcements: [
+          ...bulkGlobalAnnouncements,
+          olderOrgPost1,
+          olderOrgPost2,
+          otherOrgPost,
+        ],
+      });
+
+      const hubFeed = await fetchAnnouncements(client);
+      expect(hubFeed).toHaveLength(DEFAULT_ANNOUNCEMENTS_LIMIT);
+      expect(hubFeed.some((a) => a.id === olderOrgPost1.id)).toBe(false);
+      expect(spies.announcementsLimit).toHaveBeenCalledTimes(1);
+
+      spies.announcementsLimit.mockClear();
+      const orgPosts = await fetchOrganizationAnnouncements(client, ORG_A_ID);
+      expect(orgPosts.map((a) => a.id)).toEqual([
+        olderOrgPost2.id,
+        olderOrgPost1.id,
+      ]);
+      expect(spies.announcementsLimit).not.toHaveBeenCalled();
+
+      await expect(
+        fetchOrganizationAnnouncements(client, 'not-a-uuid')
+      ).rejects.toThrow();
     });
   });
 
@@ -1460,7 +1646,7 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
         },
       ];
 
-      const { client, spies } = createMockDeptOrgClient({
+      const { client, state, spies } = createMockDeptOrgClient({
         departmentInfo: SAMPLE_DEPT,
         organizations: [SAMPLE_ORG_A, SAMPLE_SUB_ORG_A1, SAMPLE_ORG_B],
         memberships,
@@ -1472,16 +1658,30 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
           orgId: string,
           kind: 'logo' | 'cover',
           _localUri: string
-        ): Promise<CompressImageResponse> => ({
-          bucket: MEDIA_STORAGE_BUCKET,
-          path: `orgs/${orgId}/${kind}/88888888-8888-4888-8888-888888888888.webp`,
-          publicUrl: `https://cdn.example.edu/${orgId}-${kind}.webp`,
-          mimeType: OUTPUT_IMAGE_MIME_TYPE,
-          sizeBytes: 18000,
-          width: kind === 'logo' ? 512 : 1600,
-          height: kind === 'logo' ? 512 : 900,
-          exifStripped: true,
-        })
+        ): Promise<CompressImageResponse> => {
+          const path = `orgs/${orgId}/${kind}/88888888-8888-4888-8888-888888888888.webp`;
+          const publicUrl = `https://myccs.supabase.co/storage/v1/object/public/${MEDIA_STORAGE_BUCKET}/${path}`;
+          state.organizations = state.organizations.map((org) =>
+            org.id === orgId
+              ? {
+                  ...org,
+                  ...(kind === 'cover'
+                    ? { cover_url: publicUrl }
+                    : { logo_url: publicUrl }),
+                }
+              : org
+          );
+          return {
+            bucket: MEDIA_STORAGE_BUCKET,
+            path,
+            publicUrl,
+            mimeType: OUTPUT_IMAGE_MIME_TYPE,
+            sizeBytes: 18000,
+            width: kind === 'logo' ? 512 : 1600,
+            height: kind === 'logo' ? 512 : 900,
+            exifStripped: true,
+          };
+        }
       );
 
       const screen = await render(
@@ -1533,6 +1733,10 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
         'cover',
         'file:///tmp/new-cover.jpg'
       );
+      const expectedCoverUrl = `https://myccs.supabase.co/storage/v1/object/public/${MEDIA_STORAGE_BUCKET}/orgs/${ORG_A_ID}/cover/88888888-8888-4888-8888-888888888888.webp`;
+      expect(screen.getByTestId('org-detail-cover-image').props.source).toEqual({
+        uri: expectedCoverUrl,
+      });
 
       await fireEvent.changeText(
         screen.getByTestId('org-logo-uri-input'),
@@ -1544,6 +1748,11 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
           /Logo image compressed/
         );
       });
+      const expectedLogoUrl = `https://myccs.supabase.co/storage/v1/object/public/${MEDIA_STORAGE_BUCKET}/orgs/${ORG_A_ID}/logo/88888888-8888-4888-8888-888888888888.webp`;
+      expect(screen.getByTestId('org-detail-logo-image').props.source).toEqual({
+        uri: expectedLogoUrl,
+      });
+      expect(spies.updateOrg).not.toHaveBeenCalled();
 
       await fireEvent.changeText(
         screen.getByTestId('org-edit-details-input'),
@@ -1555,7 +1764,13 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
           'Updated CCS Student Council mission.'
         );
       });
-      expect(spies.updateOrg).toHaveBeenCalled();
+      expect(spies.updateOrg).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('org-detail-cover-image').props.source).toEqual({
+        uri: expectedCoverUrl,
+      });
+      expect(screen.getByTestId('org-detail-logo-image').props.source).toEqual({
+        uri: expectedLogoUrl,
+      });
 
       await fireEvent.press(screen.getByTestId('org-new-post-button'));
       await fireEvent.changeText(
@@ -1781,11 +1996,29 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
           >
         );
 
-      const appTree = await render(createElement(App));
-      await waitFor(() => {
-        expect(appTree.getByTestId('myccs-hub-screen')).toBeTruthy();
+      jest.useFakeTimers({
+        now: NOW,
+        doNotFake: [
+          'nextTick',
+          'setImmediate',
+          'setTimeout',
+          'clearTimeout',
+          'setInterval',
+          'clearInterval',
+          'queueMicrotask',
+        ],
       });
-      expect(appTree.getByTestId(`announcement-item-${ANN_DEPT_ACTIVE_ID}`)).toBeTruthy();
+      try {
+        const appTree = await render(createElement(App));
+        await waitFor(() => {
+          expect(appTree.getByTestId('myccs-hub-screen')).toBeTruthy();
+        });
+        expect(
+          appTree.getByTestId(`announcement-item-${ANN_DEPT_ACTIVE_ID}`)
+        ).toBeTruthy();
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('uses default runtime uploadCompressedOrgMedia path in MyCcsHubScreen when onUploadOrgMedia prop is omitted', async () => {
@@ -1889,7 +2122,7 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
     });
 
     it('lets admin create initial department_info from empty state and protects mid-edit drafts from refresh overwrites (Findings 8 & 9)', async () => {
-      const { client, spies } = createMockDeptOrgClient({
+      const { client, state, spies } = createMockDeptOrgClient({
         departmentInfo: null,
         organizations: [],
         memberships: [],
@@ -1950,6 +2183,48 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
       );
       expect(spies.insertDepartment).toHaveBeenCalledTimes(1);
 
+      await fireEvent.press(screen.getByTestId('dept-edit-button'));
+      expect(screen.getByTestId('department-edit-form')).toBeTruthy();
+      await fireEvent.changeText(
+        screen.getByTestId('dept-edit-title-input'),
+        'In-Progress Admin Draft'
+      );
+
+      const refreshDeferred = createDeferred<{
+        data: Announcement[] | null;
+        error: { message: string } | null;
+      }>();
+      state.departmentInfo = {
+        ...state.departmentInfo!,
+        title: 'Background Refreshed Title',
+        updated_at: '2026-11-27T13:00:00.000Z',
+      };
+      state.onFetchAnnouncements = () => refreshDeferred.promise;
+
+      await fireEvent.press(screen.getByTestId('hub-refresh-button'));
+      expect(screen.queryByTestId('hub-loading')).toBeNull();
+      expect(screen.getByTestId('department-edit-form')).toBeTruthy();
+      expect(screen.getByText('Refreshing...')).toBeTruthy();
+      expect(
+        screen.getByTestId('hub-refresh-button').props.accessibilityState
+          ?.disabled
+      ).toBe(true);
+
+      await act(async () => {
+        refreshDeferred.resolve({ data: [], error: null });
+      });
+      await waitFor(() => {
+        expect(screen.getByText('Refresh')).toBeTruthy();
+      });
+      expect(
+        screen.getByTestId('dept-edit-title-input').props.value
+      ).toBe('In-Progress Admin Draft');
+
+      await fireEvent.press(screen.getByTestId('dept-cancel-button'));
+      expect(screen.getByTestId('department-title').props.children).toBe(
+        'Background Refreshed Title'
+      );
+
       const studentActor: RbacActor = {
         profileId: STUDENT_ID,
         role: 'student',
@@ -1968,45 +2243,6 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
       );
       expect(studentEmpty.getByTestId('department-empty-state')).toBeTruthy();
       expect(studentEmpty.queryByTestId('dept-create-button')).toBeNull();
-
-      const adminActor: RbacActor = {
-        profileId: ADMIN_ID,
-        role: 'admin',
-        memberships: [],
-      };
-      const editView = await render(
-        createElement(DepartmentAboutView, {
-          departmentInfo: SAMPLE_DEPT,
-          actor: adminActor,
-          mode: 'edit',
-          onEnterEdit: jest.fn(),
-          onCancelEdit: jest.fn(),
-          onCreate: jest.fn(),
-          onSave: jest.fn(),
-        })
-      );
-      await fireEvent.changeText(
-        editView.getByTestId('dept-edit-title-input'),
-        'In-Progress Admin Draft'
-      );
-      await editView.rerender(
-        createElement(DepartmentAboutView, {
-          departmentInfo: {
-            ...SAMPLE_DEPT,
-            title: 'Background Refreshed Title',
-            updated_at: '2026-11-27T13:00:00.000Z',
-          },
-          actor: adminActor,
-          mode: 'edit',
-          onEnterEdit: jest.fn(),
-          onCancelEdit: jest.fn(),
-          onCreate: jest.fn(),
-          onSave: jest.fn(),
-        })
-      );
-      expect(
-        editView.getByTestId('dept-edit-title-input').props.value
-      ).toBe('In-Progress Admin Draft');
     });
 
     it('guards async races: overlapping refreshHub, rapid double-tap publish, tab switch during save, org switch draft reset, and mid-upload unmount (Findings 9, 13, 14, 17)', async () => {
@@ -2382,6 +2618,269 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
       });
       expect(screen.queryByTestId('hub-error-banner')).toBeNull();
       expect(screen.getAllByText('Org post rejected')).toHaveLength(1);
+    });
+
+    it('loads uncapped per-org announcements in OrgDetailView, refreshes on hub Refresh, and prepends new org posts', async () => {
+      const bulkGlobal: Announcement[] = Array.from(
+        { length: 105 },
+        (_, index) => ({
+          id: `66666666-6666-4666-8666-${String(index + 1).padStart(12, '0')}`,
+          organization_id: null,
+          title: `Bulk Notice ${index + 1}`,
+          content: 'Global department update.',
+          global_visibility: true,
+          published_at: new Date(
+            Date.parse('2026-11-27T11:00:00.000Z') - index * 60_000
+          ).toISOString(),
+          expires_at: null,
+          deleted_at: null,
+        })
+      );
+      const deepOrgPost: Announcement = {
+        id: '66666666-6666-4666-8666-999999999901',
+        organization_id: ORG_A_ID,
+        title: 'Founding Council Charter',
+        content: 'Older org announcement outside the hub feed 100-item cap.',
+        global_visibility: false,
+        published_at: '2026-10-01T08:00:00.000Z',
+        expires_at: null,
+        deleted_at: null,
+      };
+      const refreshedOrgPost: Announcement = {
+        id: '66666666-6666-4666-8666-999999999902',
+        organization_id: ORG_A_ID,
+        title: 'Refreshed Org Post',
+        content: 'Added on server before Refresh press.',
+        global_visibility: false,
+        published_at: '2026-10-05T08:00:00.000Z',
+        expires_at: null,
+        deleted_at: null,
+      };
+
+      const { client, state, spies } = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [SAMPLE_ORG_A],
+        memberships: [],
+        announcements: [...bulkGlobal, deepOrgPost],
+      });
+
+      const screen = await render(
+        createElement(MyCcsHubScreen, {
+          profile: ADMIN_PROFILE,
+          busy: false,
+          errorMessage: null,
+          onSignOut: jest.fn(),
+          deptOrgClient: client,
+          now: NOW,
+        })
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`announcement-item-${bulkGlobal[0].id}`)
+        ).toBeTruthy();
+      });
+      expect(
+        screen.queryByTestId(`announcement-item-${deepOrgPost.id}`)
+      ).toBeNull();
+
+      await fireEvent.press(screen.getByTestId('tab-orgs'));
+      await fireEvent.press(screen.getByTestId(`org-row-${ORG_A_ID}`));
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`org-post-item-${deepOrgPost.id}`)
+        ).toBeTruthy();
+      });
+      expect(spies.fetchOrgAnnouncements).toHaveBeenCalledWith(ORG_A_ID);
+
+      state.announcements = [...state.announcements, refreshedOrgPost];
+      await fireEvent.press(screen.getByTestId('hub-refresh-button'));
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`org-post-item-${refreshedOrgPost.id}`)
+        ).toBeTruthy();
+      });
+      expect(
+        screen.getByTestId(`org-post-item-${deepOrgPost.id}`)
+      ).toBeTruthy();
+
+      await fireEvent.press(screen.getByTestId('org-new-post-button'));
+      await fireEvent.changeText(
+        screen.getByTestId('org-post-title-input'),
+        'Live Org Notice'
+      );
+      await fireEvent.changeText(
+        screen.getByTestId('org-post-content-input'),
+        'Appears immediately in org posts.'
+      );
+      await fireEvent.press(screen.getByTestId('org-post-publish-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId(`org-post-item-${ANN_NEW_ID}`)).toBeTruthy();
+      });
+      expect(
+        screen.getByTestId(`org-post-item-${deepOrgPost.id}`)
+      ).toBeTruthy();
+    });
+
+    it('updates organization cover_url in MyCcsHubScreen even when navigating back to org directory mid-upload', async () => {
+      const uploadDeferred = createDeferred<CompressImageResponse>();
+      const onUploadOrgMedia = jest.fn(() => uploadDeferred.promise);
+      const { client, spies } = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [SAMPLE_ORG_A, SAMPLE_ORG_B],
+        memberships: [
+          {
+            id: '99999999-9999-4999-8999-999999999996',
+            profile_id: OFFICER_ID,
+            organization_id: ORG_A_ID,
+            role: 'officer',
+            status: 'approved',
+            submission_id: null,
+            created_at: '2026-10-01T00:00:00.000Z',
+          },
+        ],
+        announcements: [],
+      });
+
+      const screen = await render(
+        createElement(MyCcsHubScreen, {
+          profile: OFFICER_PROFILE,
+          busy: false,
+          errorMessage: null,
+          onSignOut: jest.fn(),
+          deptOrgClient: client,
+          onUploadOrgMedia,
+          now: NOW,
+        })
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('announcements-empty')).toBeTruthy();
+      });
+
+      await fireEvent.press(screen.getByTestId('tab-orgs'));
+      await fireEvent.press(screen.getByTestId(`org-row-${ORG_A_ID}`));
+      await fireEvent.press(screen.getByTestId('org-customize-button'));
+      await fireEvent.changeText(
+        screen.getByTestId('org-cover-uri-input'),
+        'file:///tmp/in-flight-cover.jpg'
+      );
+      await fireEvent.press(screen.getByTestId('org-upload-cover-button'));
+
+      await fireEvent.press(screen.getByTestId('org-detail-back-button'));
+      expect(screen.getByTestId('org-directory-view')).toBeTruthy();
+
+      const path = `orgs/${ORG_A_ID}/cover/77777777-7777-4777-8777-777777777799.webp`;
+      const uploadedCoverUrl = `https://myccs.supabase.co/storage/v1/object/public/${MEDIA_STORAGE_BUCKET}/${path}`;
+      await act(async () => {
+        uploadDeferred.resolve({
+          bucket: MEDIA_STORAGE_BUCKET,
+          path,
+          publicUrl: uploadedCoverUrl,
+          mimeType: OUTPUT_IMAGE_MIME_TYPE,
+          sizeBytes: 24000,
+          width: 1600,
+          height: 900,
+          exifStripped: true,
+        });
+      });
+
+      await fireEvent.press(screen.getByTestId(`org-row-${ORG_A_ID}`));
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('org-detail-cover-image').props.source
+        ).toEqual({ uri: uploadedCoverUrl });
+      });
+      expect(spies.updateOrg).not.toHaveBeenCalled();
+    });
+
+    it('preserves non-string contact_json office/email on unrelated edits and allows explicit replacement or removal', async () => {
+      const adminActor: RbacActor = {
+        profileId: ADMIN_ID,
+        role: 'admin',
+        memberships: [],
+      };
+      const nonStringDept: DepartmentInfo = {
+        ...SAMPLE_DEPT,
+        contact_json: {
+          office: ['Room 301', 'Room 302'],
+          email: { primary: 'ccs@lpunetwork.edu.ph' },
+          hotline: '464-1234',
+        },
+      };
+      const onSave = jest.fn().mockResolvedValue(undefined);
+
+      const view = await render(
+        createElement(DepartmentAboutView, {
+          departmentInfo: nonStringDept,
+          actor: adminActor,
+          mode: 'edit',
+          onEnterEdit: jest.fn(),
+          onCancelEdit: jest.fn(),
+          onCreate: jest.fn(),
+          onSave,
+        })
+      );
+
+      await fireEvent.changeText(
+        view.getByTestId('dept-edit-title-input'),
+        'CCS Updated Title'
+      );
+      await fireEvent.press(view.getByTestId('dept-save-button'));
+      await waitFor(() => {
+        expect(onSave).toHaveBeenCalledTimes(1);
+      });
+      expect(onSave).toHaveBeenLastCalledWith(
+        DEPT_ID,
+        expect.objectContaining({
+          title: 'CCS Updated Title',
+          contact_json: {
+            office: ['Room 301', 'Room 302'],
+            email: { primary: 'ccs@lpunetwork.edu.ph' },
+            hotline: '464-1234',
+          },
+        })
+      );
+
+      await fireEvent.changeText(
+        view.getByTestId('dept-edit-office-input'),
+        'CCS Room 405'
+      );
+      await fireEvent.press(view.getByTestId('dept-save-button'));
+      await waitFor(() => {
+        expect(onSave).toHaveBeenCalledTimes(2);
+      });
+      expect(onSave).toHaveBeenLastCalledWith(
+        DEPT_ID,
+        expect.objectContaining({
+          contact_json: {
+            office: 'CCS Room 405',
+            email: { primary: 'ccs@lpunetwork.edu.ph' },
+            hotline: '464-1234',
+          },
+        })
+      );
+
+      await fireEvent.changeText(
+        view.getByTestId('dept-edit-office-input'),
+        '   '
+      );
+      await fireEvent.changeText(
+        view.getByTestId('dept-edit-email-input'),
+        ''
+      );
+      await fireEvent.press(view.getByTestId('dept-save-button'));
+      await waitFor(() => {
+        expect(onSave).toHaveBeenCalledTimes(3);
+      });
+      expect(onSave).toHaveBeenLastCalledWith(
+        DEPT_ID,
+        expect.objectContaining({
+          contact_json: {
+            hotline: '464-1234',
+          },
+        })
+      );
     });
   });
 });

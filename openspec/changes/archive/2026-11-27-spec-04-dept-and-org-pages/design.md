@@ -30,9 +30,9 @@
   - `shared/dept-org.ts`: `AnnouncementFilter`, `MobileHubRoute` discriminated union, `OrganizationTreeNode`, `parseOptionalExpiryInput`, `formatManilaDate`, `buildOrganizationTree`, `filterAnnouncementsFeed`, `getOrganizationPosts`, `isAnnouncementExpired`, `normalizeDepartmentContacts`, `getOrgInitials`.
   - `shared/core-schema.ts` & `shared/index.ts`: Case-insensitive `URL` protocol validation in `SafeHttpUrlSchema`, `DepartmentInfoCreateInputSchema`, and exports for both modules.
 - **`supabase/`:**
-  - `supabase/migrations/20261127000001_spec04_org_media_storage.sql`: Create/update `storage.buckets` (`org-media`, `public = true`, `file_size_limit = 5242880`, `allowed_mime_types = ARRAY['image/webp']`), read-only `SELECT` policy on `storage.objects` for active `authenticated` users (zero client `INSERT`/`UPDATE`/`DELETE` policies), and `guard_organizations_media_urls()` `SECURITY INVOKER` trigger restricting authenticated `logo_url`/`cover_url` mutations to verified `org-media/orgs/<id>/(logo|cover)/<uuid>.webp` URLs.
+  - `supabase/migrations/20261127000001_spec04_org_media_storage.sql`: Create/update `storage.buckets` (`org-media`, `public = true`, `file_size_limit = 5242880`, `allowed_mime_types = ARRAY['image/webp']`), read-only `SELECT` policy on `storage.objects` for active `authenticated` users (zero client `INSERT`/`UPDATE`/`DELETE` policies), and `trg_organizations_guard_media_urls` / `public.guard_organizations_media_urls()` trigger on `public.organizations` blocking direct non-NULL `authenticated` writes to `logo_url`/`cover_url` while verifying `storage.objects` existence and `org-media/orgs/<id>/(logo|cover)/<uuid>.webp` URL format on `service_role` writes.
   - `supabase/config.toml`: Configure `[storage.buckets.org-media]` and `[functions.compress-image] verify_jwt = false` (JWT is explicitly verified in handler via `aud`/`iss` + `claims.sub === verifiedUser.id` + `auth.getUser(token)`).
-  - `supabase/functions/compress-image/core.ts`: Single server validator and pure HTTP handler implementing CORS, method check, Bearer JWT (`aud`/`iss`/`exp`/`sub` + optional `SUPABASE_JWT_ISSUER`) + `getUser` match, streaming body byte cap (`5 MiB + 64 KiB`), RBAC check before `file.arrayBuffer()` (with `403`-first denial), magic-byte MIME verification, image transform call, service-role Storage upload, and structured JSON responses.
+  - `supabase/functions/compress-image/core.ts`: Single server validator and pure HTTP handler implementing CORS, method check, Bearer JWT (`aud`/`iss`/`exp`/`sub` + optional `SUPABASE_JWT_ISSUER`) + `getUser` match, streaming body byte cap (`5 MiB + 64 KiB`), RBAC check before `file.arrayBuffer()` (with `403`-first denial), magic-byte MIME verification, image transform call, service-role Storage upload, direct `service_role` persistence of `organizations.logo_url`/`cover_url`, and structured JSON responses.
   - `supabase/functions/compress-image/index.ts` & `deno.json`: Deno 2 runtime entrypoint with isolate-cached CORS/Supabase clients, `||` env fallbacks, `res.ok` WASM load check, `@imagemagick/magick-wasm` `ResourceLimits` (8192 px max side, 32M area, 64 MiB memory, 0 disk, 1 frame, 15s time), explicit `MagickFormat`, `autoOrient`, `strip`, downscale-only `resize`, and `MagickFormat.WebP`.
 - **Mobile App (root):**
   - `package.json` / `package-lock.json`: Add `expo-image-manipulator@^58.0.16` and append `tests/api/org-media-storage.sql` to `db:test`.
@@ -50,7 +50,7 @@
 
 ## Database Schema, RLS, Grants & Encryption
 
-- No new `public` tables are created. Existing `public.department_info`, `public.organizations`, `public.org_memberships`, and `public.announcements` RLS policies and triggers from `spec-02` remain untouched.
+- No new `public` tables are created. Existing `public.department_info`, `public.organizations`, `public.org_memberships`, and `public.announcements` RLS policies and triggers from `spec-02` remain intact, while `public.organizations` adds the `trg_organizations_guard_media_urls` trigger (`public.guard_organizations_media_urls()`) blocking direct non-NULL `authenticated` writes to `logo_url`/`cover_url` and verifying `storage.objects` existence when `compress-image` persists media URLs via `service_role`.
 - Storage bucket `org-media`:
   - `public = true` so React Native `<Image>` renders normalized WebP assets by HTTPS URL stored in `organizations.logo_url` and `organizations.cover_url`.
   - `file_size_limit = 5242880` (5 MiB) and `allowed_mime_types = ARRAY['image/webp']`.
@@ -110,4 +110,4 @@ export type MobileHubRoute =
 ## Migration Plan
 
 1. Commit `shared/`, `supabase/migrations/20261127000001_spec04_org_media_storage.sql`, `supabase/config.toml`, `supabase/functions/compress-image/`, `src/`, `App.tsx`, `package.json`, `jest.config.js`, and `tests/` atomically in the `SCRUM-13` PR targeting `develop`.
-2. Rollback reverts the PR and drops the `org-media` Storage read policy/bucket if unused; no existing tables are altered.
+2. Rollback drops `trg_organizations_guard_media_urls` from `public.organizations` before dropping `public.guard_organizations_media_urls()`, performs both drops before reverting the PR and restoring previous clients, and then drops the `org-media` Storage read policy/bucket if unused.

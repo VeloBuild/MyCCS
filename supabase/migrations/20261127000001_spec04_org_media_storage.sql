@@ -30,12 +30,19 @@ CREATE POLICY org_media_select_authenticated
   TO authenticated
   USING (bucket_id = 'org-media' AND public.is_active_profile());
 
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT SELECT ON TABLE public.profiles, public.org_memberships TO service_role;
+GRANT SELECT, UPDATE ON TABLE public.organizations TO service_role;
+
 CREATE OR REPLACE FUNCTION public.guard_organizations_media_urls()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path = public
 AS $$
+DECLARE
+  v_match text[];
+  v_object_name text;
 BEGIN
   IF current_user = 'authenticated' THEN
     IF NEW.logo_url IS NOT NULL
@@ -44,16 +51,8 @@ BEGIN
          OR NEW.logo_url IS DISTINCT FROM OLD.logo_url
          OR NEW.id IS DISTINCT FROM OLD.id
        ) THEN
-      IF NEW.id IS NULL OR NOT (
-        NEW.logo_url ~* (
-          '^https?://[^/]+/storage/v1/object/public/org-media/orgs/'
-          || NEW.id::text
-          || '/logo/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$'
-        )
-      ) THEN
-        RAISE EXCEPTION 'Organization logo_url must reference a verified org-media WebP asset for this organization'
-          USING ERRCODE = '23514';
-      END IF;
+      RAISE EXCEPTION 'Organization logo_url can only be set via the compress-image media pipeline'
+        USING ERRCODE = '23514';
     END IF;
 
     IF NEW.cover_url IS NOT NULL
@@ -62,16 +61,72 @@ BEGIN
          OR NEW.cover_url IS DISTINCT FROM OLD.cover_url
          OR NEW.id IS DISTINCT FROM OLD.id
        ) THEN
-      IF NEW.id IS NULL OR NOT (
-        NEW.cover_url ~* (
-          '^https?://[^/]+/storage/v1/object/public/org-media/orgs/'
-          || NEW.id::text
-          || '/cover/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$'
-        )
-      ) THEN
-        RAISE EXCEPTION 'Organization cover_url must reference a verified org-media WebP asset for this organization'
-          USING ERRCODE = '23514';
-      END IF;
+      RAISE EXCEPTION 'Organization cover_url can only be set via the compress-image media pipeline'
+        USING ERRCODE = '23514';
+    END IF;
+
+    RETURN NEW;
+  END IF;
+
+  IF NEW.logo_url IS NOT NULL
+     AND (
+       TG_OP = 'INSERT'
+       OR NEW.logo_url IS DISTINCT FROM OLD.logo_url
+       OR NEW.id IS DISTINCT FROM OLD.id
+     ) THEN
+    IF NEW.id IS NULL THEN
+      RAISE EXCEPTION 'Organization logo_url must reference a verified org-media WebP asset for this organization'
+        USING ERRCODE = '23514';
+    END IF;
+
+    v_match := regexp_match(
+      NEW.logo_url,
+      '^https?://[^/]+/storage/v1/object/public/org-media/(orgs/'
+        || NEW.id::text
+        || '/logo/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp)$',
+      'i'
+    );
+    v_object_name := v_match[1];
+
+    IF v_object_name IS NULL OR NOT EXISTS (
+      SELECT 1
+      FROM storage.objects
+      WHERE bucket_id = 'org-media'
+        AND name = v_object_name
+    ) THEN
+      RAISE EXCEPTION 'Organization logo_url must reference an existing org-media WebP asset for this organization'
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+
+  IF NEW.cover_url IS NOT NULL
+     AND (
+       TG_OP = 'INSERT'
+       OR NEW.cover_url IS DISTINCT FROM OLD.cover_url
+       OR NEW.id IS DISTINCT FROM OLD.id
+     ) THEN
+    IF NEW.id IS NULL THEN
+      RAISE EXCEPTION 'Organization cover_url must reference a verified org-media WebP asset for this organization'
+        USING ERRCODE = '23514';
+    END IF;
+
+    v_match := regexp_match(
+      NEW.cover_url,
+      '^https?://[^/]+/storage/v1/object/public/org-media/(orgs/'
+        || NEW.id::text
+        || '/cover/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp)$',
+      'i'
+    );
+    v_object_name := v_match[1];
+
+    IF v_object_name IS NULL OR NOT EXISTS (
+      SELECT 1
+      FROM storage.objects
+      WHERE bucket_id = 'org-media'
+        AND name = v_object_name
+    ) THEN
+      RAISE EXCEPTION 'Organization cover_url must reference an existing org-media WebP asset for this organization'
+        USING ERRCODE = '23514';
     END IF;
   END IF;
 
