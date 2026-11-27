@@ -18,7 +18,7 @@ export function AdminDashboardShell({
           <span className="brand-badge">LPU · CCS</span>
           <div>
             <h1 className="topbar-title">MyCCS Web Admin</h1>
-            <p className="topbar-subtitle">College of Computing Studies · Department Portal</p>
+            <p className="topbar-subtitle">College of Information Technology &amp; Computer Science · Department Portal</p>
           </div>
         </div>
 
@@ -64,7 +64,7 @@ export function AdminDashboardShell({
             <span className="module-tag">Milestone 2 · Spec 04</span>
             <h3>Department &amp; Organizations</h3>
             <p>
-              Manage College of Computing Studies profile information, sub-organizations, and
+              Manage College of Information Technology and Computer Science (IT, CS, LIS) profile information, sub-organizations, and
               department announcements.
             </p>
           </article>

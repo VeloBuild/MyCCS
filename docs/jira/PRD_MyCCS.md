@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD): MyCCS
 
 * **Document Type:** Product Requirements Document (PRD)
-* **Project:** MyCCS (Centralized College of Computing Studies Platform)
+* **Project:** MyCCS (Centralized College of Information Technology and Computer Science Platform)
 * **Author:** Alexis John Rellon
 * **Version:** 1.1.0
 * **Status:** Draft for Review
@@ -19,7 +19,7 @@
 
 ## 1. Executive Summary
 
-MyCCS is a centralized platform for the College of Computing Studies (CCS) serving students, student organizations (Main Organizations and Sub-Organizations), and faculty administrators. It replaces fragmented social media announcements, manual attendance sheets, ad-hoc Google Forms, and manual spreadsheet-based certification key distribution with two coordinated applications backed by Supabase:
+MyCCS is a centralized platform for the College of Information Technology and Computer Science (CCS)—offering Information Technology (IT), Computer Science (CS), and Library and Information Science (LIS)—serving students, student organizations (Main Organizations and Sub-Organizations), and faculty administrators. It replaces fragmented social media announcements, manual attendance sheets, ad-hoc Google Forms, and manual spreadsheet-based certification key distribution with two coordinated applications backed by Supabase:
 
 1. **MyCCS Mobile App (Expo React Native, TypeScript):** Primary client for Students and Organization Officers.
 2. **MyCCS Web Admin Portal (`web-admin/`, standalone Vite + React SPA):** Dedicated desktop browser portal for Faculty/Admins, deployed independently to **Cloudflare Pages** via directory selection (zero backend secrets on Cloudflare) and excluded from the mobile app bundle.

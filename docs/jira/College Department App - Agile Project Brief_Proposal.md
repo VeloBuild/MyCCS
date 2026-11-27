@@ -1,4 +1,4 @@
-# Project Brief: MyCCS (Centralized College of Computing Studies Platform)
+# Project Brief: MyCCS (Centralized College of Information Technology and Computer Science Platform)
 
 * **Type:** Agile Project Brief / Product Scope Proposal
 * **Prepared By:** Alexis John L. Rellon
@@ -14,7 +14,7 @@
 
 ## 1. Executive Summary
 
-MyCCS is a centralized platform for the College of Computing Studies (CCS) serving students, student organizations (Main Organizations and Sub-Organizations), and faculty administrators. Built under an Agile Scrum methodology, the MVP unifies department information, organization pages, event registration, offline-first QR attendance, conditional forms/evaluations, and faculty-driven GMetrix certification key distribution.
+MyCCS is a centralized platform for the College of Information Technology and Computer Science (CCS)—offering Information Technology (IT), Computer Science (CS), and Library and Information Science (LIS)—serving students, student organizations (Main Organizations and Sub-Organizations), and faculty administrators. Built under an Agile Scrum methodology, the MVP unifies department information, organization pages, event registration, offline-first QR attendance, conditional forms/evaluations, and faculty-driven GMetrix certification key distribution.
 
 The platform consists of two coordinated applications backed by Supabase:
 * **MyCCS Mobile App (Expo React Native, TypeScript):** Primary client for Students and Organization Officers.
