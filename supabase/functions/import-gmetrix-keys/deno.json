@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "../_shared/cors": "../_shared/cors.ts",
+    "../_shared/edge-auth": "../_shared/edge-auth.ts",
+    "../_shared/gmetrix-crypto": "../_shared/gmetrix-crypto.ts",
+    "../_shared/gmetrix-csv": "../_shared/gmetrix-csv.ts",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.119.2"
+  }
+}

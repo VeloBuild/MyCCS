@@ -1,16 +1,56 @@
+import { useRef, useState, type KeyboardEvent } from 'react';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AdminProfileDto } from '@shared/web-admin';
+import type { WebAdminSupabaseConfig } from '../lib/supabase';
+import { FacultyPromotionPanel } from './FacultyPromotionPanel';
+import { GMetrixImportPanel } from './GMetrixImportPanel';
+
+type AdminWorkspaceTab = 'gmetrix' | 'faculty';
 
 interface AdminDashboardShellProps {
   profile: AdminProfileDto;
+  supabaseClient: SupabaseClient;
+  supabaseConfig: WebAdminSupabaseConfig;
   isSigningOut: boolean;
   onSignOut: () => Promise<void>;
 }
 
 export function AdminDashboardShell({
   profile,
+  supabaseClient,
+  supabaseConfig,
   isSigningOut,
   onSignOut,
 }: AdminDashboardShellProps) {
+  const [activeTab, setActiveTab] = useState<AdminWorkspaceTab>('gmetrix');
+  const [hasOpenedFacultyTab, setHasOpenedFacultyTab] = useState(false);
+  const gmetrixTabRef = useRef<HTMLButtonElement | null>(null);
+  const facultyTabRef = useRef<HTMLButtonElement | null>(null);
+
+  function selectTab(nextTab: AdminWorkspaceTab, focusTab = false) {
+    setActiveTab(nextTab);
+    if (nextTab === 'faculty') {
+      setHasOpenedFacultyTab(true);
+    }
+    if (focusTab) {
+      const targetRef = nextTab === 'gmetrix' ? gmetrixTabRef : facultyTabRef;
+      targetRef.current?.focus();
+    }
+  }
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      selectTab(activeTab === 'gmetrix' ? 'faculty' : 'gmetrix', true);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      selectTab('gmetrix', true);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      selectTab('faculty', true);
+    }
+  }
+
   return (
     <div className="dashboard-layout">
       <header className="topbar">
@@ -18,7 +58,9 @@ export function AdminDashboardShell({
           <span className="brand-badge">LPU · CCS</span>
           <div>
             <h1 className="topbar-title">MyCCS Web Admin</h1>
-            <p className="topbar-subtitle">College of Information Technology &amp; Computer Science · Department Portal</p>
+            <p className="topbar-subtitle">
+              College of Information Technology &amp; Computer Science · Department Portal
+            </p>
           </div>
         </div>
 
@@ -44,40 +86,67 @@ export function AdminDashboardShell({
         <section className="card hero-card" aria-labelledby="welcome-heading">
           <h2 id="welcome-heading">Welcome, {profile.fullName}</h2>
           <p className="subtitle">
-            Authenticated as a verified CCS Department Admin. This isolated portal enforces
-            PKCE session storage and server-verified role checks before loading administrative
-            modules.
+            Authenticated as a verified CCS Department Admin. Manage encrypted GMetrix certification
+            key batches and authorized faculty access within this isolated portal.
           </p>
         </section>
 
-        <section className="module-grid" aria-label="Administrative modules">
-          <article className="card module-card">
-            <span className="module-tag">Milestone 2 · Spec 05</span>
-            <h3>GMetrix Certification Keys</h3>
-            <p>
-              Bulk CSV upload and HMAC blind-index matching for CCS certification key
-              distribution will mount here.
-            </p>
-          </article>
+        <nav className="workspace-tabs" role="tablist" aria-label="Admin workspaces">
+          <button
+            ref={gmetrixTabRef}
+            id="tab-gmetrix"
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'gmetrix'}
+            aria-controls="panel-gmetrix"
+            tabIndex={activeTab === 'gmetrix' ? 0 : -1}
+            className={
+              activeTab === 'gmetrix' ? 'workspace-tab workspace-tab-active' : 'workspace-tab'
+            }
+            onClick={() => selectTab('gmetrix')}
+            onKeyDown={handleTabKeyDown}
+          >
+            GMetrix Keys
+          </button>
+          <button
+            ref={facultyTabRef}
+            id="tab-faculty"
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'faculty'}
+            aria-controls="panel-faculty"
+            tabIndex={activeTab === 'faculty' ? 0 : -1}
+            className={
+              activeTab === 'faculty' ? 'workspace-tab workspace-tab-active' : 'workspace-tab'
+            }
+            onClick={() => selectTab('faculty')}
+            onKeyDown={handleTabKeyDown}
+          >
+            Faculty Admins
+          </button>
+        </nav>
 
-          <article className="card module-card">
-            <span className="module-tag">Milestone 2 · Spec 04</span>
-            <h3>Department &amp; Organizations</h3>
-            <p>
-              Manage College of Information Technology and Computer Science (IT, CS, LIS) profile information, sub-organizations, and
-              department announcements.
-            </p>
-          </article>
-
-          <article className="card module-card">
-            <span className="module-tag">Active Guard · ADR-009</span>
-            <h3>Session &amp; Security Boundary</h3>
-            <p>
-              Role verification runs via <code>public.get_my_profile()</code> with zero backend
-              secrets exposed to the browser bundle.
-            </p>
-          </article>
-        </section>
+        <div
+          id="panel-gmetrix"
+          role="tabpanel"
+          aria-labelledby="tab-gmetrix"
+          hidden={activeTab !== 'gmetrix'}
+        >
+          <GMetrixImportPanel
+            supabaseClient={supabaseClient}
+            supabaseConfig={supabaseConfig}
+          />
+        </div>
+        {hasOpenedFacultyTab ? (
+          <div
+            id="panel-faculty"
+            role="tabpanel"
+            aria-labelledby="tab-faculty"
+            hidden={activeTab !== 'faculty'}
+          >
+            <FacultyPromotionPanel supabaseClient={supabaseClient} />
+          </div>
+        ) : null}
       </main>
     </div>
   );

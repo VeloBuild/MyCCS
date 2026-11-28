@@ -17,17 +17,21 @@ import {
   findOrganizationById,
   type MobileHubRoute,
 } from '../../shared/dept-org';
+import type { DecryptedCertificationKey } from '../../shared/gmetrix';
 import type { CompressImageResponse } from '../../shared/media-upload';
 import { AnnouncementsFeedView } from '../components/AnnouncementsFeedView';
+import { CertificationsAndKeysView } from '../components/CertificationsAndKeysView';
 import { DepartmentAboutView } from '../components/DepartmentAboutView';
 import { IdentityCard } from '../components/IdentityCard';
 import { OrgDetailView } from '../components/OrgDetailView';
 import { OrgDirectoryView } from '../components/OrgDirectoryView';
+import { useKeysAndAlerts } from '../hooks/useKeysAndAlerts';
 import {
   getClientSupabaseConfig,
   getSupabaseClient,
   isSupabaseConfigured,
 } from '../lib/supabase';
+import type { CertificationsSupabaseClient } from '../services/certifications';
 import {
   adaptSupabaseClient,
   createAnnouncement,
@@ -39,6 +43,11 @@ import {
   type DeptOrgSupabaseClient,
 } from '../services/deptOrg';
 import { uploadCompressedOrgMedia } from '../services/mediaUpload';
+import {
+  resolveDeepLinkToHubRoute,
+  type PushTokenDriver,
+  type PushTokensRpcClient,
+} from '../services/pushNotifications';
 import {
   CCS_CREST_COLORS,
   CCS_CREST_RADII,
@@ -57,6 +66,11 @@ export interface MyCcsHubScreenProps {
     kind: 'logo' | 'cover',
     localUri: string
   ) => Promise<CompressImageResponse>;
+  certificationsClient?: CertificationsSupabaseClient;
+  onFetchMyCertificationKeys?: () => Promise<DecryptedCertificationKey[]>;
+  pushTokenDriver?: PushTokenDriver;
+  pushTokensClient?: PushTokensRpcClient;
+  initialDeepLinkUrl?: string | null;
   now?: Date;
 }
 
@@ -66,6 +80,7 @@ const TAB_ITEMS: ReadonlyArray<{ id: HubTabId; label: string }> = [
   { id: 'feed', label: 'Feed' },
   { id: 'department', label: 'Department' },
   { id: 'orgs', label: 'Orgs' },
+  { id: 'keys', label: 'Keys' },
   { id: 'identity', label: 'Identity' },
 ];
 
@@ -77,6 +92,8 @@ function getHeaderTitle(route: MobileHubRoute): string {
       return 'Department';
     case 'orgs':
       return 'Organizations';
+    case 'keys':
+      return 'Keys';
     case 'identity':
       return 'Identity';
   }
@@ -131,9 +148,16 @@ export function MyCcsHubScreen({
   onSignOut,
   deptOrgClient,
   onUploadOrgMedia,
+  certificationsClient,
+  onFetchMyCertificationKeys,
+  pushTokenDriver,
+  pushTokensClient,
+  initialDeepLinkUrl,
   now,
 }: MyCcsHubScreenProps) {
-  const [route, setRoute] = useState<MobileHubRoute>({ tab: 'feed' });
+  const [route, setRoute] = useState<MobileHubRoute>(
+    () => resolveDeepLinkToHubRoute(initialDeepLinkUrl) ?? { tab: 'feed' }
+  );
   const [departmentInfo, setDepartmentInfo] = useState<DepartmentInfo | null>(
     null
   );
@@ -177,6 +201,33 @@ export function MyCcsHubScreen({
       mountedRef.current = false;
     };
   }, []);
+
+  const {
+    certifications,
+    decryptedKeys,
+    notifications,
+    keysLoading,
+    keysError,
+    certificationsError,
+    notificationsError,
+    unreadAlertsCount,
+    loadKeysHubData,
+    refreshNotificationsBadge,
+    handleMarkKeyViewed,
+    handleOpenNotification,
+    handleSignOutWithPushCleanup,
+  } = useKeysAndAlerts({
+    profileId: profile.id,
+    route,
+    setRoute,
+    hasDeptOrgClient: Boolean(deptOrgClient),
+    certificationsClient,
+    onFetchMyCertificationKeys,
+    pushTokenDriver,
+    pushTokensClient,
+    initialDeepLinkUrl,
+    onSignOut,
+  });
 
   const resolveClient = useCallback((): DeptOrgSupabaseClient => {
     return deptOrgClient ?? adaptSupabaseClient(getSupabaseClient());
@@ -242,7 +293,24 @@ export function MyCcsHubScreen({
 
   const refreshHub = useCallback(async () => {
     if (!deptOrgClient && !isSupabaseConfigured()) {
+      const isInitialLoad = !hasLoadedRef.current;
       hasLoadedRef.current = true;
+      if (!isInitialLoad) {
+        if (mountedRef.current) {
+          setRefreshing(true);
+        }
+        try {
+          if (routeRef.current.tab === 'keys') {
+            await loadKeysHubData();
+          } else {
+            await refreshNotificationsBadge();
+          }
+        } finally {
+          if (mountedRef.current) {
+            setRefreshing(false);
+          }
+        }
+      }
       if (mountedRef.current) {
         setLoading(false);
         setRefreshing(false);
@@ -274,6 +342,11 @@ export function MyCcsHubScreen({
         loadHubSnapshot(resolveClient(), profile.id),
         activeDetailOrgId
           ? loadOrgAnnouncements(activeDetailOrgId)
+          : Promise.resolve(),
+        !isInitialLoad
+          ? currentRoute.tab === 'keys'
+            ? loadKeysHubData()
+            : refreshNotificationsBadge()
           : Promise.resolve(),
       ]);
       if (!mountedRef.current || refreshIdRef.current !== requestId) {
@@ -341,7 +414,14 @@ export function MyCcsHubScreen({
         setRefreshing(false);
       }
     }
-  }, [deptOrgClient, loadOrgAnnouncements, profile.id, resolveClient]);
+  }, [
+    deptOrgClient,
+    loadKeysHubData,
+    loadOrgAnnouncements,
+    profile.id,
+    refreshNotificationsBadge,
+    resolveClient,
+  ]);
 
   useEffect(() => {
     void refreshHub();
@@ -552,6 +632,9 @@ export function MyCcsHubScreen({
       case 'orgs':
         setRoute({ tab: 'orgs', view: { kind: 'directory' } });
         break;
+      case 'keys':
+        setRoute({ tab: 'keys', section: 'my_keys' });
+        break;
       case 'identity':
         setRoute({ tab: 'identity' });
         break;
@@ -565,7 +648,7 @@ export function MyCcsHubScreen({
           profile={profile}
           busy={busy}
           errorMessage={errorMessage}
-          onSignOut={onSignOut}
+          onSignOut={() => void handleSignOutWithPushCleanup()}
         />
       );
     }
@@ -667,6 +750,22 @@ export function MyCcsHubScreen({
           />
         );
       }
+      case 'keys':
+        return (
+          <CertificationsAndKeysView
+            section={route.section}
+            certifications={certifications}
+            keys={decryptedKeys}
+            notifications={notifications}
+            loading={keysLoading}
+            keysError={keysError}
+            certificationsError={certificationsError}
+            notificationsError={notificationsError}
+            onSelectSection={(section) => setRoute({ tab: 'keys', section })}
+            onMarkKeyViewed={handleMarkKeyViewed}
+            onOpenNotification={handleOpenNotification}
+          />
+        );
     }
   };
 
@@ -721,11 +820,23 @@ export function MyCcsHubScreen({
                   isActive ? styles.activeBarVisible : styles.activeBarHidden,
                 ]}
               />
-              <Text
-                style={[styles.tabLabel, isActive && styles.tabLabelActive]}
-              >
-                {item.label}
-              </Text>
+              <View style={styles.tabLabelRow}>
+                <Text
+                  style={[styles.tabLabel, isActive && styles.tabLabelActive]}
+                >
+                  {item.label}
+                </Text>
+                {item.id === 'keys' && unreadAlertsCount > 0 ? (
+                  <View
+                    style={styles.tabUnreadBadge}
+                    testID="tab-keys-unread-badge"
+                  >
+                    <Text style={styles.tabUnreadBadgeText}>
+                      {unreadAlertsCount}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
             </Pressable>
           );
         })}
@@ -826,6 +937,11 @@ const styles = StyleSheet.create({
   activeBarHidden: {
     backgroundColor: 'transparent',
   },
+  tabLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   tabLabel: {
     fontSize: 12,
     fontWeight: '600',
@@ -834,5 +950,19 @@ const styles = StyleSheet.create({
   tabLabelActive: {
     color: CCS_CREST_COLORS.circuitBlue,
     fontWeight: '700',
+  },
+  tabUnreadBadge: {
+    backgroundColor: CCS_CREST_COLORS.laurelGoldSoft,
+    borderColor: CCS_CREST_COLORS.laurelGoldBorder,
+    borderWidth: 1,
+    borderRadius: CCS_CREST_RADII.pill,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  tabUnreadBadgeText: {
+    color: CCS_CREST_COLORS.laurelGoldInk,
+    fontSize: 10,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
 });

@@ -1,8 +1,13 @@
 import {
-  handleCorsPreflight,
-  resolveCorsHeaders,
-  withCorsJson,
-} from '../_shared/cors';
+  authenticateEdgeRequest,
+  readStreamWithLimit,
+  resolveExpectedJwtIssuer,
+  resolvePublicStorageBaseUrl,
+  resolveSupabaseRuntimeEnv,
+  validateJwtClaims,
+  type JwtClaimValidationResult,
+  type SupabaseEdgeRuntimeEnv,
+} from '../_shared/edge-auth';
 import {
   ALLOWED_INPUT_IMAGE_MIME_TYPES,
   MAX_MEDIA_UPLOAD_BYTES,
@@ -19,20 +24,19 @@ export {
   MEDIA_STORAGE_BUCKET,
   MEDIA_VARIANT_LIMITS,
   OUTPUT_IMAGE_MIME_TYPE,
+  resolveExpectedJwtIssuer,
+  resolvePublicStorageBaseUrl,
+  validateJwtClaims,
   type AllowedInputImageMime,
+  type JwtClaimValidationResult,
   type MediaKind,
 };
 
 export const MULTIPART_OVERHEAD_BYTES = 65536;
 export const MAX_BODY_BYTES = MAX_MEDIA_UPLOAD_BYTES + MULTIPART_OVERHEAD_BYTES;
 
-export interface CompressImageRuntimeEnv {
-  supabaseUrl: string;
-  publicStorageBaseUrl: string;
-  serviceRoleKey: string;
-  publishableKey: string;
-  expectedJwtIssuer?: string;
-}
+export type CompressImageRuntimeEnv = SupabaseEdgeRuntimeEnv;
+export const resolveRuntimeEnv = resolveSupabaseRuntimeEnv;
 
 export interface CompressImageAuthContext {
   profileRole: 'student' | 'officer' | 'admin' | null;
@@ -82,22 +86,12 @@ export interface CompressImageDeps {
   nowSeconds?: () => number;
 }
 
-export type JwtClaimValidationResult =
-  | { ok: true; sub: string }
-  | { ok: false; message: string };
-
 type PayloadValidationResult =
   | { ok: true; mimeType: AllowedInputImageMime }
   | { ok: false; status: 400 | 413 | 415; message: string };
 
-type BoundedBodyReadResult =
-  | { ok: true; bytes: Uint8Array }
-  | { ok: false; status: 400 | 413; message: string };
-
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const BASE64URL_SEGMENT_REGEX = /^[A-Za-z0-9_-]+$/;
-const BEARER_HEADER_REGEX = /^bearer\s+(\S+)$/i;
 const DEFINITE_REJECTION_CODE_REGEX = /^(PGRST1\d\d|22[0-9A-Z]{3}|23[0-9A-Z]{3}|42[0-9A-Z]{3})$/;
 
 export function classifyPersistenceFailure(
@@ -120,69 +114,12 @@ export function classifyPersistenceFailure(
   return 'unknown';
 }
 
-export function resolvePublicStorageBaseUrl(
-  supabaseUrl: string,
-  configuredPublicUrl?: string | null,
-  configuredJwtIssuer?: string | null
-): string {
-  const trimmedPublicUrl = configuredPublicUrl?.trim().replace(/\/+$/, '') ?? '';
-  if (trimmedPublicUrl.length > 0) {
-    return trimmedPublicUrl;
-  }
-
-  const trimmedJwtIssuer = configuredJwtIssuer?.trim().replace(/\/+$/, '') ?? '';
-  if (trimmedJwtIssuer.length > 0) {
-    const strippedIssuer = trimmedJwtIssuer
-      .replace(/\/auth\/v1$/i, '')
-      .replace(/\/+$/, '');
-    if (strippedIssuer.length > 0) {
-      return strippedIssuer;
-    }
-  }
-
-  return supabaseUrl.trim().replace(/\/+$/, '');
-}
-
 export function buildPublicStorageObjectUrl(
   publicStorageBaseUrl: string,
   bucket: string,
   path: string
 ): string {
   return `${publicStorageBaseUrl.trim().replace(/\/+$/, '')}/storage/v1/object/public/${bucket}/${path.replace(/^\/+/, '')}`;
-}
-
-export function resolveRuntimeEnv(
-  readEnv: (key: string) => string | undefined
-): CompressImageRuntimeEnv | null {
-  const supabaseUrl = readEnv('SUPABASE_URL')?.trim() || '';
-  const serviceRoleKey =
-    readEnv('SUPABASE_SECRET_KEY')?.trim() ||
-    readEnv('SUPABASE_SERVICE_ROLE_KEY')?.trim() ||
-    '';
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return null;
-  }
-
-  const publishableKey =
-    readEnv('SUPABASE_PUBLISHABLE_KEY')?.trim() ||
-    readEnv('SUPABASE_ANON_KEY')?.trim() ||
-    serviceRoleKey;
-  const expectedJwtIssuer = readEnv('SUPABASE_JWT_ISSUER')?.trim() || undefined;
-  const configuredPublicUrl = readEnv('SUPABASE_PUBLIC_URL')?.trim() || undefined;
-  const publicStorageBaseUrl = resolvePublicStorageBaseUrl(
-    supabaseUrl,
-    configuredPublicUrl,
-    expectedJwtIssuer
-  );
-
-  return {
-    supabaseUrl,
-    publicStorageBaseUrl,
-    serviceRoleKey,
-    publishableKey,
-    expectedJwtIssuer,
-  };
 }
 
 export async function loadWasmBytes(
@@ -207,17 +144,6 @@ export async function loadWasmBytes(
   }
 
   return bytes;
-}
-
-export function resolveExpectedJwtIssuer(
-  supabaseUrl: string,
-  configuredIssuer?: string | null
-): string {
-  const trimmedOverride = configuredIssuer?.trim().replace(/\/+$/, '') ?? '';
-  if (trimmedOverride.length > 0) {
-    return trimmedOverride;
-  }
-  return `${supabaseUrl.trim().replace(/\/+$/, '')}/auth/v1`;
 }
 
 function isMediaKind(value: string): value is MediaKind {
@@ -326,91 +252,6 @@ function validateImagePayload(
   return { ok: true, mimeType: detected };
 }
 
-function decodeBase64UrlUtf8(segment: string): string | null {
-  if (!BASE64URL_SEGMENT_REGEX.test(segment)) {
-    return null;
-  }
-
-  const remainder = segment.length % 4;
-  if (remainder === 1) {
-    return null;
-  }
-
-  const padded = segment
-    .replace(/-/g, '+')
-    .replace(/_/g, '/')
-    .padEnd(segment.length + (remainder === 0 ? 0 : 4 - remainder), '=');
-
-  try {
-    const binary = atob(padded);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return new TextDecoder().decode(bytes);
-  } catch {
-    return null;
-  }
-}
-
-export function validateJwtClaims(
-  token: string,
-  expectedIssuer: string,
-  nowSeconds: number
-): JwtClaimValidationResult {
-  const parts = token.split('.');
-  if (parts.length !== 3 || parts.some((part) => part.length === 0)) {
-    return { ok: false, message: 'Malformed JWT token.' };
-  }
-
-  const decodedPayload = decodeBase64UrlUtf8(parts[1]);
-  if (decodedPayload === null) {
-    return { ok: false, message: 'Invalid JWT payload encoding.' };
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(decodedPayload);
-  } catch {
-    return { ok: false, message: 'Invalid JWT payload JSON.' };
-  }
-
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return { ok: false, message: 'Invalid JWT claims structure.' };
-  }
-
-  const claims = parsed as Record<string, unknown>;
-
-  const audValid =
-    claims.aud === 'authenticated' ||
-    (Array.isArray(claims.aud) && claims.aud.includes('authenticated'));
-  if (!audValid) {
-    return { ok: false, message: 'Invalid token audience.' };
-  }
-
-  const trimmedIssuer = expectedIssuer.trim().replace(/\/+$/, '');
-  const normalizedIssuer = trimmedIssuer.endsWith('/auth/v1')
-    ? trimmedIssuer
-    : `${trimmedIssuer}/auth/v1`;
-  if (typeof claims.iss !== 'string' || claims.iss !== normalizedIssuer) {
-    return { ok: false, message: 'Invalid token issuer.' };
-  }
-
-  if (
-    typeof claims.exp !== 'number' ||
-    !Number.isFinite(claims.exp) ||
-    claims.exp <= nowSeconds
-  ) {
-    return { ok: false, message: 'Token is expired or missing exp claim.' };
-  }
-
-  if (typeof claims.sub !== 'string' || claims.sub.trim().length === 0) {
-    return { ok: false, message: 'Token is missing subject claim.' };
-  }
-
-  return { ok: true, sub: claims.sub.trim() };
-}
-
 interface FormDataLike {
   get(name: string): unknown;
 }
@@ -423,124 +264,22 @@ function isBlobLike(value: unknown): value is Blob {
   );
 }
 
-async function readStreamWithLimit(
-  body: ReadableStream<Uint8Array>,
-  maxBytes: number
-): Promise<BoundedBodyReadResult> {
-  let reader: ReadableStreamDefaultReader<Uint8Array>;
-  try {
-    reader = body.getReader();
-  } catch {
-    return {
-      ok: false,
-      status: 400,
-      message: 'Malformed multipart/form-data request body.',
-    };
-  }
-
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      if (value.byteLength === 0) {
-        continue;
-      }
-      totalBytes += value.byteLength;
-      if (totalBytes > maxBytes) {
-        await reader.cancel().catch(() => {});
-        return {
-          ok: false,
-          status: 413,
-          message: 'Image exceeds the 5 MB upload limit.',
-        };
-      }
-      chunks.push(value);
-    }
-  } catch {
-    return {
-      ok: false,
-      status: 400,
-      message: 'Malformed multipart/form-data request body.',
-    };
-  } finally {
-    reader.releaseLock();
-  }
-
-  const combined = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    combined.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return { ok: true, bytes: combined };
-}
-
 export async function handleCompressImageRequest(
   req: Request,
   deps: CompressImageDeps
 ): Promise<Response> {
-  const preflight = handleCorsPreflight(req, deps.allowedOrigins);
-  if (preflight) {
-    return preflight;
+  const auth = await authenticateEdgeRequest(req, {
+    allowedMethod: 'POST',
+    allowedOrigins: deps.allowedOrigins,
+    supabaseUrl: deps.supabaseUrl,
+    expectedJwtIssuer: deps.expectedJwtIssuer,
+    verifyUser: deps.verifyUser,
+    nowSeconds: deps.nowSeconds,
+  });
+  if (!auth.ok) {
+    return auth.response;
   }
-
-  const origin = req.headers.get('origin');
-  const json = (
-    body: unknown,
-    status: number,
-    headers?: Record<string, string>
-  ): Response =>
-    withCorsJson(body, { status, headers }, origin, deps.allowedOrigins);
-
-  if (origin !== null && !resolveCorsHeaders(origin, deps.allowedOrigins).allowed) {
-    return json({ error: 'Origin not allowed.' }, 403);
-  }
-
-  if (req.method.toUpperCase() !== 'POST') {
-    return json({ error: 'Method not allowed.' }, 405, {
-      Allow: 'POST, OPTIONS',
-    });
-  }
-
-  const authHeader = req.headers.get('authorization');
-  const bearerMatch = authHeader ? BEARER_HEADER_REGEX.exec(authHeader.trim()) : null;
-  if (!bearerMatch) {
-    return json({ error: 'Missing or invalid Authorization bearer token.' }, 401);
-  }
-
-  const accessToken = bearerMatch[1];
-  const nowSeconds = deps.nowSeconds
-    ? deps.nowSeconds()
-    : Math.floor(Date.now() / 1000);
-  const expectedIssuer = resolveExpectedJwtIssuer(
-    deps.supabaseUrl,
-    deps.expectedJwtIssuer
-  );
-  const claimsResult = validateJwtClaims(accessToken, expectedIssuer, nowSeconds);
-  if (!claimsResult.ok) {
-    return json({ error: claimsResult.message }, 401);
-  }
-
-  let verifiedUser: { id: string; email?: string } | null = null;
-  try {
-    verifiedUser = await deps.verifyUser(accessToken);
-  } catch {
-    return json({ error: 'Authentication verification failed.' }, 401);
-  }
-
-  if (!verifiedUser || typeof verifiedUser.id !== 'string' || verifiedUser.id.trim().length === 0) {
-    return json({ error: 'Invalid or revoked authentication token.' }, 401);
-  }
-
-  if (verifiedUser.id.trim() !== claimsResult.sub) {
-    return json({ error: 'Token subject mismatch.' }, 401);
-  }
+  const { userId, json } = auth;
 
   const rawContentType = req.headers.get('content-type') ?? '';
   if (!rawContentType.toLowerCase().includes('multipart/form-data')) {
@@ -558,7 +297,12 @@ export async function handleCompressImageRequest(
   let formData: FormDataLike;
   try {
     if (req.body !== null && typeof req.body.getReader === 'function') {
-      const bodyResult = await readStreamWithLimit(req.body, MAX_BODY_BYTES);
+      const bodyResult = await readStreamWithLimit(
+        req.body,
+        MAX_BODY_BYTES,
+        'Image exceeds the 5 MB upload limit.',
+        'Malformed multipart/form-data request body.'
+      );
       if (!bodyResult.ok) {
         return json({ error: bodyResult.message }, bodyResult.status);
       }
@@ -586,7 +330,7 @@ export async function handleCompressImageRequest(
 
   let authContext: CompressImageAuthContext;
   try {
-    authContext = await deps.loadAuthorizationContext(verifiedUser.id, organizationId);
+    authContext = await deps.loadAuthorizationContext(userId, organizationId);
   } catch {
     return json({ error: 'Unable to verify upload authorization.' }, 500);
   }

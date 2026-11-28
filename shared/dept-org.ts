@@ -27,6 +27,7 @@ export type MobileHubRoute =
         | { kind: 'directory' }
         | { kind: 'detail'; orgId: string; panel: 'posts' | 'edit_org' | 'new_post' };
     }
+  | { tab: 'keys'; section: 'my_keys' | 'directory' | 'notifications' }
   | { tab: 'identity' };
 
 const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000;

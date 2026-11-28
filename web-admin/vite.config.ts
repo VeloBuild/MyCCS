@@ -6,6 +6,7 @@ import { assertPublishableClientKey } from '../shared/supabase-key-guard';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const sharedDir = path.resolve(rootDir, '../shared');
+const supabaseSharedDir = path.resolve(rootDir, '../supabase/functions/_shared');
 
 export default defineConfig(({ mode }) => {
   const loadedEnv = loadEnv(mode, rootDir, 'VITE_');
@@ -24,7 +25,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       fs: {
-        allow: [rootDir, sharedDir],
+        allow: [rootDir, sharedDir, supabaseSharedDir],
       },
     },
     build: {
