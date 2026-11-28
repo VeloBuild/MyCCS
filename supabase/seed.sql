@@ -18,7 +18,8 @@ BEGIN
     FOREACH v_secret_name IN ARRAY ARRAY[
       'myccs_pii_encryption_key',
       'myccs_email_blind_pepper',
-      'myccs_qr_hmac_secret'
+      'myccs_qr_hmac_secret',
+      'myccs_cert_key_encryption_key'
     ]
     LOOP
       IF NOT EXISTS (SELECT 1 FROM vault.decrypted_secrets WHERE name = v_secret_name) THEN

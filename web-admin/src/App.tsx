@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   type AdminSessionState,
   type WebAdminRoute,
@@ -8,13 +9,16 @@ import {
 import { AccessDeniedView } from './components/AccessDeniedView';
 import { AdminDashboardShell } from './components/AdminDashboardShell';
 import { LoginView } from './components/LoginView';
-import { getWebAdminSupabaseClient } from './lib/supabase';
+import {
+  getWebAdminSupabaseClient,
+  getWebAdminSupabaseConfig,
+  type WebAdminSupabaseConfig,
+} from './lib/supabase';
 import {
   isInternalAdminSignOut,
   restoreAdminSession,
   signInAsAdmin,
   signOutAdmin,
-  type WebAdminSupabaseClient,
 } from './services/adminAuth';
 
 function syncBrowserPath(target: WebAdminRoute, replace: boolean): void {
@@ -35,14 +39,20 @@ export function App() {
   const authOpIdRef = useRef(0);
 
   const clientResult = useMemo<{
-    client: WebAdminSupabaseClient | null;
+    client: SupabaseClient | null;
+    config: WebAdminSupabaseConfig | null;
     error: string | null;
   }>(() => {
     try {
-      return { client: getWebAdminSupabaseClient(), error: null };
+      return {
+        client: getWebAdminSupabaseClient(),
+        config: getWebAdminSupabaseConfig(),
+        error: null,
+      };
     } catch (err) {
       return {
         client: null,
+        config: null,
         error: formatWebAdminError(
           err,
           'Invalid web-admin Supabase environment configuration.'
@@ -126,7 +136,7 @@ export function App() {
     }
   }, [clientResult.client, resolution.redirectTo, resolution.route, sessionState.status]);
 
-  if (clientResult.error || !clientResult.client) {
+  if (clientResult.error || !clientResult.client || !clientResult.config) {
     return (
       <main className="auth-layout">
         <section className="card auth-card" aria-labelledby="config-error-heading">
@@ -143,6 +153,7 @@ export function App() {
   }
 
   const supabaseClient = clientResult.client;
+  const supabaseConfig = clientResult.config;
 
   async function handleSignIn(credentials: { email: string; password: string }) {
     const opId = ++authOpIdRef.current;
@@ -230,6 +241,8 @@ export function App() {
     return (
       <AdminDashboardShell
         profile={sessionState.profile}
+        supabaseClient={supabaseClient}
+        supabaseConfig={supabaseConfig}
         isSigningOut={isBusy}
         onSignOut={handleSignOut}
       />

@@ -396,6 +396,12 @@ SUPABASE_PUBLIC_URL = "http://127.0.0.1:54321"
 [functions.compress-image]
 verify_jwt = false
 
+[functions.import-gmetrix-keys]
+verify_jwt = false
+
+[functions.my-certification-keys]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

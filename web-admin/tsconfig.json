@@ -22,7 +22,9 @@
     "src",
     "vite.config.ts",
     "../shared/auth.ts",
+    "../shared/gmetrix.ts",
     "../shared/supabase-key-guard.ts",
-    "../shared/web-admin.ts"
+    "../shared/web-admin.ts",
+    "../supabase/functions/_shared/gmetrix-csv.ts"
   ]
 }

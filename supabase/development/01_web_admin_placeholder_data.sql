@@ -30,7 +30,8 @@ BEGIN
     FOREACH v_secret_name IN ARRAY ARRAY[
       'myccs_pii_encryption_key',
       'myccs_email_blind_pepper',
-      'myccs_qr_hmac_secret'
+      'myccs_qr_hmac_secret',
+      'myccs_cert_key_encryption_key'
     ]
     LOOP
       IF NOT EXISTS (SELECT 1 FROM vault.decrypted_secrets WHERE name = v_secret_name) THEN
@@ -298,5 +299,30 @@ BEGIN
       now() + interval '14 days'
     )
   ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.certifications (id, title, provider, description, is_active)
+  VALUES
+    (
+      'd4000000-0000-4000-8000-000000000001'::uuid,
+      'CompTIA Security+',
+      'CompTIA',
+      'Foundational cybersecurity skills covering threats, architecture, operations, and governance.',
+      true
+    ),
+    (
+      'd4000000-0000-4000-8000-000000000002'::uuid,
+      'Cisco CCNA',
+      'Cisco',
+      'Networking fundamentals, IP connectivity, IP services, security fundamentals, and automation.',
+      true
+    ),
+    (
+      'd4000000-0000-4000-8000-000000000003'::uuid,
+      'Certiport IT Specialist',
+      'Certiport',
+      'Entry-level software development, networking, and database proficiency tracked via GMetrix.',
+      true
+    )
+  ON CONFLICT DO NOTHING;
 END;
 $$;
