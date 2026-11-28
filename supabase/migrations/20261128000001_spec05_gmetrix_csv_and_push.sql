@@ -404,7 +404,8 @@ SET search_path = public
 AS $$
   SELECT DISTINCT pt.expo_push_token
   FROM public.push_tokens pt
-  WHERE pt.profile_id = ANY(COALESCE(p_profile_ids, ARRAY[]::uuid[]));
+  WHERE pt.profile_id = ANY(COALESCE(p_profile_ids, ARRAY[]::uuid[]))
+  ORDER BY pt.expo_push_token ASC;
 $$;
 
 REVOKE ALL ON FUNCTION public.load_push_tokens_for_profiles(uuid[]) FROM PUBLIC, anon, authenticated;
@@ -678,6 +679,39 @@ $$;
 REVOKE ALL ON FUNCTION public.register_push_token(text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.register_push_token(text, text) TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.get_pii_encryption_key_for_version(p_key_version integer)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_version integer := COALESCE(p_key_version, 1);
+  v_versioned_secret text;
+BEGIN
+  IF v_version < 1 THEN
+    RAISE EXCEPTION 'Invalid PII key_version: %', v_version
+      USING ERRCODE = '22023';
+  END IF;
+
+  IF to_regclass('vault.decrypted_secrets') IS NOT NULL THEN
+    SELECT decrypted_secret
+      INTO v_versioned_secret
+    FROM vault.decrypted_secrets
+    WHERE name = 'myccs_pii_encryption_key_v' || v_version::text
+    LIMIT 1;
+
+    IF v_versioned_secret IS NOT NULL AND length(v_versioned_secret) >= 16 THEN
+      RETURN v_versioned_secret;
+    END IF;
+  END IF;
+
+  RETURN public.get_identity_secret('myccs_pii_encryption_key');
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_pii_encryption_key_for_version(integer) FROM PUBLIC, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.list_admin_profiles()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -685,7 +719,6 @@ SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 DECLARE
-  v_pii_key text;
   v_result jsonb;
 BEGIN
   IF NOT public.is_admin() THEN
@@ -693,14 +726,12 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
-  v_pii_key := public.get_identity_secret('myccs_pii_encryption_key');
-
   SELECT COALESCE(
     jsonb_agg(
       jsonb_build_object(
         'id', p.id,
-        'email', extensions.pgp_sym_decrypt(p.email_enc, v_pii_key),
-        'fullName', extensions.pgp_sym_decrypt(p.full_name_enc, v_pii_key),
+        'email', extensions.pgp_sym_decrypt(p.email_enc, k.pii_key),
+        'fullName', extensions.pgp_sym_decrypt(p.full_name_enc, k.pii_key),
         'role', p.role,
         'createdAt', p.created_at
       )
@@ -710,6 +741,9 @@ BEGIN
   )
     INTO v_result
   FROM public.profiles p
+  CROSS JOIN LATERAL (
+    SELECT public.get_pii_encryption_key_for_version(p.key_version) AS pii_key
+  ) k
   WHERE p.role = 'admin'
     AND p.deleted_at IS NULL;
 
@@ -747,7 +781,6 @@ BEGIN
   END IF;
 
   v_blind_pepper := public.get_identity_secret('myccs_email_blind_pepper');
-  v_pii_key := public.get_identity_secret('myccs_pii_encryption_key');
 
   v_blind_index := encode(
     extensions.hmac(convert_to(v_email, 'UTF8'), convert_to(v_blind_pepper, 'UTF8'), 'sha256'),
@@ -766,6 +799,7 @@ BEGIN
       USING ERRCODE = 'P0002';
   END IF;
 
+  v_pii_key := public.get_pii_encryption_key_for_version(v_row.key_version);
   v_already_admin := (v_row.role = 'admin');
 
   IF NOT v_already_admin THEN

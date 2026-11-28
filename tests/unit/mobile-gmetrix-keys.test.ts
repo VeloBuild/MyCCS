@@ -1530,6 +1530,45 @@ describe('spec-05-gmetrix-csv-and-push (SCRUM-14) — Mobile Keys, Alerts & Push
           within(feedScreen.getByTestId('tab-keys-unread-badge')).getByText('1')
         ).toBeTruthy();
       });
+      await feedScreen.unmount();
+
+      const { client: reloadClient } = createMockCertificationsClient({
+        certifications: SAMPLE_CERTIFICATIONS,
+        notifications: [SAMPLE_NOTIFICATIONS[0]],
+        keyViewedAtById: { [KEY_NEW_ID]: null },
+      });
+      const reloadFetchKeys = jest
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([SAMPLE_KEYS[0]]);
+
+      const alertReloadScreen = await render(
+        createElement(MyCcsHubScreen, {
+          profile: STUDENT_PROFILE,
+          busy: false,
+          errorMessage: null,
+          onSignOut: jest.fn(),
+          certificationsClient: reloadClient,
+          onFetchMyCertificationKeys: reloadFetchKeys,
+        })
+      );
+
+      await fireEvent.press(alertReloadScreen.getByTestId('tab-keys'));
+      await waitFor(() => {
+        expect(alertReloadScreen.getByTestId('keys-empty')).toBeTruthy();
+      });
+      expect(reloadFetchKeys).toHaveBeenCalledTimes(1);
+
+      await fireEvent.press(alertReloadScreen.getByTestId('keys-section-notifications'));
+      await fireEvent.press(alertReloadScreen.getByTestId(`notification-item-${NOTIF_UNREAD_ID}`));
+
+      await waitFor(() => {
+        expect(alertReloadScreen.getByTestId('keys-section-view-my_keys')).toBeTruthy();
+      });
+      await waitFor(() => {
+        expect(alertReloadScreen.getByTestId(`cert-key-item-${KEY_NEW_ID}`)).toBeTruthy();
+      });
+      expect(reloadFetchKeys).toHaveBeenCalledTimes(2);
     });
   });
 });

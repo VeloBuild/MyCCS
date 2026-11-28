@@ -23,6 +23,10 @@ import {
 } from '../../shared/gmetrix';
 import { computeEmailBlindIndex as sharedComputeEmailBlindIndex } from '../../shared/identity-crypto';
 import {
+  readStreamWithLimit,
+  validateJwtClaims,
+} from '../../supabase/functions/_shared/edge-auth';
+import {
   computeEmailBlindIndex as edgeComputeEmailBlindIndex,
   computeKeyCodeHash,
   decryptKeyCode,
@@ -59,6 +63,7 @@ import {
 import {
   createMyKeysRingResolver,
   handleMyCertificationKeysRequest,
+  loadAllPaginatedCertificationKeyRows,
   mapPostgrestCertificationKeyRow,
   type EncryptedCertificationKeyRow,
   type MyCertificationKeysDeps,
@@ -347,6 +352,27 @@ describe('spec-05 shared/gmetrix.ts & _shared/gmetrix-csv.ts parity and schemas'
       ok: false,
       error: `CSV exceeds the maximum limit of ${SHARED_MAX_CSV_ROWS} rows.`,
     });
+
+    const dupEmailHeader = edgeParseGMetrixCsv(
+      'student_email,email,key_code\na@lpunetwork.edu.ph,b@lpunetwork.edu.ph,GMX-1'
+    );
+    expect(dupEmailHeader.ok).toBe(false);
+    if (!dupEmailHeader.ok) {
+      expect(dupEmailHeader.error).toContain('student_email');
+      expect(dupEmailHeader.error).toContain('email');
+    }
+    expect(sharedParseGMetrixCsv('student_email,email,key_code\na@lpunetwork.edu.ph,b@lpunetwork.edu.ph,GMX-1')).toEqual(
+      dupEmailHeader
+    );
+
+    const dupKeyHeader = edgeParseGMetrixCsv(
+      'email,access_key,key_code\na@lpunetwork.edu.ph,GMX-1,GMX-2'
+    );
+    expect(dupKeyHeader.ok).toBe(false);
+    if (!dupKeyHeader.ok) {
+      expect(dupKeyHeader.error).toContain('access_key');
+      expect(dupKeyHeader.error).toContain('key_code');
+    }
   });
 
   it('neutralizes OWASP spreadsheet formula prefixes (including control-char prefix bypasses) and builds rejected CSV identically', () => {
@@ -632,6 +658,48 @@ describe('spec-05 supabase/functions/_shared/gmetrix-crypto.ts', () => {
     ).toBeNull();
     expect(parseKeyRingEnv(readFrom({}), 'short')).toBeNull();
     expect(parseKeyRingEnv(readFrom({}), null)).toBeNull();
+
+    expect(
+      parseKeyRingEnv(
+        readFrom({
+          CERT_KEY_RING_JSON: JSON.stringify({ '1': TEST_KEY_V1, ' 1': TEST_KEY_V2 }),
+        })
+      )
+    ).toBeNull();
+
+    expect(
+      parseKeyRingEnv(
+        readFrom({
+          CERT_KEY_RING_JSON: JSON.stringify({ '2147483647': TEST_KEY_V1 }),
+        })
+      )
+    ).toEqual({
+      activeVersion: 2147483647,
+      keyRing: { 2147483647: TEST_KEY_V1 },
+    });
+    expect(
+      parseKeyRingEnv(
+        readFrom({
+          CERT_KEY_RING_JSON: JSON.stringify({ '2147483648': TEST_KEY_V1 }),
+        })
+      )
+    ).toBeNull();
+
+    expect(
+      parseKeyRingEnv(
+        readFrom({
+          CERT_KEY_RING_JSON: JSON.stringify({ '1': '                ' }),
+        })
+      )
+    ).toBeNull();
+
+    const paddedSecret = `  ${TEST_KEY_V1}  `;
+    expect(
+      parseKeyRingEnv(readFrom({ CERT_KEY_RING_JSON: JSON.stringify({ '1': paddedSecret }) }))
+    ).toEqual(parseKeyRingEnv(readFrom({ CERT_KEY_ENCRYPTION_KEY: paddedSecret })));
+    expect(
+      parseKeyRingEnv(readFrom({ CERT_KEY_RING_JSON: JSON.stringify({ '1': paddedSecret }) }))
+    ).toEqual(parseKeyRingEnv(readFrom({}), paddedSecret));
   });
 });
 
@@ -1142,7 +1210,9 @@ describe('spec-05 supabase/functions/import-gmetrix-keys/core.ts HTTP handler', 
       pruneFailureDeps
     );
     expect(pruneFailureRes.status).toBe(201);
-    expect(deleteFailSpy).toHaveBeenCalledWith([tokens[0]]);
+    expect(deleteFailSpy).toHaveBeenCalledWith([tokens[0]], {
+      timeoutMs: expect.any(Number),
+    });
     const pruneFailureBody = ImportGMetrixKeysResponseSchema.parse(await pruneFailureRes.json());
     expect(pruneFailureBody.assignedCount).toBe(1);
     expect(pruneFailureBody.pushNotificationsSent).toBe(0);
@@ -1289,9 +1359,97 @@ describe('spec-05 supabase/functions/import-gmetrix-keys/core.ts HTTP handler', 
     expect(budgetRes.status).toBe(201);
     const budgetBody = ImportGMetrixKeysResponseSchema.parse(await budgetRes.json());
     expect(budgetSendSpy).toHaveBeenCalledTimes(4);
+    expect(observedTimeouts).toHaveLength(4);
     expect(observedTimeouts.every((t) => t > 0 && t <= 8_000)).toBe(true);
     expect(budgetBody.pushNotificationsSent).toBe(400);
     expect(budgetBody.pushNotificationsFailed).toBe(250);
+
+    const hungLookupRes = await handleImportGMetrixKeysRequest(
+      makeJsonImportRequest({
+        certification_id: CERT_ID,
+        csv: 'email,key_code\nstudent.a@lpunetwork.edu.ph,GMX-HUNG-LOOKUP',
+      }),
+      makeImportDeps({
+        lookupProfilesByBlindIndexes: jest.fn().mockResolvedValue([
+          { id: STUDENT_A_ID, emailBlindIndex: blindA },
+        ]),
+        loadPushTokens: jest.fn().mockImplementation(() => new Promise<string[]>(() => {})),
+        pushBudgetMs: 25,
+      })
+    );
+    expect(hungLookupRes.status).toBe(201);
+    const hungLookupBody = ImportGMetrixKeysResponseSchema.parse(await hungLookupRes.json());
+    expect(hungLookupBody.assignedCount).toBe(1);
+    expect(hungLookupBody.pushNotificationsSent).toBe(0);
+    expect(hungLookupBody.pushNotificationsFailed).toBe(1);
+
+    const hungPruneRes = await handleImportGMetrixKeysRequest(
+      makeJsonImportRequest({
+        certification_id: CERT_ID,
+        csv: 'email,key_code\nstudent.a@lpunetwork.edu.ph,GMX-HUNG-PRUNE',
+      }),
+      makeImportDeps({
+        lookupProfilesByBlindIndexes: jest.fn().mockResolvedValue([
+          { id: STUDENT_A_ID, emailBlindIndex: blindA },
+        ]),
+        loadPushTokens: jest.fn().mockResolvedValue(['ExponentPushToken[DeadHung0001]']),
+        sendExpoPushBatch: jest.fn().mockResolvedValue([
+          { status: 'error', details: { error: 'DeviceNotRegistered' } },
+        ]),
+        deletePushTokens: jest.fn().mockImplementation(() => new Promise<void>(() => {})),
+        pushBudgetMs: 30,
+      })
+    );
+    expect(hungPruneRes.status).toBe(201);
+    const hungPruneBody = ImportGMetrixKeysResponseSchema.parse(await hungPruneRes.json());
+    expect(hungPruneBody.assignedCount).toBe(1);
+    expect(hungPruneBody.pushNotificationsFailed).toBe(1);
+  });
+
+  it('supports non-/auth/v1 expectedJwtIssuer overrides verbatim and returns 413 promptly without awaiting stream cancel', async () => {
+    const customIssuer = 'https://auth.myccs.example/custom-issuer';
+    const customToken = makeTestJwt({
+      aud: 'authenticated',
+      iss: customIssuer,
+      sub: STUDENT_A_ID,
+      exp: NOW_SECONDS + 3600,
+    });
+    expect(
+      validateJwtClaims(customToken, customIssuer, NOW_SECONDS, { exactIssuer: true })
+    ).toEqual({ ok: true, sub: STUDENT_A_ID });
+
+    const customIssuerRes = await handleMyCertificationKeysRequest(
+      makeMyKeysRequest({
+        origin: null,
+        authorization: `Bearer ${customToken}`,
+      }),
+      makeMyKeysDeps({
+        expectedJwtIssuer: customIssuer,
+        loadOwnEncryptedKeys: jest.fn().mockResolvedValue([]),
+      })
+    );
+    expect(customIssuerRes.status).toBe(200);
+
+    const cancelInvoked = jest.fn(() => new Promise<void>(() => {}));
+    const stallingStream = new NativeReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(32));
+        controller.enqueue(new Uint8Array(32));
+      },
+      cancel: cancelInvoked,
+    });
+    const limited = await readStreamWithLimit(
+      stallingStream,
+      16,
+      'Payload too large.',
+      'Malformed body.'
+    );
+    expect(limited).toEqual({
+      ok: false,
+      status: 413,
+      message: 'Payload too large.',
+    });
+    expect(cancelInvoked).toHaveBeenCalledTimes(1);
   });
 
   it('parses a real streamed multipart/form-data Request through ReadableStream + readStreamWithLimit', async () => {
@@ -1431,6 +1589,57 @@ describe('spec-05 supabase/functions/import-gmetrix-keys/core.ts HTTP handler', 
       'ExponentPushToken[RpcToken0001]',
     ]);
     await expect(adapter.deletePushTokens(['ExponentPushToken[RpcToken0001]'])).resolves.toBeUndefined();
+
+    const allPagedTokens = Array.from(
+      { length: 5 },
+      (_, idx) => `ExponentPushToken[PagedToken000${idx}]`
+    );
+    const observedRanges: Array<[number, number]> = [];
+    let abortSignalSeen = false;
+    const pagedAdapter = createRpcDatabaseAdapter({
+      rpc: (fn) => {
+        if (fn === 'load_push_tokens_for_profiles') {
+          let rangeStart = 0;
+          const builder = {
+            order: () => builder,
+            range: (from: number, to: number) => {
+              rangeStart = from;
+              observedRanges.push([from, to]);
+              return builder;
+            },
+            abortSignal: (signal: AbortSignal) => {
+              abortSignalSeen = signal instanceof AbortSignal;
+              return builder;
+            },
+            then: (onfulfilled, onrejected) => {
+              const cappedPage = allPagedTokens
+                .slice(rangeStart, rangeStart + 2)
+                .map((expo_push_token) => ({ expo_push_token }));
+              return Promise.resolve({
+                data: cappedPage,
+                error: null,
+                count: allPagedTokens.length,
+              }).then(onfulfilled, onrejected);
+            },
+          } as PromiseLike<{ data: unknown; error: null; count: number }> & {
+            order: () => unknown;
+            range: (from: number, to: number) => unknown;
+            abortSignal: (signal: AbortSignal) => unknown;
+          };
+          return builder;
+        }
+        return Promise.resolve({ data: null, error: null });
+      },
+    });
+    await expect(
+      pagedAdapter.loadPushTokens([STUDENT_A_ID], { timeoutMs: 2_000 })
+    ).resolves.toEqual(allPagedTokens);
+    expect(observedRanges).toEqual([
+      [0, 999],
+      [2, 1001],
+      [4, 1003],
+    ]);
+    expect(abortSignalSeen).toBe(true);
     const committed = await adapter.commitBatch({
       certificationId: CERT_ID,
       uploadedByAdminId: ADMIN_ID,
@@ -1605,6 +1814,29 @@ describe('spec-05 supabase/functions/my-certification-keys/core.ts HTTP handler'
     const missingText = await missingVersionRes.text();
     expect(missingText).not.toContain(encV2.byteaHex);
     expect(missingText).not.toContain(TEST_KEY_V1);
+
+    const loadKeyRingForEmpty = jest.fn().mockRejectedValue(new Error('vault down'));
+    const emptyNoRingRes = await handleMyCertificationKeysRequest(
+      makeMyKeysRequest({ origin: null }),
+      makeMyKeysDeps({
+        loadOwnEncryptedKeys: jest.fn().mockResolvedValue([]),
+        loadKeyRing: loadKeyRingForEmpty,
+      })
+    );
+    expect(emptyNoRingRes.status).toBe(200);
+    await expect(emptyNoRingRes.json()).resolves.toEqual({ keys: [] });
+    expect(loadKeyRingForEmpty).not.toHaveBeenCalled();
+
+    const nonEmptyNoRingRes = await handleMyCertificationKeysRequest(
+      makeMyKeysRequest({ origin: null }),
+      makeMyKeysDeps({
+        loadOwnEncryptedKeys: jest.fn().mockResolvedValue([
+          { ...versionMismatchRow, keyVersion: 2 },
+        ]),
+        loadKeyRing: jest.fn().mockResolvedValue(null),
+      })
+    );
+    expect(nonEmptyNoRingRes.status).toBe(500);
   });
 
   it('caches Vault cert key selectively for 60s, invalidates on unknown keyVersion during rotation, and maps PostgREST rows', async () => {
@@ -1694,6 +1926,66 @@ describe('spec-05 supabase/functions/my-certification-keys/core.ts HTTP handler'
     expect(() => mapPostgrestCertificationKeyRow({ id: KEY_ROW_1_ID })).toThrow(
       'Unexpected certification_keys query row.'
     );
+
+    let resolveStaleVault!: (val: { certKeyEncryptionKey: string }) => void;
+    let resolveFreshVault!: (val: { certKeyEncryptionKey: string }) => void;
+    const racingVaultSpy = jest
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<{ certKeyEncryptionKey: string }>((resolve) => {
+            resolveStaleVault = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<{ certKeyEncryptionKey: string }>((resolve) => {
+            resolveFreshVault = resolve;
+          })
+      );
+    const racingResolver = createMyKeysRingResolver({
+      readEnv: () => undefined,
+      fetchVaultSecrets: racingVaultSpy,
+      cacheTtlMs: 60_000,
+      nowMs: () => now,
+    });
+    const stalePromise = racingResolver({ forceRefresh: true });
+    const freshPromise = racingResolver({ forceRefresh: true });
+    resolveFreshVault({ certKeyEncryptionKey: TEST_KEY_V2 });
+    await expect(freshPromise).resolves.toEqual({ 1: TEST_KEY_V2 });
+    resolveStaleVault({ certKeyEncryptionKey: TEST_KEY_V1 });
+    await expect(stalePromise).resolves.toEqual({ 1: TEST_KEY_V1 });
+    await expect(racingResolver()).resolves.toEqual({ 1: TEST_KEY_V2 });
+    expect(racingVaultSpy).toHaveBeenCalledTimes(2);
+
+    const makeRawRow = (id: string) => ({
+      id,
+      batch_id: BATCH_ID,
+      certification_id: CERT_ID,
+      key_code_enc: encV2.byteaHex,
+      key_version: 2,
+      assigned_at: '2026-11-28T03:00:00.000Z',
+      viewed_at: null,
+      certifications: [{ title: 'Cisco CCNA', provider: 'Cisco' }],
+    });
+    const pagedRawRows = [
+      makeRawRow('10000000-0000-4000-8000-000000000001'),
+      makeRawRow('10000000-0000-4000-8000-000000000002'),
+      makeRawRow('10000000-0000-4000-8000-000000000003'),
+    ];
+    const fetchedWindows: Array<[number, number]> = [];
+    const paginatedRows = await loadAllPaginatedCertificationKeyRows(async (from, to) => {
+      fetchedWindows.push([from, to]);
+      return {
+        rows: pagedRawRows.slice(from, from + 2),
+        count: pagedRawRows.length,
+      };
+    }, 2);
+    expect(paginatedRows.map((row) => row.id)).toEqual(pagedRawRows.map((row) => row.id));
+    expect(fetchedWindows).toEqual([
+      [0, 1],
+      [2, 3],
+    ]);
   });
 });
 
@@ -1740,6 +2032,7 @@ describe('spec-05 static SQL, config, Edge Function boundary, and Postman contra
     expect(migrationSql).toContain('CREATE OR REPLACE FUNCTION public.delete_push_tokens_by_values(');
     expect(migrationSql).toContain('CREATE OR REPLACE FUNCTION public.commit_gmetrix_key_batch(');
     expect(migrationSql).toContain('CREATE OR REPLACE FUNCTION public.register_push_token(');
+    expect(migrationSql).toContain('CREATE OR REPLACE FUNCTION public.get_pii_encryption_key_for_version(');
     expect(migrationSql).toContain('CREATE OR REPLACE FUNCTION public.list_admin_profiles()');
     expect(migrationSql).toContain('CREATE OR REPLACE FUNCTION public.promote_faculty_by_email(');
   });
@@ -1844,7 +2137,10 @@ describe('spec-05 static SQL, config, Edge Function boundary, and Postman contra
         const substituted = req.request.body.raw
           .replace(/\{\{CERTIFICATION_ID\}\}/g, CERT_ID)
           .replace(/\{\{STUDENT_EMAIL\}\}/g, 'student.a@lpunetwork.edu.ph')
-          .replace(/\{\{TEST_GMETRIX_KEY_CODE\}\}/g, 'GMX-TEST-0001');
+          .replace(/\{\{STUDENT_B_EMAIL\}\}/g, 'student.b@lpunetwork.edu.ph')
+          .replace(/\{\{TEST_GMETRIX_KEY_CODE\}\}/g, 'GMX-TEST-0001')
+          .replace(/\{\{RUN_GMETRIX_KEY_CODE\}\}/g, 'GMX-RUN-A-0001')
+          .replace(/\{\{RUN_STUDENT_B_KEY_CODE\}\}/g, 'GMX-RUN-B-0001');
         expect(() => JSON.parse(substituted)).not.toThrow();
       }
     }
@@ -1852,13 +2148,19 @@ describe('spec-05 static SQL, config, Edge Function boundary, and Postman contra
     const scripts = requests
       .map((r) => r.event?.find((e) => e.listen === 'test')?.script.exec.join('\n') ?? '')
       .join('\n');
+    const preScripts = requests
+      .map((r) => r.event?.find((e) => e.listen === 'prerequest')?.script.exec.join('\n') ?? '')
+      .join('\n');
 
     for (const expectedStatus of ['403', '401', '400', '201', '200']) {
       expect(scripts).toContain(`have.status(${expectedStatus})`);
     }
+    expect(preScripts).toContain('RUN_GMETRIX_KEY_CODE');
+    expect(preScripts).toContain('RUN_STUDENT_B_KEY_CODE');
     expect(scripts).toContain('rejectedRowsCsv');
     expect(scripts).toContain("'=CMD|'/C calc'!A0");
     expect(scripts).toContain('duplicate_key_existing');
+    expect(scripts).toContain('otherStudentKey');
     expect(scripts).toContain('no-store');
   });
 });

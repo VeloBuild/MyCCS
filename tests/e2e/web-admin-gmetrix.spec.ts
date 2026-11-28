@@ -601,4 +601,48 @@ test.describe('MyCCS Web Admin GMetrix CSV distribution & faculty promotion', ()
     const storageKeys = await page.evaluate(() => Object.keys(window.sessionStorage));
     expect(storageKeys).toContain(SUPABASE_STORAGE_KEY);
   });
+
+  test('preserves import report and rejected-row download across workspace tab switches and moves keyboard focus on Arrow keys', async ({
+    page,
+  }) => {
+    await setupGMetrixRoutes(page);
+    await signInAsAdmin(page);
+
+    const gmetrixTab = page.getByRole('tab', { name: 'GMetrix Keys' });
+    const facultyTab = page.getByRole('tab', { name: 'Faculty Admins' });
+
+    const csvContent = [
+      'email,key_code',
+      `juan.student@lpunetwork.edu.ph,${RAW_KEYS[0]}`,
+      `unregistered@lpunetwork.edu.ph,${RAW_KEYS[1]}`,
+    ].join('\n');
+
+    await page.getByLabel('GMetrix CSV File').setInputFiles({
+      name: 'switch-tab-batch.csv',
+      mimeType: 'text/csv',
+      buffer: NodeBuffer.from(csvContent, 'utf-8') as never,
+    });
+    await page.getByRole('button', { name: 'Upload & Distribute Keys' }).click();
+    await expect(page.getByTestId('metric-assigned-count')).toHaveText('1');
+    await expect(page.getByTestId('metric-rejected-count')).toHaveText('3');
+
+    await gmetrixTab.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(facultyTab).toHaveAttribute('aria-selected', 'true');
+    await expect(facultyTab).toBeFocused();
+    await expect(page.getByRole('table', { name: 'Active CCS Department Admins' })).toBeVisible();
+
+    await page.keyboard.press('ArrowLeft');
+    await expect(gmetrixTab).toHaveAttribute('aria-selected', 'true');
+    await expect(gmetrixTab).toBeFocused();
+
+    await expect(page.getByTestId('metric-assigned-count')).toHaveText('1');
+    await expect(page.getByTestId('metric-rejected-count')).toHaveText('3');
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download Rejected Rows CSV' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe(
+      `gmetrix-rejected-rows-${BATCH_IMPORTED_ID.slice(0, 8)}.csv`
+    );
+  });
 });

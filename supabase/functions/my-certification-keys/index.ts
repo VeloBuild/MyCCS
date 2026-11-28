@@ -3,7 +3,7 @@ import { getAllowedOriginsFromEnv, withCorsJson } from '../_shared/cors.ts';
 import {
   createMyKeysRingResolver,
   handleMyCertificationKeysRequest,
-  mapPostgrestCertificationKeyRow,
+  loadAllPaginatedCertificationKeyRows,
   resolveSupabaseRuntimeEnv,
   type EncryptedCertificationKeyRow,
   type MyCertificationKeysDeps,
@@ -87,19 +87,26 @@ function getOrCreateRuntime(): RuntimeInitResult {
         return { active: data !== null && data.deleted_at === null };
       },
       loadKeyRing,
-      loadOwnEncryptedKeys: async (userId: string): Promise<EncryptedCertificationKeyRow[]> => {
-        const { data, error } = await serviceClient
-          .from('certification_keys')
-          .select(
-            'id, batch_id, certification_id, key_code_enc, key_version, assigned_at, viewed_at, certifications!inner(title, provider)'
-          )
-          .eq('student_profile_id', userId)
-          .order('assigned_at', { ascending: false });
-        if (error) {
-          throw new Error('Failed to query certification keys.');
-        }
-        return (data ?? []).map(mapPostgrestCertificationKeyRow);
-      },
+      loadOwnEncryptedKeys: async (userId: string): Promise<EncryptedCertificationKeyRow[]> =>
+        loadAllPaginatedCertificationKeyRows(async (from, to) => {
+          const { data, error, count } = await serviceClient
+            .from('certification_keys')
+            .select(
+              'id, batch_id, certification_id, key_code_enc, key_version, assigned_at, viewed_at, certifications!inner(title, provider)',
+              { count: 'exact' }
+            )
+            .eq('student_profile_id', userId)
+            .order('assigned_at', { ascending: false })
+            .order('id', { ascending: false })
+            .range(from, to);
+          if (error) {
+            throw new Error('Failed to query certification keys.');
+          }
+          return {
+            rows: data ?? [],
+            count,
+          };
+        }),
     };
 
     cachedRuntime = { allowedOrigins, runtimeEnv, deps };

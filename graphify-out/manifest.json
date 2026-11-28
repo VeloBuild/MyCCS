@@ -354,9 +354,9 @@
     "semantic_hash": ""
   },
   "openspec/ROADMAP.md": {
-    "mtime": 1795871653.476384,
-    "seen": 1795871971.5199492,
-    "ast_hash": "1f6283b044220298d0a9dd7750c6230e",
+    "mtime": 1795873734.6552873,
+    "seen": 1795873974.8090565,
+    "ast_hash": "d82df0b4480b61958650f5bbd8a9012d",
     "semantic_hash": ""
   },
   ".husky/post-checkout": {
@@ -553,13 +553,13 @@
   },
   "supabase/migrations/20261123000001_spec01_auth_identity.sql": {
     "mtime": 1795602990.6592996,
-    "seen": 1795779927.5350268,
+    "seen": 1795872204.2483928,
     "ast_hash": "",
     "semantic_hash": ""
   },
   "supabase/migrations/20261125000001_spec02_core_schema_rls.sql": {
     "mtime": 1795602990.6603007,
-    "seen": 1795779927.5350285,
+    "seen": 1795872204.2483966,
     "ast_hash": "",
     "semantic_hash": ""
   },
@@ -571,13 +571,13 @@
   },
   "tests/api/auth-identity-rls.sql": {
     "mtime": 1795602990.6618152,
-    "seen": 1795779927.5350318,
+    "seen": 1795872204.2484012,
     "ast_hash": "",
     "semantic_hash": ""
   },
   "tests/api/core-schema-rls.sql": {
     "mtime": 1795602990.6628149,
-    "seen": 1795779927.5350354,
+    "seen": 1795872204.2488275,
     "ast_hash": "",
     "semantic_hash": ""
   },
@@ -654,9 +654,9 @@
     "semantic_hash": ""
   },
   "web-admin/src/components/AdminDashboardShell.tsx": {
-    "mtime": 1795843863.6678922,
-    "seen": 1795871971.5105948,
-    "ast_hash": "4659f0fb44dd1f009a36bc7e073ca94c",
+    "mtime": 1795873514.3679082,
+    "seen": 1795873974.7930057,
+    "ast_hash": "d5b3a82b7bf8751a76b2e0f1a6ae6ebf",
     "semantic_hash": ""
   },
   "web-admin/src/components/LoginView.tsx": {
@@ -1086,9 +1086,9 @@
     "semantic_hash": ""
   },
   "src/hooks/useKeysAndAlerts.ts": {
-    "mtime": 1795868962.3084884,
-    "seen": 1795871971.508175,
-    "ast_hash": "bbac53da258fb6af20c33c2d362d93ea",
+    "mtime": 1795873515.5100274,
+    "seen": 1795873974.7836607,
+    "ast_hash": "38d82418edf88f5477e723f31a504de7",
     "semantic_hash": ""
   },
   "src/services/certifications.ts": {
@@ -1104,27 +1104,27 @@
     "semantic_hash": ""
   },
   "supabase/functions/_shared/edge-auth.ts": {
-    "mtime": 1795868906.4983618,
-    "seen": 1795871971.5086062,
-    "ast_hash": "d3f1fcd4aeb5d2cf3d2dc95ff9a7030a",
+    "mtime": 1795873489.776943,
+    "seen": 1795873974.7866814,
+    "ast_hash": "22b32e96d0ea7550997a813b9a357371",
     "semantic_hash": ""
   },
   "supabase/functions/_shared/gmetrix-crypto.ts": {
-    "mtime": 1795868913.183018,
-    "seen": 1795871971.5086086,
-    "ast_hash": "770cf1d1d098001026883fac5af464fc",
+    "mtime": 1795873493.1816149,
+    "seen": 1795873974.7866886,
+    "ast_hash": "41d94d628d4ee3a3c55dfa4abed1952e",
     "semantic_hash": ""
   },
   "supabase/functions/_shared/gmetrix-csv.ts": {
-    "mtime": 1795868911.0724144,
-    "seen": 1795871971.5086102,
-    "ast_hash": "9d040a5016078292f800dd786d67d1d5",
+    "mtime": 1795873494.5819046,
+    "seen": 1795873974.7866933,
+    "ast_hash": "e2c68af17b24be908e37bffbdc73eff7",
     "semantic_hash": ""
   },
   "supabase/functions/import-gmetrix-keys/core.ts": {
-    "mtime": 1795869615.2245617,
-    "seen": 1795871971.5086207,
-    "ast_hash": "8dc24227562072a703677bc8fdaaf20f",
+    "mtime": 1795873616.9555807,
+    "seen": 1795873974.7882986,
+    "ast_hash": "26ac86b6556217ce093f099055f61245",
     "semantic_hash": ""
   },
   "supabase/functions/import-gmetrix-keys/deno.json": {
@@ -1140,9 +1140,9 @@
     "semantic_hash": ""
   },
   "supabase/functions/my-certification-keys/core.ts": {
-    "mtime": 1795869161.2031353,
-    "seen": 1795871971.508626,
-    "ast_hash": "e352b57eaee406e9bf68f2f35f5aec1c",
+    "mtime": 1795873508.2306323,
+    "seen": 1795873974.7888982,
+    "ast_hash": "2c9e8e5d68ab8f8b30138f748e40b5ba",
     "semantic_hash": ""
   },
   "supabase/functions/my-certification-keys/deno.json": {
@@ -1152,33 +1152,33 @@
     "semantic_hash": ""
   },
   "supabase/functions/my-certification-keys/index.ts": {
-    "mtime": 1795869162.57769,
-    "seen": 1795871971.508629,
-    "ast_hash": "09a38809b4c6f584a40a4b2493794cfa",
+    "mtime": 1795873511.3701801,
+    "seen": 1795873974.7891788,
+    "ast_hash": "ec69223912e9df677566a51d6d5be722",
     "semantic_hash": ""
   },
   "tests/api/import-gmetrix-keys.postman_collection.json": {
-    "mtime": 1795843944.9864786,
-    "seen": 1795871971.5088465,
-    "ast_hash": "4ebf539e7b2f7a57545d413f98977a97",
+    "mtime": 1795873636.8307693,
+    "seen": 1795873974.7896473,
+    "ast_hash": "9c19cd9b50bf50aecebf8e4fd119116e",
     "semantic_hash": ""
   },
   "tests/e2e/web-admin-gmetrix.spec.ts": {
-    "mtime": 1795868708.414375,
-    "seen": 1795871971.508849,
-    "ast_hash": "ff8876de942c21c16d1972179f0c3ceb",
+    "mtime": 1795873733.2341902,
+    "seen": 1795873974.7896502,
+    "ast_hash": "d8a92a7d8e899c975eccf1a8e8844687",
     "semantic_hash": ""
   },
   "tests/unit/gmetrix-csv-push.test.ts": {
-    "mtime": 1795869664.0148063,
-    "seen": 1795871971.5097702,
-    "ast_hash": "caa6c93cce4c66634c4e9cd55bb89873",
+    "mtime": 1795873857.9623241,
+    "seen": 1795873974.7915213,
+    "ast_hash": "8f10ab413c3a8f761e763ce0a489c148",
     "semantic_hash": ""
   },
   "tests/unit/mobile-gmetrix-keys.test.ts": {
-    "mtime": 1795869668.0544152,
-    "seen": 1795871971.5097723,
-    "ast_hash": "78a1a5176cefccddfee559e63a792abb",
+    "mtime": 1795873731.4730625,
+    "seen": 1795873974.7915251,
+    "ast_hash": "b8d18a12e60b1331e1fb425d3ad5d636",
     "semantic_hash": ""
   },
   "web-admin/src/components/FacultyPromotionPanel.tsx": {
@@ -1233,6 +1233,18 @@
     "mtime": 1795871654.6527076,
     "seen": 1795871971.5239506,
     "ast_hash": "c3ba61175d299bc61fc5f6b69a33e7f6",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261127000001_spec04_org_media_storage.sql": {
+    "mtime": 1795840805.671654,
+    "seen": 1795872204.2483985,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "tests/api/org-media-storage.sql": {
+    "mtime": 1795840805.6969082,
+    "seen": 1795872204.2490323,
+    "ast_hash": "",
     "semantic_hash": ""
   }
 }

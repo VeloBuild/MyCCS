@@ -151,7 +151,8 @@ function decodeBase64UrlUtf8(segment: string): string | null {
 export function validateJwtClaims(
   token: string,
   expectedIssuer: string,
-  nowSeconds: number
+  nowSeconds: number,
+  options?: { exactIssuer?: boolean }
 ): JwtClaimValidationResult {
   const parts = token.split('.');
   if (parts.length !== 3 || parts.some((part) => part.length === 0)) {
@@ -184,9 +185,10 @@ export function validateJwtClaims(
   }
 
   const trimmedIssuer = expectedIssuer.trim().replace(/\/+$/, '');
-  const normalizedIssuer = trimmedIssuer.endsWith('/auth/v1')
-    ? trimmedIssuer
-    : `${trimmedIssuer}/auth/v1`;
+  const normalizedIssuer =
+    options?.exactIssuer || trimmedIssuer.endsWith('/auth/v1')
+      ? trimmedIssuer
+      : `${trimmedIssuer}/auth/v1`;
   if (typeof claims.iss !== 'string' || claims.iss !== normalizedIssuer) {
     return { ok: false, message: 'Invalid token issuer.' };
   }
@@ -257,7 +259,9 @@ export async function authenticateEdgeRequest(
     opts.supabaseUrl,
     opts.expectedJwtIssuer
   );
-  const claimsResult = validateJwtClaims(accessToken, expectedIssuer, nowSeconds);
+  const claimsResult = validateJwtClaims(accessToken, expectedIssuer, nowSeconds, {
+    exactIssuer: true,
+  });
   if (!claimsResult.ok) {
     return { ok: false, response: json({ error: claimsResult.message }, 401) };
   }
@@ -328,7 +332,7 @@ export async function readStreamWithLimit(
       }
       totalBytes += value.byteLength;
       if (totalBytes > maxBytes) {
-        await reader.cancel().catch(() => {});
+        void reader.cancel().catch(() => {});
         return {
           ok: false,
           status: 413,

@@ -14,7 +14,10 @@
     { "key": "ADMIN_JWT", "value": "" },
     { "key": "CERTIFICATION_ID", "value": "" },
     { "key": "STUDENT_EMAIL", "value": "" },
-    { "key": "TEST_GMETRIX_KEY_CODE", "value": "" }
+    { "key": "STUDENT_B_EMAIL", "value": "" },
+    { "key": "TEST_GMETRIX_KEY_CODE", "value": "" },
+    { "key": "RUN_GMETRIX_KEY_CODE", "value": "" },
+    { "key": "RUN_STUDENT_B_KEY_CODE", "value": "" }
   ],
   "item": [
     {
@@ -279,11 +282,23 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"certification_id\":\"{{CERTIFICATION_ID}}\",\"csv\":\"email,key_code\\n{{STUDENT_EMAIL}},{{TEST_GMETRIX_KEY_CODE}}\\nunregistered.student@lpunetwork.edu.ph,GMX-UNREG-0001\\n=CMD|'/C calc'!A0,GMX-INJECT-0001\"}"
+              "raw": "{\"certification_id\":\"{{CERTIFICATION_ID}}\",\"csv\":\"email,key_code\\n{{STUDENT_EMAIL}},{{RUN_GMETRIX_KEY_CODE}}\\n{{STUDENT_B_EMAIL}},{{RUN_STUDENT_B_KEY_CODE}}\\nunregistered.student@lpunetwork.edu.ph,GMX-UNREG-0001\\n=CMD|'/C calc'!A0,GMX-INJECT-0001\"}"
             },
             "url": "{{SUPABASE_URL}}/functions/v1/import-gmetrix-keys"
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 8).toUpperCase();",
+                  "const prefix = (pm.variables.get('TEST_GMETRIX_KEY_CODE') || 'GMX-RUN').trim();",
+                  "pm.collectionVariables.set('RUN_GMETRIX_KEY_CODE', prefix + '-A-' + suffix);",
+                  "pm.collectionVariables.set('RUN_STUDENT_B_KEY_CODE', prefix + '-B-' + suffix);"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -293,10 +308,11 @@
                   "  pm.response.to.have.status(201);",
                   "  const rawText = pm.response.text();",
                   "  const body = pm.response.json();",
-                  "  const rawKey = pm.variables.get('TEST_GMETRIX_KEY_CODE');",
+                  "  const rawKey = pm.collectionVariables.get('RUN_GMETRIX_KEY_CODE');",
+                  "  const rawKeyB = pm.collectionVariables.get('RUN_STUDENT_B_KEY_CODE');",
                   "  pm.expect(body.certificationId).to.equal(pm.variables.get('CERTIFICATION_ID'));",
-                  "  pm.expect(body.totalRows).to.equal(3);",
-                  "  pm.expect(body.assignedCount).to.equal(1);",
+                  "  pm.expect(body.totalRows).to.equal(4);",
+                  "  pm.expect(body.assignedCount).to.equal(2);",
                   "  pm.expect(body.rejectedCount).to.equal(2);",
                   "  pm.expect(body.rejectedRows).to.have.lengthOf(2);",
                   "  pm.expect(body.rejectedRows.map(function (r) { return r.reason; })).to.deep.equal(['unregistered_student', 'invalid_email']);",
@@ -304,6 +320,9 @@
                   "  pm.expect(body.rejectedRowsCsv).to.include(\"'=CMD|'/C calc'!A0\");",
                   "  if (rawKey) {",
                   "    pm.expect(rawText).to.not.include(rawKey);",
+                  "  }",
+                  "  if (rawKeyB) {",
+                  "    pm.expect(rawText).to.not.include(rawKeyB);",
                   "  }",
                   "  pm.expect(rawText).to.not.include('GMX-UNREG-0001');",
                   "  pm.expect(rawText).to.not.include('GMX-INJECT-0001');",
@@ -325,7 +344,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"certification_id\":\"{{CERTIFICATION_ID}}\",\"csv\":\"email,key_code\\n{{STUDENT_EMAIL}},{{TEST_GMETRIX_KEY_CODE}}\\nunregistered.student@lpunetwork.edu.ph,GMX-UNREG-0001\\n=CMD|'/C calc'!A0,GMX-INJECT-0001\"}"
+              "raw": "{\"certification_id\":\"{{CERTIFICATION_ID}}\",\"csv\":\"email,key_code\\n{{STUDENT_EMAIL}},{{RUN_GMETRIX_KEY_CODE}}\\n{{STUDENT_B_EMAIL}},{{RUN_STUDENT_B_KEY_CODE}}\\nunregistered.student@lpunetwork.edu.ph,GMX-UNREG-0001\\n=CMD|'/C calc'!A0,GMX-INJECT-0001\"}"
             },
             "url": "{{SUPABASE_URL}}/functions/v1/import-gmetrix-keys"
           },
@@ -339,13 +358,17 @@
                   "  pm.response.to.have.status(201);",
                   "  const rawText = pm.response.text();",
                   "  const body = pm.response.json();",
-                  "  const rawKey = pm.variables.get('TEST_GMETRIX_KEY_CODE');",
-                  "  pm.expect(body.totalRows).to.equal(3);",
+                  "  const rawKey = pm.collectionVariables.get('RUN_GMETRIX_KEY_CODE');",
+                  "  const rawKeyB = pm.collectionVariables.get('RUN_STUDENT_B_KEY_CODE');",
+                  "  pm.expect(body.totalRows).to.equal(4);",
                   "  pm.expect(body.assignedCount).to.equal(0);",
-                  "  pm.expect(body.rejectedCount).to.equal(3);",
-                  "  pm.expect(body.rejectedRows.map(function (r) { return r.reason; })).to.deep.equal(['duplicate_key_existing', 'unregistered_student', 'invalid_email']);",
+                  "  pm.expect(body.rejectedCount).to.equal(4);",
+                  "  pm.expect(body.rejectedRows.map(function (r) { return r.reason; })).to.deep.equal(['duplicate_key_existing', 'duplicate_key_existing', 'unregistered_student', 'invalid_email']);",
                   "  if (rawKey) {",
                   "    pm.expect(rawText).to.not.include(rawKey);",
+                  "  }",
+                  "  if (rawKeyB) {",
+                  "    pm.expect(rawText).to.not.include(rawKeyB);",
                   "  }",
                   "});"
                 ]
@@ -374,15 +397,22 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('authenticated student retrieves decrypted assigned key with Cache-Control: no-store', function () {",
+                  "pm.test('authenticated student retrieves only own decrypted assigned key with Cache-Control: no-store', function () {",
                   "  pm.response.to.have.status(200);",
                   "  pm.expect((pm.response.headers.get('Cache-Control') || '').toLowerCase()).to.include('no-store');",
+                  "  const rawText = pm.response.text();",
                   "  const body = pm.response.json();",
                   "  pm.expect(body.keys).to.be.an('array');",
                   "  const expectedCertId = pm.variables.get('CERTIFICATION_ID');",
-                  "  const expectedKey = pm.variables.get('TEST_GMETRIX_KEY_CODE');",
+                  "  const expectedKey = pm.collectionVariables.get('RUN_GMETRIX_KEY_CODE');",
+                  "  const otherStudentKey = pm.collectionVariables.get('RUN_STUDENT_B_KEY_CODE');",
                   "  const match = body.keys.find(function (k) { return k.certificationId === expectedCertId && k.keyCode === expectedKey; });",
                   "  pm.expect(match).to.not.be.undefined;",
+                  "  const leakedOther = body.keys.find(function (k) { return k.keyCode === otherStudentKey; });",
+                  "  pm.expect(leakedOther).to.be.undefined;",
+                  "  if (otherStudentKey) {",
+                  "    pm.expect(rawText).to.not.include(otherStudentKey);",
+                  "  }",
                   "});"
                 ]
               }

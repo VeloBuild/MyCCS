@@ -4,7 +4,7 @@ const AES_GCM_TAG_MIN_BYTES = 16;
 const MIN_CIPHERTEXT_BYTES =
   KEY_VERSION_HEADER_BYTES + AES_GCM_IV_BYTES + AES_GCM_TAG_MIN_BYTES;
 const MIN_SECRET_BYTES = 16;
-const MAX_KEY_VERSION = 0xffffffff;
+const MAX_KEY_VERSION = 0x7fffffff;
 const POSITIVE_INT_REGEX = /^[1-9]\d*$/;
 
 const textEncoder = new TextEncoder();
@@ -306,10 +306,18 @@ export function parseKeyRingEnv(
 
     for (const [rawVer, rawKey] of Object.entries(parsed as Record<string, unknown>)) {
       const version = parseVersionString(rawVer);
-      if (version === null || !isValidKeySecret(rawKey)) {
+      if (
+        version === null ||
+        Object.prototype.hasOwnProperty.call(keyRing, version) ||
+        typeof rawKey !== 'string'
+      ) {
         return null;
       }
-      keyRing[version] = rawKey;
+      const normalizedKey = rawKey.trim();
+      if (!isValidKeySecret(normalizedKey)) {
+        return null;
+      }
+      keyRing[version] = normalizedKey;
       versions.push(version);
     }
 

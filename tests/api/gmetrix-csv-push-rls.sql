@@ -72,9 +72,12 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Exact authenticated table privileges.
-  IF NOT has_table_privilege('authenticated', 'public.certifications', 'SELECT, INSERT, UPDATE, DELETE') THEN
-    RAISE EXCEPTION 'authenticated must have SELECT, INSERT, UPDATE, DELETE on public.certifications';
+  -- Exact authenticated table privileges (each grant verified individually).
+  IF NOT has_table_privilege('authenticated', 'public.certifications', 'SELECT')
+     OR NOT has_table_privilege('authenticated', 'public.certifications', 'INSERT')
+     OR NOT has_table_privilege('authenticated', 'public.certifications', 'UPDATE')
+     OR NOT has_table_privilege('authenticated', 'public.certifications', 'DELETE') THEN
+    RAISE EXCEPTION 'authenticated must have SELECT, INSERT, UPDATE, and DELETE on public.certifications';
   END IF;
 
   IF NOT has_table_privilege('authenticated', 'public.certification_key_batches', 'SELECT')
@@ -84,20 +87,25 @@ BEGIN
     RAISE EXCEPTION 'authenticated must have SELECT only on public.certification_key_batches';
   END IF;
 
-  IF NOT has_table_privilege('authenticated', 'public.certification_keys', 'SELECT, UPDATE')
+  IF NOT has_table_privilege('authenticated', 'public.certification_keys', 'SELECT')
+     OR NOT has_table_privilege('authenticated', 'public.certification_keys', 'UPDATE')
      OR has_table_privilege('authenticated', 'public.certification_keys', 'INSERT')
      OR has_table_privilege('authenticated', 'public.certification_keys', 'DELETE') THEN
-    RAISE EXCEPTION 'authenticated must have SELECT, UPDATE only on public.certification_keys';
+    RAISE EXCEPTION 'authenticated must have SELECT and UPDATE only on public.certification_keys';
   END IF;
 
-  IF NOT has_table_privilege('authenticated', 'public.notifications', 'SELECT, UPDATE')
+  IF NOT has_table_privilege('authenticated', 'public.notifications', 'SELECT')
+     OR NOT has_table_privilege('authenticated', 'public.notifications', 'UPDATE')
      OR has_table_privilege('authenticated', 'public.notifications', 'INSERT')
      OR has_table_privilege('authenticated', 'public.notifications', 'DELETE') THEN
-    RAISE EXCEPTION 'authenticated must have SELECT, UPDATE only on public.notifications';
+    RAISE EXCEPTION 'authenticated must have SELECT and UPDATE only on public.notifications';
   END IF;
 
-  IF NOT has_table_privilege('authenticated', 'public.push_tokens', 'SELECT, INSERT, UPDATE, DELETE') THEN
-    RAISE EXCEPTION 'authenticated must have SELECT, INSERT, UPDATE, DELETE on public.push_tokens';
+  IF NOT has_table_privilege('authenticated', 'public.push_tokens', 'SELECT')
+     OR NOT has_table_privilege('authenticated', 'public.push_tokens', 'INSERT')
+     OR NOT has_table_privilege('authenticated', 'public.push_tokens', 'UPDATE')
+     OR NOT has_table_privilege('authenticated', 'public.push_tokens', 'DELETE') THEN
+    RAISE EXCEPTION 'authenticated must have SELECT, INSERT, UPDATE, and DELETE on public.push_tokens';
   END IF;
 
   -- Verify all 3 guard trigger functions are SECURITY INVOKER and non-executable by PUBLIC/anon/authenticated.
@@ -163,6 +171,12 @@ BEGIN
     END IF;
   END LOOP;
 
+  IF has_function_privilege('public', 'public.get_pii_encryption_key_for_version(integer)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.get_pii_encryption_key_for_version(integer)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.get_pii_encryption_key_for_version(integer)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'PUBLIC, anon, and authenticated must not have EXECUTE on public.get_pii_encryption_key_for_version(integer)';
+  END IF;
+
   -- Verify authenticated RPCs are revoked from anon and PUBLIC.
   FOREACH v_fn IN ARRAY ARRAY[
     'public.register_push_token(text, text)',
@@ -218,6 +232,7 @@ DECLARE
   v_promote_first jsonb;
   v_promote_second jsonb;
   v_count integer;
+  v_match_count integer;
   v_rows integer;
   v_deleted_count integer;
   v_blocked boolean;
@@ -359,22 +374,28 @@ BEGIN
   v_secrets_blind_only := public.get_gmetrix_runtime_secrets(true, false);
   IF length(COALESCE(v_secrets_blind_only ->> 'emailBlindPepper', '')) = 0
      OR (v_secrets_blind_only -> 'certKeyEncryptionKey') IS DISTINCT FROM 'null'::jsonb THEN
-    RAISE EXCEPTION 'get_gmetrix_runtime_secrets(true, false) must omit certKeyEncryptionKey, got %', v_secrets_blind_only;
+    RAISE EXCEPTION 'get_gmetrix_runtime_secrets(true, false) contract mismatch (emailBlindPepperPresent=%, certKeyEncryptionKeyIsNull=%)',
+      length(COALESCE(v_secrets_blind_only ->> 'emailBlindPepper', '')) > 0,
+      (v_secrets_blind_only -> 'certKeyEncryptionKey') IS NOT DISTINCT FROM 'null'::jsonb;
   END IF;
 
   v_secrets_cert_only := public.get_gmetrix_runtime_secrets(false, true);
   IF (v_secrets_cert_only -> 'emailBlindPepper') IS DISTINCT FROM 'null'::jsonb
      OR length(COALESCE(v_secrets_cert_only ->> 'certKeyEncryptionKey', '')) = 0 THEN
-    RAISE EXCEPTION 'get_gmetrix_runtime_secrets(false, true) must omit emailBlindPepper, got %', v_secrets_cert_only;
+    RAISE EXCEPTION 'get_gmetrix_runtime_secrets(false, true) contract mismatch (emailBlindPepperIsNull=%, certKeyEncryptionKeyPresent=%)',
+      (v_secrets_cert_only -> 'emailBlindPepper') IS NOT DISTINCT FROM 'null'::jsonb,
+      length(COALESCE(v_secrets_cert_only ->> 'certKeyEncryptionKey', '')) > 0;
   END IF;
 
-  SELECT count(*) INTO v_count
+  SELECT
+    count(*),
+    count(*) FILTER (WHERE id = v_student_a AND email_blind_index = v_blind_a)
+    INTO v_count, v_match_count
   FROM public.lookup_active_profiles_by_blind_indexes(
     ARRAY[v_blind_a, v_blind_deleted, 'nonexistent_blind_index']
-  )
-  WHERE id = v_student_a AND email_blind_index = v_blind_a;
-  IF v_count <> 1 THEN
-    RAISE EXCEPTION 'lookup_active_profiles_by_blind_indexes must return only active matching profile, got %', v_count;
+  );
+  IF v_count IS DISTINCT FROM 1 OR v_match_count IS DISTINCT FROM 1 THEN
+    RAISE EXCEPTION 'lookup_active_profiles_by_blind_indexes must return exactly the 1 expected active profile (total=%, matched=%)', v_count, v_match_count;
   END IF;
 
   SELECT count(*) INTO v_count
@@ -406,11 +427,12 @@ BEGIN
     'myccs://certifications/my-keys'
   );
 
-  IF (v_batch_first ->> 'assignedCount')::int <> 2
-     OR (v_batch_first ->> 'rejectedCount')::int <> 1
-     OR jsonb_array_length(v_batch_first -> 'committedHashes') <> 2
-     OR jsonb_array_length(v_batch_first -> 'missingProfileHashes') <> 0
-     OR jsonb_array_length(v_batch_first -> 'notifiedProfileIds') <> 2 THEN
+  IF (v_batch_first ->> 'batchId') IS NULL
+     OR (v_batch_first ->> 'assignedCount')::int IS DISTINCT FROM 2
+     OR (v_batch_first ->> 'rejectedCount')::int IS DISTINCT FROM 1
+     OR jsonb_array_length(v_batch_first -> 'committedHashes') IS DISTINCT FROM 2
+     OR jsonb_array_length(v_batch_first -> 'missingProfileHashes') IS DISTINCT FROM 0
+     OR jsonb_array_length(v_batch_first -> 'notifiedProfileIds') IS DISTINCT FROM 2 THEN
     RAISE EXCEPTION 'Unexpected first commit_gmetrix_key_batch response: %', v_batch_first;
   END IF;
 
@@ -440,10 +462,12 @@ BEGIN
     'myccs://certifications/my-keys'
   );
 
-  IF (v_batch_second ->> 'assignedCount')::int <> 0
-     OR (v_batch_second ->> 'rejectedCount')::int <> 2
-     OR jsonb_array_length(v_batch_second -> 'committedHashes') <> 0
-     OR jsonb_array_length(v_batch_second -> 'notifiedProfileIds') <> 0 THEN
+  IF (v_batch_second ->> 'batchId') IS NULL
+     OR (v_batch_second ->> 'assignedCount')::int IS DISTINCT FROM 0
+     OR (v_batch_second ->> 'rejectedCount')::int IS DISTINCT FROM 2
+     OR jsonb_array_length(v_batch_second -> 'committedHashes') IS DISTINCT FROM 0
+     OR jsonb_array_length(v_batch_second -> 'missingProfileHashes') IS DISTINCT FROM 0
+     OR jsonb_array_length(v_batch_second -> 'notifiedProfileIds') IS DISTINCT FROM 0 THEN
     RAISE EXCEPTION 'Duplicate commit_gmetrix_key_batch must insert 0 keys and 0 notifications, got %', v_batch_second;
   END IF;
 
@@ -471,10 +495,12 @@ BEGIN
     'myccs://certifications/my-keys'
   );
 
-  IF (v_batch_deleted ->> 'assignedCount')::int <> 0
-     OR (v_batch_deleted ->> 'rejectedCount')::int <> 2
-     OR jsonb_array_length(v_batch_deleted -> 'committedHashes') <> 0
-     OR jsonb_array_length(v_batch_deleted -> 'missingProfileHashes') <> 2 THEN
+  IF (v_batch_deleted ->> 'batchId') IS NULL
+     OR (v_batch_deleted ->> 'assignedCount')::int IS DISTINCT FROM 0
+     OR (v_batch_deleted ->> 'rejectedCount')::int IS DISTINCT FROM 2
+     OR jsonb_array_length(v_batch_deleted -> 'committedHashes') IS DISTINCT FROM 0
+     OR jsonb_array_length(v_batch_deleted -> 'missingProfileHashes') IS DISTINCT FROM 2
+     OR jsonb_array_length(v_batch_deleted -> 'notifiedProfileIds') IS DISTINCT FROM 0 THEN
     RAISE EXCEPTION 'commit_gmetrix_key_batch must skip soft-deleted/missing profiles cleanly, got %', v_batch_deleted;
   END IF;
 
@@ -747,8 +773,10 @@ BEGIN
   END IF;
 
   v_token_a_json := public.register_push_token(v_shared_push_token, 'android');
-  IF v_token_a_json ->> 'expoPushToken' <> v_shared_push_token
-     OR v_token_a_json ->> 'platform' <> 'android' THEN
+  IF (v_token_a_json ->> 'id') IS NULL
+     OR (v_token_a_json ->> 'expoPushToken') IS DISTINCT FROM v_shared_push_token
+     OR (v_token_a_json ->> 'platform') IS DISTINCT FROM 'android'
+     OR (v_token_a_json ->> 'updatedAt') IS NULL THEN
     RAISE EXCEPTION 'Unexpected register_push_token response for Student A: %', v_token_a_json;
   END IF;
 
@@ -881,7 +909,10 @@ BEGIN
   END IF;
 
   v_token_b_json := public.register_push_token(v_shared_push_token, 'ios');
-  IF v_token_b_json ->> 'platform' <> 'ios' THEN
+  IF (v_token_b_json ->> 'id') IS NULL
+     OR (v_token_b_json ->> 'expoPushToken') IS DISTINCT FROM v_shared_push_token
+     OR (v_token_b_json ->> 'platform') IS DISTINCT FROM 'ios'
+     OR (v_token_b_json ->> 'updatedAt') IS NULL THEN
     RAISE EXCEPTION 'Expected handed-over push token platform ios, got %', v_token_b_json;
   END IF;
 
@@ -978,14 +1009,14 @@ BEGIN
   END IF;
 
   v_admin_list := public.list_admin_profiles();
-  IF jsonb_typeof(v_admin_list) <> 'array' OR jsonb_array_length(v_admin_list) < 1 THEN
+  IF jsonb_typeof(v_admin_list) IS DISTINCT FROM 'array' OR jsonb_array_length(v_admin_list) < 1 THEN
     RAISE EXCEPTION 'list_admin_profiles must return non-empty array for admin, got %', v_admin_list;
   END IF;
 
   FOR v_admin_entry IN
     SELECT value FROM jsonb_array_elements(v_admin_list)
   LOOP
-    IF v_admin_entry ->> 'role' <> 'admin' THEN
+    IF (v_admin_entry ->> 'role') IS DISTINCT FROM 'admin' THEN
       RAISE EXCEPTION 'list_admin_profiles must include only admin rows, got %', v_admin_entry;
     END IF;
     IF v_admin_entry ? 'student_id' OR v_admin_entry ? 'studentId' THEN
@@ -1017,18 +1048,22 @@ BEGIN
 
   -- Valid institutional faculty promotion + idempotent second call.
   v_promote_first := public.promote_faculty_by_email('  Spec05.Faculty@LPUNetwork.edu.ph  ');
-  IF (v_promote_first ->> 'id')::uuid <> v_faculty_id
-     OR v_promote_first ->> 'role' <> 'admin'
-     OR (v_promote_first ->> 'alreadyAdmin')::boolean <> false
+  IF (v_promote_first ->> 'id')::uuid IS DISTINCT FROM v_faculty_id
+     OR (v_promote_first ->> 'email') IS DISTINCT FROM 'spec05.faculty@lpunetwork.edu.ph'
+     OR (v_promote_first ->> 'fullName') IS DISTINCT FROM 'Spec05 Faculty'
+     OR (v_promote_first ->> 'role') IS DISTINCT FROM 'admin'
+     OR (v_promote_first ->> 'alreadyAdmin')::boolean IS DISTINCT FROM false
      OR v_promote_first ? 'student_id'
      OR v_promote_first ? 'studentId' THEN
     RAISE EXCEPTION 'Unexpected first promote_faculty_by_email result: %', v_promote_first;
   END IF;
 
   v_promote_second := public.promote_faculty_by_email('spec05.faculty@lpunetwork.edu.ph');
-  IF (v_promote_second ->> 'id')::uuid <> v_faculty_id
-     OR v_promote_second ->> 'role' <> 'admin'
-     OR (v_promote_second ->> 'alreadyAdmin')::boolean <> true THEN
+  IF (v_promote_second ->> 'id')::uuid IS DISTINCT FROM v_faculty_id
+     OR (v_promote_second ->> 'email') IS DISTINCT FROM 'spec05.faculty@lpunetwork.edu.ph'
+     OR (v_promote_second ->> 'fullName') IS DISTINCT FROM 'Spec05 Faculty'
+     OR (v_promote_second ->> 'role') IS DISTINCT FROM 'admin'
+     OR (v_promote_second ->> 'alreadyAdmin')::boolean IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'Expected second promote_faculty_by_email to return alreadyAdmin = true, got %', v_promote_second;
   END IF;
 

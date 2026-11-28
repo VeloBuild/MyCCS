@@ -27,6 +27,7 @@ export {
 };
 
 export const MY_KEYS_VAULT_CACHE_TTL_MS = 60_000;
+export const MY_KEYS_QUERY_PAGE_SIZE = 1000;
 const MIN_CIPHERTEXT_BYTES = 32;
 
 export interface CallerActiveProfile {
@@ -95,6 +96,7 @@ export function createMyKeysRingResolver(
   const ttlMs = options.cacheTtlMs ?? MY_KEYS_VAULT_CACHE_TTL_MS;
   const nowMs = options.nowMs ?? Date.now;
   let cachedVaultKey: { value: string; expiresAt: number } | null = null;
+  let cacheGeneration = 0;
 
   const load = async (
     loadOptions?: LoadKeyRingOptions
@@ -126,6 +128,7 @@ export function createMyKeysRingResolver(
     }
 
     cachedVaultKey = null;
+    const generation = ++cacheGeneration;
     const vaultSecrets = await options.fetchVaultSecrets({
       p_include_blind_pepper: false,
       p_include_cert_key: true,
@@ -139,11 +142,14 @@ export function createMyKeysRingResolver(
       return null;
     }
 
-    cachedVaultKey = { value: fallbackKey, expiresAt: now + ttlMs };
+    if (generation === cacheGeneration) {
+      cachedVaultKey = { value: fallbackKey, expiresAt: nowMs() + ttlMs };
+    }
     return parsed.keyRing;
   };
 
   load.invalidate = () => {
+    cacheGeneration += 1;
     cachedVaultKey = null;
   };
 
@@ -203,6 +209,35 @@ export function mapPostgrestCertificationKeyRow(raw: unknown): EncryptedCertific
   };
 }
 
+export async function loadAllPaginatedCertificationKeyRows(
+  fetchPage: (
+    from: number,
+    to: number
+  ) => Promise<{ rows: unknown[]; count?: number | null }>,
+  pageSize = MY_KEYS_QUERY_PAGE_SIZE
+): Promise<EncryptedCertificationKeyRow[]> {
+  const safePageSize = Math.max(1, Math.floor(pageSize));
+  const collected: EncryptedCertificationKeyRow[] = [];
+  let offset = 0;
+
+  while (true) {
+    const page = await fetchPage(offset, offset + safePageSize - 1);
+    const rawRows = page.rows;
+    if (rawRows.length === 0) {
+      break;
+    }
+    for (const rawRow of rawRows) {
+      collected.push(mapPostgrestCertificationKeyRow(rawRow));
+    }
+    offset += rawRows.length;
+    if (typeof page.count === 'number' && offset >= page.count) {
+      break;
+    }
+  }
+
+  return collected;
+}
+
 function readHeaderKeyVersion(payload: Uint8Array): number {
   if (payload.byteLength < MIN_CIPHERTEXT_BYTES) {
     throw new Error('Encrypted payload is truncated or malformed.');
@@ -242,6 +277,17 @@ export async function handleMyCertificationKeysRequest(
     );
   }
 
+  let encryptedRows: EncryptedCertificationKeyRow[];
+  try {
+    encryptedRows = await deps.loadOwnEncryptedKeys(callerUserId);
+  } catch {
+    return json({ error: 'Failed to load certification keys.' }, 500);
+  }
+
+  if (encryptedRows.length === 0) {
+    return json({ keys: [] }, 200);
+  }
+
   let keyRing: Record<number, string> | null;
   try {
     keyRing = await deps.loadKeyRing();
@@ -251,13 +297,6 @@ export async function handleMyCertificationKeysRequest(
 
   if (!keyRing || Object.keys(keyRing).length === 0) {
     return json({ error: 'Server encryption configuration error.' }, 500);
-  }
-
-  let encryptedRows: EncryptedCertificationKeyRow[];
-  try {
-    encryptedRows = await deps.loadOwnEncryptedKeys(callerUserId);
-  } catch {
-    return json({ error: 'Failed to load certification keys.' }, 500);
   }
 
   let refreshedRing = false;

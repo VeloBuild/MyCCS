@@ -72,6 +72,7 @@ export const VAULT_SECRET_CACHE_TTL_MS = 60_000;
 const CRYPTO_CHUNK_SIZE = 50;
 const BLIND_INDEX_RPC_CHUNK_SIZE = 500;
 const PUSH_TOKEN_PROFILE_RPC_CHUNK_SIZE = 250;
+export const PUSH_TOKEN_PAGE_SIZE = 1000;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MIN_SECRET_BYTES = 16;
 const textEncoder = new TextEncoder();
@@ -162,22 +163,64 @@ export interface ImportGMetrixKeysDeps {
     blindIndexes: readonly string[]
   ) => Promise<MatchedProfileRecord[]>;
   commitBatch: (input: CommitGMetrixKeyBatchInput) => Promise<CommitGMetrixKeyBatchResult>;
-  loadPushTokens: (profileIds: readonly string[]) => Promise<string[]>;
+  loadPushTokens: (
+    profileIds: readonly string[],
+    options?: { timeoutMs?: number }
+  ) => Promise<string[]>;
   sendExpoPushBatch: (
     messages: readonly ExpoPushMessage[],
     options?: { timeoutMs?: number }
   ) => Promise<ExpoPushTicket[]>;
-  deletePushTokens: (tokens: readonly string[]) => Promise<void>;
+  deletePushTokens: (
+    tokens: readonly string[],
+    options?: { timeoutMs?: number }
+  ) => Promise<void>;
   pushBudgetMs?: number;
   nowSeconds?: () => number;
   nowMs?: () => number;
 }
 
+export interface RpcResponseLike {
+  data: unknown;
+  error: { message?: string } | null;
+  count?: number | null;
+}
+
 export interface RpcCallerLike {
   rpc(
     fn: string,
-    params?: Record<string, unknown>
-  ): PromiseLike<{ data: unknown; error: { message?: string } | null }>;
+    params?: Record<string, unknown>,
+    options?: { count?: 'exact' | 'planned' | 'estimated' }
+  ): PromiseLike<RpcResponseLike>;
+}
+
+interface ChainableRpcQuery extends PromiseLike<RpcResponseLike> {
+  order?: (column: string, options?: { ascending?: boolean }) => ChainableRpcQuery;
+  range?: (from: number, to: number) => ChainableRpcQuery;
+  abortSignal?: (signal: AbortSignal) => ChainableRpcQuery;
+}
+
+async function runWithTimeout<T>(work: () => Promise<T>, timeoutMs: number): Promise<T> {
+  if (timeoutMs <= 0) {
+    throw new Error('Push notification deadline exceeded.');
+  }
+  const workPromise = Promise.resolve().then(work);
+  workPromise.catch(() => {});
+  let timerId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      workPromise,
+      new Promise<never>((_, reject) => {
+        timerId = setTimeout(() => {
+          reject(new Error('Push notification deadline exceeded.'));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+    }
+  }
 }
 
 export interface ImportSecretsResolverOptions {
@@ -354,39 +397,88 @@ export function createRpcDatabaseAdapter(rpcClient: RpcCallerLike) {
       };
     },
 
-    loadPushTokens: async (profileIds: readonly string[]): Promise<string[]> => {
+    loadPushTokens: async (
+      profileIds: readonly string[],
+      options?: { timeoutMs?: number }
+    ): Promise<string[]> => {
       if (profileIds.length === 0) {
         return [];
       }
+      const deadlineMs =
+        options?.timeoutMs !== undefined ? Date.now() + options.timeoutMs : null;
       const tokens: string[] = [];
+
       for (let i = 0; i < profileIds.length; i += PUSH_TOKEN_PROFILE_RPC_CHUNK_SIZE) {
         const chunk = profileIds.slice(i, i + PUSH_TOKEN_PROFILE_RPC_CHUNK_SIZE);
-        const { data, error } = await rpcClient.rpc('load_push_tokens_for_profiles', {
-          p_profile_ids: chunk,
-        });
-        if (error || !Array.isArray(data)) {
-          throw new Error('Failed to load push tokens.');
-        }
-        for (const row of data) {
-          if (
-            row &&
-            typeof row === 'object' &&
-            typeof (row as Record<string, unknown>).expo_push_token === 'string'
-          ) {
-            tokens.push((row as Record<string, unknown>).expo_push_token as string);
+        let offset = 0;
+
+        while (true) {
+          const remainingMs =
+            deadlineMs === null ? undefined : Math.floor(deadlineMs - Date.now());
+          if (remainingMs !== undefined && remainingMs <= 0) {
+            throw new Error('Push token lookup exceeded request deadline.');
+          }
+
+          let query = rpcClient.rpc(
+            'load_push_tokens_for_profiles',
+            { p_profile_ids: chunk },
+            { count: 'exact' }
+          ) as ChainableRpcQuery;
+          const supportsPaging = typeof query.range === 'function';
+          if (typeof query.order === 'function') {
+            query = query.order('expo_push_token', { ascending: true });
+          }
+          if (supportsPaging) {
+            query = query.range!(offset, offset + PUSH_TOKEN_PAGE_SIZE - 1);
+          }
+          if (remainingMs !== undefined && typeof query.abortSignal === 'function') {
+            query = query.abortSignal(AbortSignal.timeout(Math.max(1, remainingMs)));
+          }
+
+          const { data, error, count } = await query;
+          if (error || !Array.isArray(data)) {
+            throw new Error('Failed to load push tokens.');
+          }
+          for (const row of data) {
+            if (
+              row &&
+              typeof row === 'object' &&
+              typeof (row as Record<string, unknown>).expo_push_token === 'string'
+            ) {
+              tokens.push((row as Record<string, unknown>).expo_push_token as string);
+            }
+          }
+
+          if (!supportsPaging) {
+            break;
+          }
+
+          offset += data.length;
+          if (data.length === 0 || (typeof count === 'number' && offset >= count)) {
+            break;
           }
         }
       }
       return tokens;
     },
 
-    deletePushTokens: async (tokens: readonly string[]): Promise<void> => {
+    deletePushTokens: async (
+      tokens: readonly string[],
+      options?: { timeoutMs?: number }
+    ): Promise<void> => {
       if (tokens.length === 0) {
         return;
       }
-      const { error } = await rpcClient.rpc('delete_push_tokens_by_values', {
+      if (options?.timeoutMs !== undefined && options.timeoutMs <= 0) {
+        throw new Error('Stale push token prune exceeded request deadline.');
+      }
+      let query = rpcClient.rpc('delete_push_tokens_by_values', {
         p_tokens: [...tokens],
-      });
+      }) as ChainableRpcQuery;
+      if (options?.timeoutMs !== undefined && typeof query.abortSignal === 'function') {
+        query = query.abortSignal(AbortSignal.timeout(Math.max(1, Math.floor(options.timeoutMs))));
+      }
+      const { error } = await query;
       if (error) {
         throw new Error('Failed to delete stale push tokens.');
       }
@@ -919,9 +1011,19 @@ export async function handleImportGMetrixKeysRequest(
   );
 
   if (distinctNotifiedProfileIds.length > 0) {
+    const nowMs = deps.nowMs ?? Date.now;
+    const deadlineMs = nowMs() + (deps.pushBudgetMs ?? DEFAULT_PUSH_BUDGET_MS);
+
     let rawTokens: string[] | null = null;
     try {
-      rawTokens = await deps.loadPushTokens(distinctNotifiedProfileIds);
+      const lookupRemainingMs = deadlineMs - nowMs();
+      rawTokens = await runWithTimeout(
+        () =>
+          deps.loadPushTokens(distinctNotifiedProfileIds, {
+            timeoutMs: lookupRemainingMs,
+          }),
+        lookupRemainingMs
+      );
     } catch {
       pushNotificationsFailed += distinctNotifiedProfileIds.length;
     }
@@ -952,8 +1054,6 @@ export async function handleImportGMetrixKeysRequest(
         chunks.push(messages.slice(offset, offset + EXPO_PUSH_BATCH_LIMIT));
       }
 
-      const nowMs = deps.nowMs ?? Date.now;
-      const deadlineMs = nowMs() + (deps.pushBudgetMs ?? DEFAULT_PUSH_BUDGET_MS);
       const deadTokens = new Set<string>();
       let nextChunkIndex = 0;
 
@@ -999,9 +1099,16 @@ export async function handleImportGMetrixKeysRequest(
       await Promise.all(workers);
 
       if (deadTokens.size > 0) {
-        try {
-          await deps.deletePushTokens(Array.from(deadTokens));
-        } catch {}
+        const pruneRemainingMs = deadlineMs - nowMs();
+        if (pruneRemainingMs > 0) {
+          const staleTokenList = Array.from(deadTokens);
+          try {
+            await runWithTimeout(
+              () => deps.deletePushTokens(staleTokenList, { timeoutMs: pruneRemainingMs }),
+              pruneRemainingMs
+            );
+          } catch {}
+        }
       }
     }
   }

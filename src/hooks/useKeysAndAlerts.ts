@@ -430,7 +430,11 @@ export function useKeysAndAlerts({
     async (notification: Notification) => {
       const deepRoute = resolveDeepLinkToHubRoute(notification.deep_link);
       if (deepRoute && mountedRef.current) {
+        const alreadyOnKeys = isKeysRoute(routeRef);
         setRoute(deepRoute);
+        if (alreadyOnKeys && deepRoute.tab === 'keys') {
+          void loadKeysHubDataRef.current();
+        }
       }
       if (notification.read_at !== null) {
         return;

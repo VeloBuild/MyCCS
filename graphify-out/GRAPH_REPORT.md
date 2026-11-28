@@ -1,17 +1,17 @@
 # Graph Report - MyCCS  (2026-11-28)
 
 ## Corpus Check
-- 171 files · ~228,866 words
+- 171 files · ~231,240 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 23 file(s) not represented in the graph (top: (none) 13, .example 2, .lock 2)
 
 ## Summary
-- 1496 nodes · 2930 edges · 117 communities (97 shown, 20 thin omitted)
-- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 135 edges (avg confidence: 0.92)
+- 1503 nodes · 2950 edges · 111 communities (90 shown, 21 thin omitted)
+- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 140 edges (avg confidence: 0.92)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3182a176`
+- Built from commit: `08ec0e51`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -44,12 +44,12 @@
 - Requirements
 - ADDED Requirements
 - web-admin/package.json
-- edge-auth.ts
+- OrgDetailView.tsx
 - Requirement: Admin-Only Institutional Login and Route Guard (`FR-AUTH-01`, `FR-AUTH-02`, `FR-CERT-02`)
 - Design: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`)
 - compilerOptions
 - Design: Department About, Announcements Feed, Org Pages & Image Compression (`spec-04-dept-and-org-pages`)
-- App
+- adminAuth.ts
 - Design System: MyCCS
 - app.js
 - Product
@@ -69,13 +69,13 @@
 - compress-image.test.ts
 - Requirements
 - compress-image/index.ts
-- adminAuth.ts
+- SupabaseStorageAdapter
 - dept-org.ts
 - Proposal: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`)
 - Design: Auth & Privacy-First Identity (`spec-01-auth-identity`)
 - web-admin.ts
 - Design: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`)
-- Tasks: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`)
+- gmetrix-csv-push.test.ts
 - Tasks: Auth & Privacy-First Identity (`spec-01-auth-identity`)
 - 2026-11-25-spec-02-core-schema-rls/design.md
 - Available Project Skill (`.claude/skills/myccs-workflow/`)
@@ -97,30 +97,24 @@
 - vite.config.ts
 - dependencies
 - devDependencies
-- gmetrixAdmin.ts
+- gmetrix.ts
 - main.tsx
 - scripts
-- gmetrix.ts
-- src/App.tsx
-- MyCcsHubScreen.tsx
-- certifications.ts
-- Proposal: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`)
 - import-gmetrix-keys/core.ts
+- AdminDashboardShell.tsx
+- App.tsx
+- GMetrixImportPanel.tsx
+- import-gmetrix-keys/index.ts
 - gmetrix-crypto.ts
-- gmetrix-csv-push.test.ts
 - auth-identity.test.ts
 - my-certification-keys/core.ts
-- AnnouncementsFeedView.tsx
 - Requirements
-- identity-crypto.ts
-- import-gmetrix-keys/index.ts
 - MyCCS Repository Rules (rules.md)
 - secure-store.verify.ts
 - services/auth.ts
 - Standalone Vite+React SPA web-admin/ on Cloudflare Pages
 - Product Requirements Document (PRD_MyCCS.md)
 - GitHub Actions Multi-Tiered DevSecOps CI/CD Pipeline
-- Design: Department About, Announcements Feed, Org Pages & Image Compression (`spec-04-dept-and-org-pages`)
 - formatWebAdminError
 - imports
 - imports
@@ -129,14 +123,14 @@
 ## God Nodes (most connected - your core abstractions)
 1. `MyCcsHubScreen()` - 32 edges
 2. `Surfaces Touched` - 30 edges
-3. `useKeysAndAlerts()` - 21 edges
-4. `handleImportGMetrixKeysRequest()` - 21 edges
+3. `useKeysAndAlerts()` - 22 edges
+4. `handleImportGMetrixKeysRequest()` - 22 edges
 5. `GMetrixImportPanel()` - 19 edges
-6. `formatWebAdminError()` - 17 edges
-7. `AuthIdentityScreen()` - 17 edges
-8. `App()` - 17 edges
-9. `Product Requirements Document (PRD_MyCCS.md)` - 17 edges
-10. `Root AGENTS.md Guide` - 16 edges
+6. `Implementation Bug Log` - 19 edges
+7. `formatWebAdminError()` - 17 edges
+8. `AuthIdentityScreen()` - 17 edges
+9. `App()` - 17 edges
+10. `Product Requirements Document (PRD_MyCCS.md)` - 17 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `What Changes` --references--> `MobileHubRoute`  [INFERRED]
@@ -153,7 +147,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (117 total, 20 thin omitted)
+## Communities (111 total, 21 thin omitted)
 
 ### Community 0 - "Root AGENTS.md Guide"
 Cohesion: 0.16
@@ -161,7 +155,7 @@ Nodes (18): Root AGENTS.md Guide, Phase 0 Dependabot Maintenance (Root + web-adm
 
 ### Community 1 - "package.json"
 Cohesion: 0.11
-Nodes (18): react, @supabase/supabase-js, @types/react, typescript, zod, main, name, private (+10 more)
+Nodes (17): react, @supabase/supabase-js, @types/react, typescript, zod, main, name, private (+9 more)
 
 ### Community 2 - "Governance, CI/CD & Agent Guides"
 Cohesion: 0.13
@@ -177,7 +171,7 @@ Nodes (31): 1. Shared Core Schema Contracts & RBAC Helpers (`shared/`), Announce
 
 ### Community 5 - "deptOrg.ts"
 Cohesion: 0.14
-Nodes (19): Implementation Bug Log, createAnnouncement(), createDepartmentInfo(), DeptOrgEqFilterChain, DeptOrgListTerminal, DeptOrgOrgAnnouncementsFilterChain, DeptOrgSelectChain, DeptOrgSingleTerminal (+11 more)
+Nodes (20): MyCcsHubScreen(), adaptSupabaseClient(), createAnnouncement(), createDepartmentInfo(), DeptOrgEqFilterChain, DeptOrgListTerminal, DeptOrgOrgAnnouncementsFilterChain, DeptOrgSelectChain (+12 more)
 
 ### Community 6 - "Proposal: Auth & Privacy-First Identity (`spec-01-auth-identity`)"
 Cohesion: 0.25
@@ -196,8 +190,8 @@ Cohesion: 0.25
 Nodes (4): ImageManipulatorContextLike, ImageManipulatorDriver, ManipulatedImageRef, precompressImageForUpload()
 
 ### Community 10 - "AuthIdentityScreen.tsx"
-Cohesion: 0.18
-Nodes (17): PublicProfileDto, IdentityCard(), IdentityCardProps, styles, AuthenticatedRenderContext, AuthIdentityScreen(), AuthIdentityScreenProps, AuthStep (+9 more)
+Cohesion: 0.19
+Nodes (16): PublicProfileDto, IdentityCardProps, styles, AuthenticatedRenderContext, AuthIdentityScreen(), AuthIdentityScreenProps, AuthStep, styles (+8 more)
 
 ### Community 11 - "TypeScript Strict Config"
 Cohesion: 0.29
@@ -208,8 +202,8 @@ Cohesion: 0.50
 Nodes (3): description, name, $schema
 
 ### Community 15 - "src/lib/supabase.ts"
-Cohesion: 0.16
-Nodes (16): assertPublishableClientKey(), isSecretSupabaseKeyPrefix(), isServiceRoleJwt(), isSupabaseServiceRoleJwt(), WebAdminEnvSchema, assertMobilePublishableKey(), chunkCountKey(), chunkItemKey() (+8 more)
+Cohesion: 0.21
+Nodes (13): assertMobilePublishableKey(), chunkCountKey(), chunkItemKey(), chunkUtf8(), createMyCcsSupabaseClient(), createSecureStoreAdapter(), expoSecureStoreAdapter, getSupabaseClient() (+5 more)
 
 ### Community 26 - "overrides"
 Cohesion: 0.22
@@ -220,8 +214,8 @@ Cohesion: 0.20
 Nodes (10): ADDED Requirements, Purpose, Requirement: Encrypted student profile provisioning and key versioning, Requirement: Permanent opaque QR token and student ID privacy, Scenario: Key version supports staged rotation, Scenario: Permanent QR token omits all raw PII, Scenario: Public and QR DTO projections exclude raw student ID, Scenario: Tampered QR token fails verification (+2 more)
 
 ### Community 28 - "MyCcsHubScreen.tsx"
-Cohesion: 0.18
-Nodes (23): Announcement, AnnouncementCreateInput, Organization, OrganizationUpdateInput, OrgMembership, RbacActor, findOrganizationById(), getMembershipForOrg() (+15 more)
+Cohesion: 0.12
+Nodes (27): react-native, getMembershipForOrg(), maskCertificationKey(), FILTER_OPTIONS, styles, CertificationsAndKeysView(), formatNotificationTypeLabel(), KeysSectionId (+19 more)
 
 ### Community 30 - "Design: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`)"
 Cohesion: 0.18
@@ -239,29 +233,29 @@ Nodes (7): ADDED Requirements, Requirement: Department Information Storage & Adm
 Cohesion: 0.17
 Nodes (11): @types/node, @types/react-dom, react, @supabase/supabase-js, @types/react, typescript, zod, name (+3 more)
 
-### Community 34 - "edge-auth.ts"
-Cohesion: 0.21
-Nodes (15): handleCorsPreflight(), resolveCorsHeaders(), withCorsJson(), authenticateEdgeRequest(), BoundedBodyReadResult, decodeBase64UrlUtf8(), EdgeAuthOptions, EdgeAuthResult (+7 more)
+### Community 34 - "OrgDetailView.tsx"
+Cohesion: 0.19
+Nodes (21): Announcement, AnnouncementCreateInput, Organization, OrganizationUpdateInput, OrgMembership, RbacActor, findOrganizationById(), getOrgInitials() (+13 more)
 
 ### Community 35 - "Requirement: Admin-Only Institutional Login and Route Guard (`FR-AUTH-01`, `FR-AUTH-02`, `FR-CERT-02`)"
 Cohesion: 0.10
 Nodes (20): Purpose, Requirement: Admin-Only Institutional Login and Route Guard (`FR-AUTH-01`, `FR-AUTH-02`, `FR-CERT-02`), Requirement: Cloudflare Pages Root-Directory Deployment Configuration (`ADR-009`), Requirement: Fail-Closed Edge Function CORS Allowlist (`ADR-009`, `SAB §8`), Requirement: Shared TypeScript DTOs and Zod Contracts (`ADR-009`, `FR-AUTH-01`, `FR-CERT-02`), Requirement: Standalone Web Admin SPA Excluded from Mobile Bundle (`ADR-009`), Requirements, Scenario: Admin access evaluation enforces strict admin role (+12 more)
 
 ### Community 36 - "Design: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`)"
-Cohesion: 0.11
-Nodes (18): ADDED Requirements, Requirement: Admin-Only Institutional Login and Route Guard (`FR-AUTH-01`, `FR-AUTH-02`, `FR-CERT-02`), Requirement: Cloudflare Pages Root-Directory Deployment Configuration (`ADR-009`), Requirement: Fail-Closed Edge Function CORS Allowlist (`ADR-009`, `SAB §8`), Requirement: Shared TypeScript DTOs and Zod Contracts (`ADR-009`, `FR-AUTH-01`, `FR-CERT-02`), Requirement: Standalone Web Admin SPA Excluded from Mobile Bundle (`ADR-009`), Scenario: Admin access evaluation enforces strict admin role, Scenario: Allowlisted Web Admin origin passes CORS preflight and responses (+10 more)
+Cohesion: 0.10
+Nodes (20): ADDED Requirements, Purpose, Requirement: Admin-Only Institutional Login and Route Guard (`FR-AUTH-01`, `FR-AUTH-02`, `FR-CERT-02`), Requirement: Cloudflare Pages Root-Directory Deployment Configuration (`ADR-009`), Requirement: Fail-Closed Edge Function CORS Allowlist (`ADR-009`, `SAB §8`), Requirement: Shared TypeScript DTOs and Zod Contracts (`ADR-009`, `FR-AUTH-01`, `FR-CERT-02`), Requirement: Standalone Web Admin SPA Excluded from Mobile Bundle (`ADR-009`), Scenario: Admin access evaluation enforces strict admin role (+12 more)
 
 ### Community 37 - "compilerOptions"
 Cohesion: 0.11
 Nodes (18): compilerOptions, isolatedModules, jsx, lib, module, moduleResolution, noEmit, noFallthroughCasesInSwitch (+10 more)
 
 ### Community 38 - "Design: Department About, Announcements Feed, Org Pages & Image Compression (`spec-04-dept-and-org-pages`)"
-Cohesion: 0.06
-Nodes (32): Capabilities, Impact, Modified Capabilities, New Capabilities, Out of Scope, Proposal: Department About, Announcements Feed, Org Pages & Image Compression (`spec-04-dept-and-org-pages`), What Changes, Why (+24 more)
+Cohesion: 0.05
+Nodes (39): Context, Core Data Shapes, Database Schema, RLS, Grants & Encryption, Design: Department About, Announcements Feed, Org Pages & Image Compression (`spec-04-dept-and-org-pages`), Goals / Non-Goals, Migration Plan, Risks / Trade-offs, Capabilities (+31 more)
 
-### Community 39 - "App"
-Cohesion: 0.43
-Nodes (8): App(), handleReturnToLogin(), handleSignIn(), handleSignOut(), syncBrowserPath(), isInternalAdminSignOut(), signInAsAdmin(), signOutAdmin()
+### Community 39 - "adminAuth.ts"
+Cohesion: 0.16
+Nodes (21): ProfileProjectionInput, toPublicProfileDto(), evaluateAdminAccess(), App(), handleReturnToLogin(), handleSignIn(), handleSignOut(), syncBrowserPath() (+13 more)
 
 ### Community 40 - "Design System: MyCCS"
 Cohesion: 0.09
@@ -276,8 +270,8 @@ Cohesion: 0.17
 Nodes (11): Accessibility & Inclusion, Brand Commitments, Capabilities and Constraints, Evidence on Hand, Operating Context, Platform, Positioning, Product (+3 more)
 
 ### Community 43 - "mediaUpload.ts"
-Cohesion: 0.17
-Nodes (19): CompressImageRequestMeta, CompressImageRequestMetaSchema, CompressImageResponseSchema, MediaKindSchema, assertHttpBaseUrl(), defaultReadPreparedBlob(), FetchLike, isWebRuntime() (+11 more)
+Cohesion: 0.16
+Nodes (21): CompressImageRequestMeta, CompressImageRequestMetaSchema, CompressImageResponseSchema, MediaKindSchema, assertHttpBaseUrl(), defaultReadPreparedBlob(), FetchLike, isWebRuntime() (+13 more)
 
 ### Community 44 - "dept-org-pages.test.ts"
 Cohesion: 0.09
@@ -296,20 +290,20 @@ Cohesion: 0.10
 Nodes (21): @playwright/test, ADMIN_PERSONA, { Buffer: NodeBuffer }, CapturedImportRequest, createSyntheticAccessToken(), createSyntheticSessionPayload(), encodeBase64Url(), MockAdminEntry (+13 more)
 
 ### Community 48 - "DepartmentAboutView.tsx"
-Cohesion: 0.19
-Nodes (18): DepartmentInfo, DepartmentInfoCreateInput, DepartmentInfoCreateInputSchema, DepartmentInfoUpdateInput, DepartmentLeadershipEntry, formatManilaDate(), areLeadershipEntriesEqual(), DepartmentAboutView() (+10 more)
+Cohesion: 0.21
+Nodes (16): DepartmentInfo, DepartmentInfoCreateInput, DepartmentInfoCreateInputSchema, DepartmentInfoUpdateInput, DepartmentLeadershipEntry, areLeadershipEntriesEqual(), DepartmentAboutViewProps, DepartmentEditForm() (+8 more)
 
 ### Community 49 - "web-admin-scaffold.test.ts"
-Cohesion: 0.14
-Nodes (17): DepartmentInfoSchema, AdminProfileDtoSchema, WebAdminRouteSchema, appendVaryOrigin(), CorsResolution, DenoEnvGlobal, get(), getAllowedOriginsFromEnv() (+9 more)
+Cohesion: 0.18
+Nodes (21): Surfaces Touched, appendVaryOrigin(), CorsResolution, DenoEnvGlobal, get(), getAllowedOriginsFromEnv(), handleCorsPreflight(), parseAllowedOrigins() (+13 more)
 
 ### Community 50 - "dependencies"
 Cohesion: 0.22
 Nodes (9): dependencies, expo, expo-image-manipulator, expo-secure-store, expo-status-bar, react, react-native, @supabase/supabase-js (+1 more)
 
 ### Community 53 - "core.ts"
-Cohesion: 0.19
-Nodes (14): CompressImageAuthContext, detectImageMimeFromMagicBytes(), FormDataLike, handleCompressImageRequest(), isAllowedInputMime(), isBlobLike(), isMediaKind(), MAX_BODY_BYTES (+6 more)
+Cohesion: 0.16
+Nodes (17): CompressImageAuthContext, detectImageMimeFromMagicBytes(), FormDataLike, handleCompressImageRequest(), isAllowedInputMime(), isBlobLike(), isMediaKind(), MAX_BODY_BYTES (+9 more)
 
 ### Community 54 - "MyCCS Web Admin (`web-admin/`)"
 Cohesion: 0.33
@@ -328,16 +322,12 @@ Cohesion: 0.10
 Nodes (19): dept-and-org-pages Specification, Purpose, Requirement: Department About Screen & Admin Governance (`FR-DEPT-01`), Requirement: Expiration-Aware Department & Organization Announcements Feed (`FR-DEPT-02`), Requirement: On-Device Image Pre-Compression (`SAB §7.3`, `ADR-007`), Requirement: Server-Side `compress-image` Edge Function & EXIF-Stripped WebP Pipeline (`FR-ORG-02`, `SAB §7.3`, `ADR-007`), Requirement: Two-Tier Organization Directory & Simplified Read-Only Org Page (`FR-ORG-01`, `FR-ORG-02`), Requirements (+11 more)
 
 ### Community 58 - "compress-image/index.ts"
-Cohesion: 0.21
-Nodes (14): buildPublicStorageObjectUrl(), classifyPersistenceFailure(), CompressImageDeps, CompressImageRuntimeEnv, loadWasmBytes(), resolveRuntimeEnv, CachedRuntime, ensureImageMagickInitialized() (+6 more)
-
-### Community 59 - "adminAuth.ts"
-Cohesion: 0.42
-Nodes (7): toPublicProfileDto(), evaluateAdminAccess(), fetchVerifiedProfile(), resolveProfileSession(), restoreAdminSession(), revokeLocalSessionSafely(), WebAdminSupabaseClient
+Cohesion: 0.23
+Nodes (12): buildPublicStorageObjectUrl(), classifyPersistenceFailure(), CompressImageRuntimeEnv, loadWasmBytes(), resolveRuntimeEnv, CachedRuntime, ensureImageMagickInitialized(), getOrCreateRuntime() (+4 more)
 
 ### Community 60 - "dept-org.ts"
-Cohesion: 0.19
-Nodes (22): Surfaces Touched, 1. Shared Media & Department/Org Contracts (`shared/`), AnnouncementFilter, buildOrganizationTree(), compareAnnouncementsNewestFirst(), compareIsoTimestamps(), compareOrgsByName(), DepartmentContactEntry (+14 more)
+Cohesion: 0.16
+Nodes (25): Decisions, Surfaces Touched, 1. Shared Media & Department/Org Contracts (`shared/`), AnnouncementFilter, buildOrganizationTree(), compareAnnouncementsNewestFirst(), compareIsoTimestamps(), compareOrgsByName() (+17 more)
 
 ### Community 61 - "Proposal: Core Schema & 3-Role RBAC RLS (`spec-02-core-schema-rls`)"
 Cohesion: 0.25
@@ -348,16 +338,16 @@ Cohesion: 0.29
 Nodes (7): Context, Decisions, Design: Auth & Privacy-First Identity (`spec-01-auth-identity`), Goals / Non-Goals, Migration Plan, Risks / Trade-offs, Surfaces Touched
 
 ### Community 63 - "web-admin.ts"
-Cohesion: 0.24
-Nodes (7): AdminAccessEvaluation, BlockedAdminRole, WebAdminEnv, WebAdminRoute, WebAdminRouteResolution, AccessDeniedView(), AccessDeniedViewProps
+Cohesion: 0.12
+Nodes (20): DepartmentInfoSchema, assertPublishableClientKey(), isSecretSupabaseKeyPrefix(), isServiceRoleJwt(), isSupabaseServiceRoleJwt(), AdminAccessEvaluation, AdminProfileDtoSchema, BlockedAdminRole (+12 more)
 
 ### Community 64 - "Design: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`)"
-Cohesion: 0.19
-Nodes (13): Context, Core Data Shapes, Database Schema, RLS, Grants & Encryption, Decisions, Design: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`), Goals / Non-Goals, Migration Plan, Risks / Trade-offs (+5 more)
+Cohesion: 0.08
+Nodes (26): Context, Core Data Shapes, Database Schema, RLS, Grants & Encryption, Decisions, Design: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`), Goals / Non-Goals, Migration Plan, Risks / Trade-offs (+18 more)
 
-### Community 65 - "Tasks: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`)"
-Cohesion: 0.20
-Nodes (7): Purpose, Specification: Standalone Web Admin Portal Scaffold (`web-admin-scaffold`), 2. Mobile Bundle Exclusion & Root Tooling Isolation, 3. Standalone Vite + React SPA, Admin Login & Route Guard (`web-admin/`), 4. Playwright E2E Smoke Tests, CI Integration & Audits (`tests/e2e/`, `.github/`), Tasks: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`), Workflow follow-up
+### Community 65 - "gmetrix-csv-push.test.ts"
+Cohesion: 0.13
+Nodes (15): CommitGMetrixKeyBatchInput, ExpoPushMessage, MAX_BODY_BYTES, GMETRIX_MY_KEYS_DEEP_LINK, makeJsonImportRequest(), makeMultipartImportRequest(), makeMyKeysRequest(), makeTestJwt() (+7 more)
 
 ### Community 66 - "Tasks: Auth & Privacy-First Identity (`spec-01-auth-identity`)"
 Cohesion: 0.33
@@ -396,8 +386,8 @@ Cohesion: 0.50
 Nodes (4): Requirement: Scoped Announcements with Expiration & Soft Delete (`FR-DEPT-02`, `FR-ORG-02`), Scenario: Officer attempts to publish a department-wide or cross-org announcement, Scenario: Officer publishes an announcement for their assigned organization, Scenario: Student reads active global and joined-organization announcements
 
 ### Community 78 - "mobile-gmetrix-keys.test.ts"
-Cohesion: 0.10
-Nodes (27): Certification, DecryptedCertificationKey, Notification, PushPlatform, CertificationsAndKeysViewProps, UseKeysAndAlertsParams, UseKeysAndAlertsResult, MyCcsHubScreenProps (+19 more)
+Cohesion: 0.05
+Nodes (62): Certification, DecryptedCertificationKey, DecryptedCertificationKeySchema, ExpoPushTokenSchema, Notification, NotificationSchema, parseNotificationDeepLink(), PushPlatform (+54 more)
 
 ### Community 79 - "Requirement: Deterministic institutional email blind-index lookup"
 Cohesion: 0.67
@@ -435,9 +425,9 @@ Nodes (7): dependencies, @fontsource/jetbrains-mono, @fontsource/public-sans, re
 Cohesion: 0.29
 Nodes (7): devDependencies, @types/node, @types/react, @types/react-dom, typescript, vite, @vitejs/plugin-react
 
-### Community 89 - "gmetrixAdmin.ts"
-Cohesion: 0.09
-Nodes (34): AdminDirectoryEntry, CertificationCreateInput, CertificationCreateInputSchema, CertificationKeyBatch, CertificationKeyBatchSchema, ImportGMetrixKeysResponse, ImportGMetrixKeysResponseSchema, PromoteFacultyResult (+26 more)
+### Community 89 - "gmetrix.ts"
+Cohesion: 0.10
+Nodes (25): AdminDirectoryEntrySchema, CertificationCreateInput, CertificationCreateInputSchema, CertificationKeyBatch, CertificationKeyBatchSchema, CertificationSchema, ImportGMetrixKeysResponse, ImportGMetrixKeysResponseSchema (+17 more)
 
 ### Community 90 - "main.tsx"
 Cohesion: 0.33
@@ -447,61 +437,41 @@ Nodes (4): @fontsource/jetbrains-mono, @fontsource/public-sans, react-dom, rootE
 Cohesion: 0.40
 Nodes (5): scripts, build, dev, preview, typecheck
 
-### Community 92 - "gmetrix.ts"
-Cohesion: 0.10
-Nodes (28): DecryptedCertificationKeySchema, ExpoPushTokenSchema, IsoTimestampSchema, NotificationSchema, NotificationType, NotificationTypeSchema, PushPlatformSchema, RejectedRow (+20 more)
+### Community 92 - "import-gmetrix-keys/core.ts"
+Cohesion: 0.07
+Nodes (45): CertificationRecord, ChainableRpcQuery, CommitGMetrixKeyBatchResult, CommitGMetrixKeyEntry, EXPO_PUSH_MAX_CONCURRENCY, FormDataLike, GMetrixCryptoSecrets, handleImportGMetrixKeysRequest() (+37 more)
 
-### Community 93 - "src/App.tsx"
-Cohesion: 0.22
-Nodes (9): AdminProfileDto, AdminDashboardShell(), AdminDashboardShellProps, AdminWorkspaceTab, LoginView(), LoginViewProps, getWebAdminSupabaseClient(), getWebAdminSupabaseConfig() (+1 more)
+### Community 93 - "AdminDashboardShell.tsx"
+Cohesion: 0.31
+Nodes (8): AdminProfileDto, AdminDashboardShell(), handleTabKeyDown(), selectTab(), AdminDashboardShellProps, AdminWorkspaceTab, GMetrixImportPanelProps, WebAdminSupabaseConfig
 
-### Community 94 - "MyCcsHubScreen.tsx"
-Cohesion: 0.12
-Nodes (25): App(), @testing-library/react-native, parseNotificationDeepLink(), CertificationsAndKeysView(), isKeysRoute(), mergeReadNotificationOverrides(), mergeViewedKeyOverrides(), useKeysAndAlerts() (+17 more)
+### Community 94 - "App.tsx"
+Cohesion: 0.47
+Nodes (3): App(), expo-status-bar, @testing-library/react-native
 
-### Community 95 - "certifications.ts"
-Cohesion: 0.11
-Nodes (20): CertificationSchema, assertHttpBaseUrl(), CertificationKeyViewedRowSchema, CertificationsListTerminal, CertificationsSelectEqChain, CertificationsTableBuilder, CertificationsUpdateChain, DEFAULT_NOTIFICATIONS_LIMIT (+12 more)
+### Community 95 - "GMetrixImportPanel.tsx"
+Cohesion: 0.23
+Nodes (17): Implementation Bug Log, parseGMetrixCsv(), CsvPreviewState, formatFileSize(), GMetrixImportPanel(), handleCreateCertification(), handleFileChange(), handleUploadSubmit() (+9 more)
 
-### Community 96 - "Proposal: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`)"
-Cohesion: 0.25
-Nodes (8): Capabilities, Impact, Modified Capabilities, New Capabilities, Out of Scope, Proposal: Standalone Web Admin Portal Scaffold (`spec-03-web-admin-scaffold`), What Changes, Why
-
-### Community 97 - "import-gmetrix-keys/core.ts"
-Cohesion: 0.11
-Nodes (26): CertificationRecord, CommitGMetrixKeyBatchResult, CommitGMetrixKeyEntry, EXPO_PUSH_MAX_CONCURRENCY, FormDataLike, GMetrixCryptoSecrets, handleImportGMetrixKeysRequest(), hasValidSecretBytes() (+18 more)
+### Community 97 - "import-gmetrix-keys/index.ts"
+Cohesion: 0.18
+Nodes (14): CallerProfileRecord, createImportSecretsResolver(), createRpcDatabaseAdapter(), DEFAULT_PUSH_BUDGET_MS, ExpoPushTicket, ImportGMetrixKeysDeps, parseExpoPushTickets(), RpcCallerLike (+6 more)
 
 ### Community 98 - "gmetrix-crypto.ts"
-Cohesion: 0.18
-Nodes (23): Surfaces Touched, computeEmailBlindIndex(), bytesToHex(), computeEmailBlindIndex(), computeKeyCodeHash(), createHmacKey(), DecryptedKeyPayload, encodeByteaHex() (+15 more)
-
-### Community 99 - "gmetrix-csv-push.test.ts"
-Cohesion: 0.12
-Nodes (17): AdminDirectoryEntrySchema, maskCertificationKey(), CommitGMetrixKeyBatchInput, ExpoPushMessage, MAX_BODY_BYTES, GMETRIX_MY_KEYS_DEEP_LINK, makeJsonImportRequest(), makeMultipartImportRequest() (+9 more)
+Cohesion: 0.11
+Nodes (38): computeEmailBlindIndex(), DecryptedPiiPayload, decryptPii(), EncryptedPiiPayload, encryptPii(), generateOpaqueQrToken(), rotateEncryptedPii(), textEncoder (+30 more)
 
 ### Community 100 - "auth-identity.test.ts"
-Cohesion: 0.14
-Nodes (18): INSTITUTIONAL_EMAIL_DOMAIN, InstitutionalEmailSchema, isInstitutionalEmail(), normalizeInstitutionalEmail(), OtpCodeSchema, ProfileProjectionInput, PublicProfileDtoSchema, QrTokenSchema (+10 more)
+Cohesion: 0.18
+Nodes (15): INSTITUTIONAL_EMAIL_DOMAIN, InstitutionalEmailSchema, isInstitutionalEmail(), normalizeInstitutionalEmail(), OtpCodeSchema, PublicProfileDtoSchema, QrTokenSchema, RoleSchema (+7 more)
 
 ### Community 101 - "my-certification-keys/core.ts"
-Cohesion: 0.15
-Nodes (18): CallerActiveProfile, createMyKeysRingResolver(), DecryptedCertificationKeyDto, EncryptedCertificationKeyRow, extractCertificationMeta(), JoinedCertification, LoadKeyRingOptions, mapPostgrestCertificationKeyRow() (+10 more)
-
-### Community 102 - "AnnouncementsFeedView.tsx"
-Cohesion: 0.20
-Nodes (14): react-native, FILTER_OPTIONS, styles, formatNotificationTypeLabel(), KeysSectionId, MONO_FONT_FAMILY, SECTION_TABS, styles (+6 more)
+Cohesion: 0.14
+Nodes (21): CallerActiveProfile, createMyKeysRingResolver(), DecryptedCertificationKeyDto, EncryptedCertificationKeyRow, extractCertificationMeta(), handleMyCertificationKeysRequest(), JoinedCertification, loadAllPaginatedCertificationKeyRows() (+13 more)
 
 ### Community 103 - "Requirements"
 Cohesion: 0.12
 Nodes (16): gmetrix-csv-and-push Specification, Purpose, Requirement: Authenticated Mobile Certification Directory, My Keys & In-App Alerts (`FR-CERT-01`, `FR-CERT-05`), Requirement: Blind-Index Matching, Idempotent Partial Commit & Sanitized Fallback CSV (`FR-CERT-02`, `FR-CERT-03`, `FR-CERT-04`), Requirement: Certification, Encrypted Key, Notification & Push Token Schema with RLS (`FR-CERT-01`, `ADR-008`, `SAB §6`), Requirement: Content-Free Expo Push Notifications (`FR-CERT-05`, `SAB §7.2`), Requirement: Web Admin GMetrix Distribution & Faculty-to-Admin Promotion UI (`FR-CERT-02`, `FR-CERT-04`, `FR-AUTH-02`, `ADR-009`), Requirements (+8 more)
-
-### Community 104 - "identity-crypto.ts"
-Cohesion: 0.20
-Nodes (16): DecryptedPiiPayload, decryptPii(), EncryptedPiiPayload, encryptPii(), generateOpaqueQrToken(), rotateEncryptedPii(), textEncoder, UuidSchema (+8 more)
-
-### Community 105 - "import-gmetrix-keys/index.ts"
-Cohesion: 0.18
-Nodes (14): CallerProfileRecord, createImportSecretsResolver(), createRpcDatabaseAdapter(), DEFAULT_PUSH_BUDGET_MS, ExpoPushTicket, ImportGMetrixKeysDeps, parseExpoPushTickets(), RpcCallerLike (+6 more)
 
 ### Community 106 - "MyCCS Repository Rules (rules.md)"
 Cohesion: 0.24
@@ -527,13 +497,9 @@ Nodes (9): Docs Directory AGENTS.md Guide (docs/), Documentation SSOT Boundaries
 Cohesion: 0.33
 Nodes (9): DevSecOps Sentinel Agent, React Native QA Specialist Agent, Release Manager Agent, CI Phase 3: Automated QA (Jest, Newman, Playwright), CI Phase 5: Production Deploy (Web Admin & Supabase), CI Phase 4: Expo EAS Build, GitHub Actions Multi-Tiered DevSecOps CI/CD Pipeline, CI Phase 2: Static Analysis (CodeRabbit, CodeQL, Snyk) (+1 more)
 
-### Community 112 - "Design: Department About, Announcements Feed, Org Pages & Image Compression (`spec-04-dept-and-org-pages`)"
-Cohesion: 0.25
-Nodes (8): Context, Core Data Shapes, Database Schema, RLS, Grants & Encryption, Decisions, Design: Department About, Announcements Feed, Org Pages & Image Compression (`spec-04-dept-and-org-pages`), Goals / Non-Goals, Migration Plan, Risks / Trade-offs
-
 ### Community 113 - "formatWebAdminError"
-Cohesion: 0.52
-Nodes (6): formatWebAdminError(), FacultyPromotionPanel(), handlePromoteSubmit(), FacultyPromotionPanelProps, listAdminProfiles(), promoteFacultyByEmail()
+Cohesion: 0.43
+Nodes (7): AdminDirectoryEntry, formatWebAdminError(), FacultyPromotionPanel(), handlePromoteSubmit(), FacultyPromotionPanelProps, listAdminProfiles(), promoteFacultyByEmail()
 
 ### Community 114 - "imports"
 Cohesion: 0.29
@@ -545,22 +511,22 @@ Nodes (5): imports, ../_shared/cors, ../_shared/edge-auth, ../_shared/gmetrix-cr
 
 ## Knowledge Gaps
 - **34 isolated node(s):** `@supabase/supabase-js`, `react`, `zod`, `@types/jest`, `@types/react` (+29 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 673 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **20 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 676 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **21 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `MyCCS OpenSpec SDD Roadmap, Spec Checklist & Bug Tracker` connect `Milestones & Per-Spec Checklist` to `MyCCS Repository Rules (rules.md)`, `deptOrg.ts`?**
-  _High betweenness centrality (0.088) - this node is a cross-community bridge._
+- **Why does `Implementation Bug Log` connect `GMetrixImportPanel.tsx` to `OrgDetailView.tsx`, `gmetrix-crypto.ts`, `deptOrg.ts`, `AuthIdentityScreen.tsx`, `mobile-gmetrix-keys.test.ts`, `formatWebAdminError`, `web-admin-scaffold.test.ts`, `core.ts`, `Milestones & Per-Spec Checklist`, `dept-org.ts`, `AdminDashboardShell.tsx`?**
+  _High betweenness centrality (0.090) - this node is a cross-community bridge._
 - **Are the 7 inferred relationships involving `MyCcsHubScreen()` (e.g. with `Decisions` and `Surfaces Touched`) actually correct?**
   _`MyCcsHubScreen()` has 7 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `@supabase/supabase-js`, `react`, `zod` to the rest of the system?**
   _34 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `package.json` be split into smaller, more focused modules?**
-  _Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected._
-- **Why does `Implementation Bug Log` connect `deptOrg.ts` to `AuthIdentityScreen.tsx`, `MyCcsHubScreen.tsx`, `mobile-gmetrix-keys.test.ts`, `DepartmentAboutView.tsx`, `formatWebAdminError`, `Milestones & Per-Spec Checklist`, `gmetrixAdmin.ts`, `dept-org.ts`, `MyCcsHubScreen.tsx`?**
-  _High betweenness centrality (0.087) - this node is a cross-community bridge._
+  _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._
+- **Why does `MyCCS OpenSpec SDD Roadmap, Spec Checklist & Bug Tracker` connect `Milestones & Per-Spec Checklist` to `MyCCS Repository Rules (rules.md)`, `GMetrixImportPanel.tsx`?**
+  _High betweenness centrality (0.081) - this node is a cross-community bridge._
 - **Are the 29 inferred relationships involving `Surfaces Touched` (e.g. with `MobileHubRoute` and `maskCertificationKey()`) actually correct?**
   _`Surfaces Touched` has 29 INFERRED edges - model-reasoned connections that need verification._
 - **Should `Governance, CI/CD & Agent Guides` be split into smaller, more focused modules?**

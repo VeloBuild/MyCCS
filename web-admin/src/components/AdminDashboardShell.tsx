@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useRef, useState, type KeyboardEvent } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AdminProfileDto } from '@shared/web-admin';
 import type { WebAdminSupabaseConfig } from '../lib/supabase';
@@ -23,11 +23,31 @@ export function AdminDashboardShell({
   onSignOut,
 }: AdminDashboardShellProps) {
   const [activeTab, setActiveTab] = useState<AdminWorkspaceTab>('gmetrix');
+  const [hasOpenedFacultyTab, setHasOpenedFacultyTab] = useState(false);
+  const gmetrixTabRef = useRef<HTMLButtonElement | null>(null);
+  const facultyTabRef = useRef<HTMLButtonElement | null>(null);
+
+  function selectTab(nextTab: AdminWorkspaceTab, focusTab = false) {
+    setActiveTab(nextTab);
+    if (nextTab === 'faculty') {
+      setHasOpenedFacultyTab(true);
+    }
+    if (focusTab) {
+      const targetRef = nextTab === 'gmetrix' ? gmetrixTabRef : facultyTabRef;
+      targetRef.current?.focus();
+    }
+  }
 
   function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
       event.preventDefault();
-      setActiveTab((current) => (current === 'gmetrix' ? 'faculty' : 'gmetrix'));
+      selectTab(activeTab === 'gmetrix' ? 'faculty' : 'gmetrix', true);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      selectTab('gmetrix', true);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      selectTab('faculty', true);
     }
   }
 
@@ -73,6 +93,7 @@ export function AdminDashboardShell({
 
         <nav className="workspace-tabs" role="tablist" aria-label="Admin workspaces">
           <button
+            ref={gmetrixTabRef}
             id="tab-gmetrix"
             type="button"
             role="tab"
@@ -82,12 +103,13 @@ export function AdminDashboardShell({
             className={
               activeTab === 'gmetrix' ? 'workspace-tab workspace-tab-active' : 'workspace-tab'
             }
-            onClick={() => setActiveTab('gmetrix')}
+            onClick={() => selectTab('gmetrix')}
             onKeyDown={handleTabKeyDown}
           >
             GMetrix Keys
           </button>
           <button
+            ref={facultyTabRef}
             id="tab-faculty"
             type="button"
             role="tab"
@@ -97,25 +119,34 @@ export function AdminDashboardShell({
             className={
               activeTab === 'faculty' ? 'workspace-tab workspace-tab-active' : 'workspace-tab'
             }
-            onClick={() => setActiveTab('faculty')}
+            onClick={() => selectTab('faculty')}
             onKeyDown={handleTabKeyDown}
           >
             Faculty Admins
           </button>
         </nav>
 
-        {activeTab === 'gmetrix' ? (
-          <div id="panel-gmetrix" role="tabpanel" aria-labelledby="tab-gmetrix">
-            <GMetrixImportPanel
-              supabaseClient={supabaseClient}
-              supabaseConfig={supabaseConfig}
-            />
-          </div>
-        ) : (
-          <div id="panel-faculty" role="tabpanel" aria-labelledby="tab-faculty">
+        <div
+          id="panel-gmetrix"
+          role="tabpanel"
+          aria-labelledby="tab-gmetrix"
+          hidden={activeTab !== 'gmetrix'}
+        >
+          <GMetrixImportPanel
+            supabaseClient={supabaseClient}
+            supabaseConfig={supabaseConfig}
+          />
+        </div>
+        {hasOpenedFacultyTab ? (
+          <div
+            id="panel-faculty"
+            role="tabpanel"
+            aria-labelledby="tab-faculty"
+            hidden={activeTab !== 'faculty'}
+          >
             <FacultyPromotionPanel supabaseClient={supabaseClient} />
           </div>
-        )}
+        ) : null}
       </main>
     </div>
   );

@@ -104,11 +104,31 @@ export function parseGMetrixCsv(csvText: string): ParseGMetrixCsvResult {
     if (!hasHeader) {
       hasHeader = true;
       const headerFields = fields.map(normalizeHeaderName);
-      emailIndex = headerFields.findIndex((header) => EMAIL_HEADER_ALIASES.has(header));
-      keyCodeIndex = headerFields.findIndex((header) => KEY_CODE_HEADER_ALIASES.has(header));
-      if (emailIndex === -1 || keyCodeIndex === -1) {
+      const emailMatches: Array<{ index: number; header: string }> = [];
+      const keyCodeMatches: Array<{ index: number; header: string }> = [];
+      headerFields.forEach((header, idx) => {
+        if (EMAIL_HEADER_ALIASES.has(header)) {
+          emailMatches.push({ index: idx, header: fields[idx].trim() || header });
+        }
+        if (KEY_CODE_HEADER_ALIASES.has(header)) {
+          keyCodeMatches.push({ index: idx, header: fields[idx].trim() || header });
+        }
+      });
+      if (emailMatches.length > 1) {
+        return `Ambiguous CSV header: multiple email columns found (${emailMatches
+          .map((match) => match.header)
+          .join(', ')}). Keep only one email column.`;
+      }
+      if (keyCodeMatches.length > 1) {
+        return `Ambiguous CSV header: multiple key_code columns found (${keyCodeMatches
+          .map((match) => match.header)
+          .join(', ')}). Keep only one key column.`;
+      }
+      if (emailMatches.length === 0 || keyCodeMatches.length === 0) {
         return 'CSV header must include both email and key_code columns.';
       }
+      emailIndex = emailMatches[0].index;
+      keyCodeIndex = keyCodeMatches[0].index;
       return null;
     }
 
