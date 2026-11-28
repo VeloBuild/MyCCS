@@ -462,11 +462,13 @@ export function MyCcsHubScreen({
         const nextFields: PendingOrgFieldMap = {
           ...(mutatedOrgsRef.current.get(organizationId) ?? {}),
         };
+        const appliedPatch: Partial<Organization> = {};
         const recordField = <K extends OrgMutableField>(key: K) => {
           (nextFields as Record<OrgMutableField, { seq: number; value: unknown }>)[key] = {
             seq,
             value: updated[key],
           };
+          (appliedPatch as Record<OrgMutableField, unknown>)[key] = updated[key];
         };
         for (const key of Object.keys(input) as OrgMutableField[]) {
           if (input[key] !== undefined) {
@@ -475,7 +477,9 @@ export function MyCcsHubScreen({
         }
         mutatedOrgsRef.current.set(organizationId, nextFields);
         setOrganizations((current) =>
-          current.map((org) => (org.id === updated.id ? updated : org))
+          current.map((org) =>
+            org.id === updated.id ? { ...org, ...appliedPatch } : org
+          )
         );
       }
     });

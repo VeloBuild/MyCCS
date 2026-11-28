@@ -147,6 +147,21 @@ export function parseLeadershipLines(raw: string): DepartmentLeadershipEntry[] {
   return entries;
 }
 
+function areLeadershipEntriesEqual(
+  a: readonly DepartmentLeadershipEntry[],
+  b: readonly DepartmentLeadershipEntry[]
+): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  return a.every(
+    (entry, index) =>
+      entry.name === b[index].name &&
+      entry.title === b[index].title &&
+      (entry.email ?? '') === (b[index].email ?? '')
+  );
+}
+
 function readContactString(
   contactJson: Record<string, unknown>,
   key: string
@@ -172,8 +187,17 @@ function DepartmentEditForm({
 }: DepartmentEditFormProps) {
   const initialTitleRef = useRef(departmentInfo?.title ?? '');
   const initialAboutRef = useRef(departmentInfo?.about_markdown ?? '');
+  const initialLeadershipEntriesRef = useRef<readonly DepartmentLeadershipEntry[]>(
+    departmentInfo?.leadership_json ?? []
+  );
   const initialLeadershipRef = useRef(
     departmentInfo ? formatLeadershipLines(departmentInfo.leadership_json) : ''
+  );
+  const initialOfficeRawRef = useRef<unknown>(
+    departmentInfo?.contact_json.office
+  );
+  const initialEmailRawRef = useRef<unknown>(
+    departmentInfo?.contact_json.email
   );
 
   const [title, setTitle] = useState(initialTitleRef.current);
@@ -270,36 +294,58 @@ function DepartmentEditForm({
       updatePayload.about_markdown = aboutMarkdown;
     }
     if (leadershipText !== initialLeadershipRef.current) {
+      let parsedLeadership: DepartmentLeadershipEntry[];
       try {
-        updatePayload.leadership_json = parseLeadershipLines(leadershipText);
+        parsedLeadership = parseLeadershipLines(leadershipText);
       } catch (err) {
         setValidationError(
           err instanceof Error ? err.message : 'Invalid leadership entries.'
         );
         return;
       }
+      if (
+        !areLeadershipEntriesEqual(
+          parsedLeadership,
+          initialLeadershipEntriesRef.current
+        )
+      ) {
+        updatePayload.leadership_json = parsedLeadership;
+      }
     }
     if (officeDirty || emailDirty) {
       const nextContacts: Record<string, unknown> = {
         ...departmentInfo.contact_json,
       };
+      let contactsChanged = false;
       if (officeDirty) {
         const trimmedOffice = contactOffice.trim();
+        const initialOffice = initialOfficeRawRef.current;
         if (trimmedOffice.length > 0) {
-          nextContacts.office = trimmedOffice;
-        } else {
+          if (initialOffice !== trimmedOffice) {
+            nextContacts.office = trimmedOffice;
+            contactsChanged = true;
+          }
+        } else if (initialOffice !== undefined) {
           delete nextContacts.office;
+          contactsChanged = true;
         }
       }
       if (emailDirty) {
         const trimmedEmail = contactEmail.trim();
+        const initialEmail = initialEmailRawRef.current;
         if (trimmedEmail.length > 0) {
-          nextContacts.email = trimmedEmail;
-        } else {
+          if (initialEmail !== trimmedEmail) {
+            nextContacts.email = trimmedEmail;
+            contactsChanged = true;
+          }
+        } else if (initialEmail !== undefined) {
           delete nextContacts.email;
+          contactsChanged = true;
         }
       }
-      updatePayload.contact_json = nextContacts;
+      if (contactsChanged) {
+        updatePayload.contact_json = nextContacts;
+      }
     }
 
     const parsed = DepartmentInfoUpdateInputSchema.safeParse(updatePayload);

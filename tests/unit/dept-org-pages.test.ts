@@ -3799,6 +3799,18 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
         SAMPLE_DEPT.title
       );
       await fireEvent.changeText(
+        editView.getByTestId('dept-edit-leadership-input'),
+        `${formatLeadershipLines(SAMPLE_DEPT.leadership_json)}\n\n`
+      );
+      await fireEvent.changeText(
+        editView.getByTestId('dept-edit-email-input'),
+        'temp@lpunetwork.edu.ph'
+      );
+      await fireEvent.changeText(
+        editView.getByTestId('dept-edit-email-input'),
+        String(SAMPLE_DEPT.contact_json.email)
+      );
+      await fireEvent.changeText(
         editView.getByTestId('dept-edit-office-input'),
         'CCS Room 501'
       );

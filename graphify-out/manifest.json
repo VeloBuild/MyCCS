@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/components/DepartmentAboutView.tsx": {
-    "mtime": 1795836656.7163303,
-    "seen": 1795836765.5970585,
-    "ast_hash": "7f61e67baa4ed76826c129268523c501",
+    "mtime": 1795840284.3631394,
+    "seen": 1795840331.2511203,
+    "ast_hash": "f47509cab4ff3ad4c4dd5062b385f4ea",
     "semantic_hash": ""
   },
   "src/components/OrgDetailView.tsx": {
@@ -966,9 +966,9 @@
     "semantic_hash": ""
   },
   "src/screens/MyCcsHubScreen.tsx": {
-    "mtime": 1795836666.4998765,
-    "seen": 1795836765.5981672,
-    "ast_hash": "20d5e90ff85cb820b1091cf61074f03c",
+    "mtime": 1795840286.1446476,
+    "seen": 1795840331.2524412,
+    "ast_hash": "969b7ad88851d09e3b89048285e78453",
     "semantic_hash": ""
   },
   "src/services/deptOrg.ts": {
@@ -1020,9 +1020,9 @@
     "semantic_hash": ""
   },
   "tests/unit/dept-org-pages.test.ts": {
-    "mtime": 1795836729.255305,
-    "seen": 1795836765.602169,
-    "ast_hash": "a2056205eb52379b15d82202fa1dc896",
+    "mtime": 1795840288.056316,
+    "seen": 1795840331.2573032,
+    "ast_hash": "9848eff2aad51a29c2548e9f036d6947",
     "semantic_hash": ""
   },
   ".kiro/steering/lean-ctx.md": {
