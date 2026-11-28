@@ -81,6 +81,43 @@ function getHeaderTitle(route: MobileHubRoute): string {
   }
 }
 
+function compareAnnouncementsNewestFirst(
+  a: Announcement,
+  b: Announcement
+): number {
+  const timeDiff = Date.parse(b.published_at) - Date.parse(a.published_at);
+  if (timeDiff !== 0) {
+    return timeDiff;
+  }
+  return a.id.localeCompare(b.id);
+}
+
+function mergeAcknowledgedAnnouncements(
+  fetched: Announcement[],
+  acknowledged: ReadonlyArray<{ seq: number; post: Announcement }>,
+  startSeq: number
+): Announcement[] {
+  const extras = acknowledged.filter((entry) => entry.seq > startSeq);
+  if (extras.length === 0) {
+    return fetched;
+  }
+  const byId = new Map<string, Announcement>();
+  for (const item of fetched) {
+    byId.set(item.id, item);
+  }
+  let added = false;
+  for (const entry of extras) {
+    if (!byId.has(entry.post.id)) {
+      byId.set(entry.post.id, entry.post);
+      added = true;
+    }
+  }
+  if (!added) {
+    return fetched;
+  }
+  return Array.from(byId.values()).sort(compareAnnouncementsNewestFirst);
+}
+
 export function MyCcsHubScreen({
   profile,
   busy,
@@ -112,6 +149,21 @@ export function MyCcsHubScreen({
   const refreshIdRef = useRef(0);
   const orgPostsReqIdRef = useRef(0);
   const mutatingRef = useRef(false);
+  const annMutationSeqRef = useRef(0);
+  const acknowledgedOrgPostsRef = useRef<
+    Record<string, Array<{ seq: number; post: Announcement }>>
+  >({});
+  const acknowledgedHubPostsRef = useRef<
+    Array<{ seq: number; post: Announcement }>
+  >([]);
+  const orgMutationSeqRef = useRef(0);
+  const mutatedOrgsRef = useRef<
+    Map<string, { seq: number; patch: Partial<Organization> }>
+  >(new Map());
+  const deptMutationSeqRef = useRef(0);
+  const mutatedDeptRef = useRef<{ seq: number; value: DepartmentInfo } | null>(
+    null
+  );
   const routeRef = useRef(route);
   routeRef.current = route;
 
@@ -137,6 +189,7 @@ export function MyCcsHubScreen({
       }
 
       const requestId = ++orgPostsReqIdRef.current;
+      const startAnnSeq = annMutationSeqRef.current;
       if (mountedRef.current) {
         setOrgPostsLoading(true);
         setOrgPostsError(null);
@@ -150,9 +203,21 @@ export function MyCcsHubScreen({
         if (!mountedRef.current || orgPostsReqIdRef.current !== requestId) {
           return;
         }
+        const orgAck = acknowledgedOrgPostsRef.current[orgId] ?? [];
+        const mergedPosts = mergeAcknowledgedAnnouncements(
+          posts,
+          orgAck,
+          startAnnSeq
+        );
+        const remainingAck = orgAck.filter((entry) => entry.seq > startAnnSeq);
+        if (remainingAck.length > 0) {
+          acknowledgedOrgPostsRef.current[orgId] = remainingAck;
+        } else {
+          delete acknowledgedOrgPostsRef.current[orgId];
+        }
         setOrgAnnouncementsByOrgId((current) => ({
           ...current,
-          [orgId]: posts,
+          [orgId]: mergedPosts,
         }));
       } catch (err) {
         if (mountedRef.current && orgPostsReqIdRef.current === requestId) {
@@ -183,6 +248,9 @@ export function MyCcsHubScreen({
 
     const requestId = ++refreshIdRef.current;
     const isInitialLoad = !hasLoadedRef.current;
+    const startOrgSeq = orgMutationSeqRef.current;
+    const startDeptSeq = deptMutationSeqRef.current;
+    const startAnnSeq = annMutationSeqRef.current;
     if (mountedRef.current) {
       if (isInitialLoad) {
         setLoading(true);
@@ -207,10 +275,39 @@ export function MyCcsHubScreen({
       if (!mountedRef.current || refreshIdRef.current !== requestId) {
         return;
       }
-      setDepartmentInfo(snapshot.departmentInfo);
-      setOrganizations(snapshot.organizations);
+
+      const pendingDept = mutatedDeptRef.current;
+      if (pendingDept && pendingDept.seq > startDeptSeq) {
+        setDepartmentInfo(pendingDept.value);
+      } else {
+        mutatedDeptRef.current = null;
+        setDepartmentInfo(snapshot.departmentInfo);
+      }
+
+      const mergedOrganizations = snapshot.organizations.map((org) => {
+        const pendingOrg = mutatedOrgsRef.current.get(org.id);
+        if (pendingOrg && pendingOrg.seq > startOrgSeq) {
+          return { ...org, ...pendingOrg.patch };
+        }
+        return org;
+      });
+      for (const [orgId, pendingOrg] of mutatedOrgsRef.current.entries()) {
+        if (pendingOrg.seq <= startOrgSeq) {
+          mutatedOrgsRef.current.delete(orgId);
+        }
+      }
+      setOrganizations(mergedOrganizations);
       setMemberships(snapshot.memberships);
-      setAnnouncements(snapshot.announcements);
+
+      const mergedAnnouncements = mergeAcknowledgedAnnouncements(
+        snapshot.announcements,
+        acknowledgedHubPostsRef.current,
+        startAnnSeq
+      );
+      acknowledgedHubPostsRef.current = acknowledgedHubPostsRef.current.filter(
+        (entry) => entry.seq > startAnnSeq
+      );
+      setAnnouncements(mergedAnnouncements);
     } catch (err) {
       if (mountedRef.current && refreshIdRef.current === requestId) {
         setHubError(
@@ -274,6 +371,8 @@ export function MyCcsHubScreen({
     await runMutation(async () => {
       const created = await createDepartmentInfo(resolveClient(), input);
       if (mountedRef.current) {
+        const seq = ++deptMutationSeqRef.current;
+        mutatedDeptRef.current = { seq, value: created };
         setDepartmentInfo(created);
         if (routeRef.current.tab === 'department') {
           setRoute({ tab: 'department', mode: 'view' });
@@ -289,6 +388,8 @@ export function MyCcsHubScreen({
     await runMutation(async () => {
       const updated = await updateDepartmentInfo(resolveClient(), id, input);
       if (mountedRef.current) {
+        const seq = ++deptMutationSeqRef.current;
+        mutatedDeptRef.current = { seq, value: updated };
         setDepartmentInfo(updated);
         if (routeRef.current.tab === 'department') {
           setRoute({ tab: 'department', mode: 'view' });
@@ -301,25 +402,26 @@ export function MyCcsHubScreen({
     await runMutation(async () => {
       const created = await createAnnouncement(resolveClient(), input);
       if (mountedRef.current) {
+        const seq = ++annMutationSeqRef.current;
+        acknowledgedHubPostsRef.current.push({ seq, post: created });
         setAnnouncements((current) => [
           created,
           ...current.filter((item) => item.id !== created.id),
         ]);
         if (created.organization_id !== null) {
           const orgId = created.organization_id;
-          setOrgAnnouncementsByOrgId((current) => {
-            const existing = current[orgId];
-            if (!existing) {
-              return current;
-            }
-            return {
-              ...current,
-              [orgId]: [
-                created,
-                ...existing.filter((item) => item.id !== created.id),
-              ],
-            };
-          });
+          const existingAck = acknowledgedOrgPostsRef.current[orgId] ?? [];
+          acknowledgedOrgPostsRef.current[orgId] = [
+            ...existingAck,
+            { seq, post: created },
+          ];
+          setOrgAnnouncementsByOrgId((current) => ({
+            ...current,
+            [orgId]: [
+              created,
+              ...(current[orgId] ?? []).filter((item) => item.id !== created.id),
+            ],
+          }));
         }
       }
     });
@@ -336,6 +438,12 @@ export function MyCcsHubScreen({
         input
       );
       if (mountedRef.current) {
+        const seq = ++orgMutationSeqRef.current;
+        const prev = mutatedOrgsRef.current.get(organizationId);
+        mutatedOrgsRef.current.set(organizationId, {
+          seq,
+          patch: { ...(prev?.patch ?? {}), ...updated },
+        });
         setOrganizations((current) =>
           current.map((org) => (org.id === updated.id ? updated : org))
         );
@@ -374,16 +482,19 @@ export function MyCcsHubScreen({
       }
 
       if (mountedRef.current) {
+        const seq = ++orgMutationSeqRef.current;
+        const mediaPatch: Partial<Organization> =
+          kind === 'cover'
+            ? { cover_url: uploaded.publicUrl }
+            : { logo_url: uploaded.publicUrl };
+        const prev = mutatedOrgsRef.current.get(organizationId);
+        mutatedOrgsRef.current.set(organizationId, {
+          seq,
+          patch: { ...(prev?.patch ?? {}), ...mediaPatch },
+        });
         setOrganizations((current) =>
           current.map((org) =>
-            org.id === organizationId
-              ? {
-                  ...org,
-                  ...(kind === 'cover'
-                    ? { cover_url: uploaded.publicUrl }
-                    : { logo_url: uploaded.publicUrl }),
-                }
-              : org
+            org.id === organizationId ? { ...org, ...mediaPatch } : org
           )
         );
       }

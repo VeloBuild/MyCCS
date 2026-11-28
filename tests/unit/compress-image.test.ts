@@ -10,6 +10,7 @@ import {
 import {
   ALLOWED_INPUT_IMAGE_MIME_TYPES as CORE_ALLOWED_MIMES,
   buildPublicStorageObjectUrl,
+  classifyPersistenceFailure,
   detectImageMimeFromMagicBytes as coreDetectMagicBytes,
   handleCompressImageRequest,
   loadWasmBytes,
@@ -1011,7 +1012,58 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
     ).toBe(500);
   });
 
-  it('returns 422 on image processing failure and 500 on corrupted WebP output, bad assetId, or upload failure', async () => {
+  it('classifies definite DB rejections vs unknown commit outcomes via classifyPersistenceFailure', () => {
+    expect(classifyPersistenceFailure(200, null, false)).toBe('rejected');
+    expect(classifyPersistenceFailure(undefined, null, false)).toBe('rejected');
+
+    expect(classifyPersistenceFailure(400, { message: 'bad request' }, false)).toBe('rejected');
+    expect(classifyPersistenceFailure(404, { message: 'not found' }, false)).toBe('rejected');
+    expect(classifyPersistenceFailure(406, { code: 'PGRST116', message: '0 rows' }, false)).toBe(
+      'rejected'
+    );
+    expect(classifyPersistenceFailure(409, { message: 'conflict' }, false)).toBe('rejected');
+    expect(classifyPersistenceFailure(422, { message: 'unprocessable' }, false)).toBe('rejected');
+
+    expect(
+      classifyPersistenceFailure(undefined, { code: '23514', message: 'check violation' }, false)
+    ).toBe('rejected');
+    expect(
+      classifyPersistenceFailure(undefined, { code: '22P02', message: 'invalid uuid' }, false)
+    ).toBe('rejected');
+    expect(
+      classifyPersistenceFailure(undefined, { code: '42501', message: 'forbidden' }, false)
+    ).toBe('rejected');
+    expect(
+      classifyPersistenceFailure(undefined, { code: 'PGRST116', message: '0 rows' }, false)
+    ).toBe('rejected');
+
+    expect(classifyPersistenceFailure(500, { message: 'internal error' }, false)).toBe('unknown');
+    expect(
+      classifyPersistenceFailure(502, { code: 'PGRST116', message: 'bad gateway' }, false)
+    ).toBe('unknown');
+    expect(
+      classifyPersistenceFailure(503, { code: '23514', message: 'service unavailable' }, false)
+    ).toBe('unknown');
+    expect(classifyPersistenceFailure(504, { message: 'gateway timeout' }, false)).toBe('unknown');
+
+    expect(classifyPersistenceFailure(undefined, { message: 'connection reset' }, false)).toBe(
+      'unknown'
+    );
+    expect(
+      classifyPersistenceFailure(undefined, { code: '57014', message: 'statement timeout' }, false)
+    ).toBe('unknown');
+    expect(
+      classifyPersistenceFailure(undefined, { code: 'PGRST003', message: 'timeout' }, false)
+    ).toBe('unknown');
+    expect(classifyPersistenceFailure(0, { message: 'FetchError: socket hang up' }, false)).toBe(
+      'unknown'
+    );
+    expect(classifyPersistenceFailure(200, { message: 'unexpected transport error' }, true)).toBe(
+      'unknown'
+    );
+  });
+
+  it('returns 422 on image processing failure and 500 on corrupted WebP output, bad assetId, upload failure, or persistence failure with outcome-gated cleanup', async () => {
     const decodeErrDeps = makeDeps({
       processImage: jest.fn().mockRejectedValue(new Error('corrupt image stream')),
     });
@@ -1065,24 +1117,32 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
     ).toBe(500);
     expect(uploadFailDeps.persistOrganizationMediaUrl).not.toHaveBeenCalled();
 
-    const persistFailDeps = makeDeps({
-      persistOrganizationMediaUrl: jest.fn().mockRejectedValue(new Error('db write failed')),
+    const rejectedPersistDeps = makeDeps({
+      persistOrganizationMediaUrl: jest.fn().mockResolvedValue({
+        ok: false,
+        outcome: 'rejected',
+        message: 'check_violation',
+      }),
     });
-    const persistFailRes = await handleCompressImageRequest(
+    const rejectedPersistRes = await handleCompressImageRequest(
       makeMultipartRequest({ formData: buildValidFormData({ kind: 'cover' }) }),
-      persistFailDeps
+      rejectedPersistDeps
     );
-    expect(persistFailRes.status).toBe(500);
-    await expect(persistFailRes.json()).resolves.toEqual({
+    expect(rejectedPersistRes.status).toBe(500);
+    await expect(rejectedPersistRes.json()).resolves.toEqual({
       error: 'Failed to update organization media URL.',
     });
-    expect(persistFailDeps.deleteUploadedWebp).toHaveBeenCalledWith({
+    expect(rejectedPersistDeps.deleteUploadedWebp).toHaveBeenCalledWith({
       bucket: 'org-media',
       path: `orgs/${ORG_A_ID}/cover/${ASSET_ID}.webp`,
     });
 
     const rollbackAlsoFailsDeps = makeDeps({
-      persistOrganizationMediaUrl: jest.fn().mockRejectedValue(new Error('db write failed')),
+      persistOrganizationMediaUrl: jest.fn().mockResolvedValue({
+        ok: false,
+        outcome: 'rejected',
+        message: 'Organization not found or inactive.',
+      }),
       deleteUploadedWebp: jest.fn().mockRejectedValue(new Error('storage delete failed')),
     });
     const rollbackFailRes = await handleCompressImageRequest(
@@ -1094,6 +1154,36 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
       bucket: 'org-media',
       path: `orgs/${ORG_A_ID}/logo/${ASSET_ID}.webp`,
     });
+
+    const unknownPersistDeps = makeDeps({
+      persistOrganizationMediaUrl: jest.fn().mockResolvedValue({
+        ok: false,
+        outcome: 'unknown',
+        message: 'gateway timeout',
+      }),
+    });
+    const unknownPersistRes = await handleCompressImageRequest(
+      makeMultipartRequest({ formData: buildValidFormData({ kind: 'cover' }) }),
+      unknownPersistDeps
+    );
+    expect(unknownPersistRes.status).toBe(500);
+    await expect(unknownPersistRes.json()).resolves.toEqual({
+      error: 'Failed to update organization media URL.',
+    });
+    expect(unknownPersistDeps.deleteUploadedWebp).not.toHaveBeenCalled();
+
+    const thrownPersistDeps = makeDeps({
+      persistOrganizationMediaUrl: jest.fn().mockRejectedValue(new Error('network reset')),
+    });
+    const thrownPersistRes = await handleCompressImageRequest(
+      makeMultipartRequest({ formData: buildValidFormData({ kind: 'logo' }) }),
+      thrownPersistDeps
+    );
+    expect(thrownPersistRes.status).toBe(500);
+    await expect(thrownPersistRes.json()).resolves.toEqual({
+      error: 'Failed to update organization media URL.',
+    });
+    expect(thrownPersistDeps.deleteUploadedWebp).not.toHaveBeenCalled();
   });
 
   it('succeeds with 201 WebP payload for assigned officer and admin across logo, cover, and flyer variants', async () => {
@@ -1199,7 +1289,10 @@ describe('spec-04 supabase/functions/compress-image/core.ts helpers & HTTP handl
       },
       body: realForm,
     });
-    const realDeps = makeDeps({ nowSeconds: undefined });
+    const realDeps = makeDeps({
+      nowSeconds: undefined,
+      persistOrganizationMediaUrl: jest.fn().mockResolvedValue({ ok: true }),
+    });
     const realRes = await handleCompressImageRequest(realReq, realDeps);
     expect(realRes.status).toBe(201);
     const realBody = CompressImageResponseSchema.parse(await realRes.json());
@@ -1340,6 +1433,9 @@ describe('spec-04 migration, config, Deno entrypoint, SQL test, and Postman cont
     expect(denoEntrypoint).toContain('runtimeEnv.publicStorageBaseUrl');
     expect(denoEntrypoint).not.toContain('getPublicUrl(');
     expect(denoEntrypoint).toContain('persistOrganizationMediaUrl');
+    expect(denoEntrypoint).toContain('classifyPersistenceFailure');
+    expect(denoEntrypoint).toContain('const { data, error, status } = await serviceClient');
+    expect(denoEntrypoint).toContain('outcome: classifyPersistenceFailure(status, error, Boolean(data))');
     expect(denoEntrypoint).toContain('deleteUploadedWebp');
     expect(denoEntrypoint).toContain('.remove([path])');
     expect(denoEntrypoint).toContain('loadWasmBytes');
@@ -1362,6 +1458,10 @@ describe('spec-04 migration, config, Deno entrypoint, SQL test, and Postman cont
     expect(storageTestSql).toContain('trg_organizations_guard_media_urls');
     expect(storageTestSql).toContain('https://evil.example/track.png');
     expect(storageTestSql).toContain('Cross-org org-media logo_url');
+    expect(storageTestSql).toContain('v_org_b_logo_path');
+    expect(storageTestSql).toContain('v_org_b_logo_url');
+    expect(storageTestSql).toContain("('org-media', v_org_b_logo_path, v_user_id)");
+    expect(storageTestSql).toContain('WHERE id = v_org_b_id;');
     expect(storageTestSql).toContain('SET LOCAL ROLE authenticated');
     expect(storageTestSql).toContain('SET LOCAL ROLE anon');
     expect(storageTestSql).toContain('SET LOCAL ROLE service_role');

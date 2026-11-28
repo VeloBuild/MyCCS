@@ -22,7 +22,8 @@ import {
 const UuidSchema = z.string().uuid();
 
 export const DEFAULT_ANNOUNCEMENTS_LIMIT = 100;
-export const ORG_ANNOUNCEMENTS_PAGE_SIZE = 1000;
+export const ORG_ANNOUNCEMENTS_MAX_PAGE_SIZE = 1000;
+export const ORG_ANNOUNCEMENTS_PAGE_SIZE = ORG_ANNOUNCEMENTS_MAX_PAGE_SIZE;
 
 export interface DeptOrgQueryResult<T> {
   data: T | null;
@@ -40,20 +41,19 @@ export interface DeptOrgListTerminal
     options?: { ascending?: boolean }
   ): DeptOrgListTerminal;
   limit(count: number): PromiseLike<DeptOrgQueryResult<unknown[]>>;
-  range(from: number, to: number): PromiseLike<DeptOrgQueryResult<unknown[]>>;
+}
+
+export interface DeptOrgOrgAnnouncementsFilterChain {
+  or(filters: string): DeptOrgOrgAnnouncementsFilterChain;
+  order(
+    column: string,
+    options?: { ascending?: boolean }
+  ): DeptOrgListTerminal;
 }
 
 export interface DeptOrgEqFilterChain
   extends PromiseLike<DeptOrgQueryResult<unknown[]>> {
-  is(
-    column: string,
-    value: null
-  ): {
-    order(
-      column: string,
-      options?: { ascending?: boolean }
-    ): DeptOrgListTerminal;
-  };
+  is(column: string, value: null): DeptOrgOrgAnnouncementsFilterChain;
 }
 
 export interface DeptOrgSelectChain {
@@ -263,42 +263,63 @@ export async function fetchOrganizationAnnouncements(
   const parsedOrgId = UuidSchema.parse(organizationId);
   const effectivePageSize =
     Number.isInteger(pageSize) && pageSize > 0
-      ? pageSize
+      ? Math.min(pageSize, ORG_ANNOUNCEMENTS_MAX_PAGE_SIZE)
       : ORG_ANNOUNCEMENTS_PAGE_SIZE;
 
   const collected: Announcement[] = [];
   const seenIds = new Set<string>();
-  let from = 0;
+  let cursor: { publishedAt: string; id: string } | null = null;
 
   while (true) {
-    const to = from + effectivePageSize - 1;
-    const { data, error } = await client
+    const baseQuery = client
       .from('announcements')
       .select(ANNOUNCEMENT_COLUMNS)
       .eq('organization_id', parsedOrgId)
-      .is('deleted_at', null)
+      .is('deleted_at', null);
+    const escapedPublishedAt = cursor
+      ? cursor.publishedAt.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+      : '';
+    const pagedQuery = cursor
+      ? baseQuery.or(
+          `published_at.lt."${escapedPublishedAt}",and(published_at.eq."${escapedPublishedAt}",id.gt.${cursor.id})`
+        )
+      : baseQuery;
+    const { data, error } = await pagedQuery
       .order('published_at', { ascending: false })
       .order('id', { ascending: true })
-      .range(from, to);
+      .limit(effectivePageSize);
 
     if (error) {
       throw new Error(error.message);
     }
 
     const batch = data ?? [];
+    let lastParsed: Announcement | null = null;
     for (const row of batch) {
       const parsed = AnnouncementSchema.parse(row);
+      lastParsed = parsed;
       if (!seenIds.has(parsed.id)) {
         seenIds.add(parsed.id);
         collected.push(parsed);
       }
     }
 
-    if (batch.length < effectivePageSize) {
+    if (batch.length < effectivePageSize || !lastParsed) {
       break;
     }
 
-    from += batch.length;
+    const nextCursor = {
+      publishedAt: lastParsed.published_at,
+      id: lastParsed.id,
+    };
+    if (
+      cursor &&
+      cursor.publishedAt === nextCursor.publishedAt &&
+      cursor.id === nextCursor.id
+    ) {
+      break;
+    }
+    cursor = nextCursor;
   }
 
   return collected;

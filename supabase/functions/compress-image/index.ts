@@ -9,6 +9,7 @@ import {
 import { getAllowedOriginsFromEnv, withCorsJson } from '../_shared/cors.ts';
 import {
   buildPublicStorageObjectUrl,
+  classifyPersistenceFailure,
   handleCompressImageRequest,
   loadWasmBytes,
   resolveRuntimeEnv,
@@ -220,16 +221,21 @@ function getOrCreateRuntime(): RuntimeInitResult {
         };
       },
       persistOrganizationMediaUrl: async ({ organizationId, kind, publicUrl }) => {
-        const { data, error } = await serviceClient
+        const { data, error, status } = await serviceClient
           .from('organizations')
           .update(kind === 'logo' ? { logo_url: publicUrl } : { cover_url: publicUrl })
           .eq('id', organizationId)
           .is('deleted_at', null)
           .select('id')
           .single();
-        if (error || !data) {
-          throw new Error(error?.message ?? 'Organization not found or inactive.');
+        if (!error && data) {
+          return { ok: true };
         }
+        return {
+          ok: false,
+          outcome: classifyPersistenceFailure(status, error, Boolean(data)),
+          message: error?.message ?? 'Organization not found or inactive.',
+        };
       },
       deleteUploadedWebp: async ({ bucket, path }) => {
         const { error } = await serviceClient.storage.from(bucket).remove([path]);

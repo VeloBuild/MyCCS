@@ -42,6 +42,10 @@ export interface CompressImageAuthContext {
   isApprovedOfficer: boolean;
 }
 
+export type PersistOrganizationMediaResult =
+  | { ok: true }
+  | { ok: false; outcome: 'rejected' | 'unknown'; message?: string };
+
 export interface CompressImageDeps {
   supabaseUrl: string;
   expectedJwtIssuer?: string;
@@ -69,7 +73,7 @@ export interface CompressImageDeps {
     organizationId: string;
     kind: 'logo' | 'cover';
     publicUrl: string;
-  }) => Promise<void>;
+  }) => Promise<PersistOrganizationMediaResult | void>;
   deleteUploadedWebp?: (input: {
     bucket: typeof MEDIA_STORAGE_BUCKET;
     path: string;
@@ -94,6 +98,27 @@ const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BASE64URL_SEGMENT_REGEX = /^[A-Za-z0-9_-]+$/;
 const BEARER_HEADER_REGEX = /^bearer\s+(\S+)$/i;
+const DEFINITE_REJECTION_CODE_REGEX = /^(PGRST1\d\d|22[0-9A-Z]{3}|23[0-9A-Z]{3}|42[0-9A-Z]{3})$/;
+
+export function classifyPersistenceFailure(
+  status: number | undefined,
+  error: { code?: string; message?: string } | null,
+  hasData: boolean
+): 'rejected' | 'unknown' {
+  if (!error && !hasData) {
+    return 'rejected';
+  }
+  if (typeof status === 'number' && status >= 500) {
+    return 'unknown';
+  }
+  if (typeof status === 'number' && status >= 400 && status < 500) {
+    return 'rejected';
+  }
+  if (typeof error?.code === 'string' && DEFINITE_REJECTION_CODE_REGEX.test(error.code)) {
+    return 'rejected';
+  }
+  return 'unknown';
+}
 
 export function resolvePublicStorageBaseUrl(
   supabaseUrl: string,
@@ -655,19 +680,26 @@ export async function handleCompressImageRequest(
   }
 
   if (kind === 'logo' || kind === 'cover') {
+    let persistResult: PersistOrganizationMediaResult | void;
     try {
-      await deps.persistOrganizationMediaUrl({
+      persistResult = await deps.persistOrganizationMediaUrl({
         organizationId,
         kind,
         publicUrl: uploaded.publicUrl,
       });
     } catch {
-      try {
-        await deps.deleteUploadedWebp?.({
-          bucket: MEDIA_STORAGE_BUCKET,
-          path: storagePath,
-        });
-      } catch {}
+      return json({ error: 'Failed to update organization media URL.' }, 500);
+    }
+
+    if (persistResult && !persistResult.ok) {
+      if (persistResult.outcome === 'rejected') {
+        try {
+          await deps.deleteUploadedWebp?.({
+            bucket: MEDIA_STORAGE_BUCKET,
+            path: storagePath,
+          });
+        } catch {}
+      }
       return json({ error: 'Failed to update organization media URL.' }, 500);
     }
   }

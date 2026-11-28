@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/components/DepartmentAboutView.tsx": {
-    "mtime": 1795798567.4106965,
-    "seen": 1795798939.3121917,
-    "ast_hash": "7998dd50ed1ca68a798d064516e2564b",
+    "mtime": 1795835297.605799,
+    "seen": 1795835461.0440817,
+    "ast_hash": "2a9d32558da001864f8a7a491ccf81f7",
     "semantic_hash": ""
   },
   "src/components/OrgDetailView.tsx": {
@@ -966,15 +966,15 @@
     "semantic_hash": ""
   },
   "src/screens/MyCcsHubScreen.tsx": {
-    "mtime": 1795800973.890908,
-    "seen": 1795801054.9273167,
-    "ast_hash": "5c21343aa760fa9242c2678a846d82ac",
+    "mtime": 1795835302.5313306,
+    "seen": 1795835461.045127,
+    "ast_hash": "806267816816aa766d6088a3ae17a364",
     "semantic_hash": ""
   },
   "src/services/deptOrg.ts": {
-    "mtime": 1795800966.6780212,
-    "seen": 1795801054.9277315,
-    "ast_hash": "2876cc2bad7aadf8bd0f43d9141dba79",
+    "mtime": 1795835300.3642097,
+    "seen": 1795835461.045334,
+    "ast_hash": "b3ba18361cc093c5da6561c18c10e1f6",
     "semantic_hash": ""
   },
   "src/services/mediaUpload.ts": {
@@ -990,9 +990,9 @@
     "semantic_hash": ""
   },
   "supabase/functions/compress-image/core.ts": {
-    "mtime": 1795798756.9145336,
-    "seen": 1795798939.3147917,
-    "ast_hash": "e01bf6ab97ad4eaf3da4c58897bedd07",
+    "mtime": 1795835018.7468386,
+    "seen": 1795835461.0461872,
+    "ast_hash": "3075a9d9cc7058c11b29977015499120",
     "semantic_hash": ""
   },
   "supabase/functions/compress-image/deno.json": {
@@ -1002,9 +1002,9 @@
     "semantic_hash": ""
   },
   "supabase/functions/compress-image/index.ts": {
-    "mtime": 1795798758.4897196,
-    "seen": 1795798939.3147967,
-    "ast_hash": "c1b4c1b12d2dffc32bb8e4c0789f7271",
+    "mtime": 1795835021.3349235,
+    "seen": 1795835461.046396,
+    "ast_hash": "37d3c8fd3a2b3f9f4099ee1c322af9c8",
     "semantic_hash": ""
   },
   "tests/api/compress-image.postman_collection.json": {
@@ -1014,15 +1014,15 @@
     "semantic_hash": ""
   },
   "tests/unit/compress-image.test.ts": {
-    "mtime": 1795798775.1353538,
-    "seen": 1795798939.3160472,
-    "ast_hash": "4c971976708b50eedec8798cbcee0ef9",
+    "mtime": 1795835061.9747846,
+    "seen": 1795835461.0475686,
+    "ast_hash": "4c03028d711f83f9bf38bf5b8035c5b8",
     "semantic_hash": ""
   },
   "tests/unit/dept-org-pages.test.ts": {
-    "mtime": 1795801017.6710458,
-    "seen": 1795801054.9330132,
-    "ast_hash": "c9a493d963f87b09409d8c7052b09530",
+    "mtime": 1795835371.1572108,
+    "seen": 1795835461.0478113,
+    "ast_hash": "3a40313376da942c0c452405b6e0f62a",
     "semantic_hash": ""
   },
   ".kiro/steering/lean-ctx.md": {

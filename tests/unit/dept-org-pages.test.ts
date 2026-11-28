@@ -47,6 +47,7 @@ import {
   fetchMyOrgMemberships,
   fetchOrganizationAnnouncements,
   loadHubSnapshot,
+  ORG_ANNOUNCEMENTS_MAX_PAGE_SIZE,
   ORG_ANNOUNCEMENTS_PAGE_SIZE,
   updateDepartmentInfo,
   updateOrganizationProfile,
@@ -247,6 +248,17 @@ const ADMIN_PROFILE: PublicProfileDto = {
   keyVersion: 1,
 };
 
+interface MockOrderSpec {
+  column: string;
+  ascending: boolean;
+}
+
+interface MockOrgAnnouncementsQueryParams {
+  orFilters: string[];
+  orderSpecs: MockOrderSpec[];
+  limit: number;
+}
+
 interface MockDbState {
   departmentInfo: DepartmentInfo | null;
   organizations: Organization[];
@@ -261,12 +273,14 @@ interface MockDbState {
   }>;
   onFetchOrgAnnouncements?: (
     orgId: string,
-    from: number,
-    to: number
-  ) => Promise<{
-    data: Announcement[] | null;
-    error: { message: string } | null;
-  }>;
+    params: MockOrgAnnouncementsQueryParams
+  ) => Promise<
+    | {
+        data: Announcement[] | null;
+        error: { message: string } | null;
+      }
+    | undefined
+  >;
   onInsertAnnouncement?: (values: Record<string, unknown>) => Promise<{
     data: Announcement | null;
     error: { message: string } | null;
@@ -278,6 +292,192 @@ interface MockDbState {
     data: DepartmentInfo | null;
     error: { message: string } | null;
   }>;
+}
+
+const TIMESTAMP_COLUMNS = new Set([
+  'published_at',
+  'updated_at',
+  'created_at',
+  'expires_at',
+  'deleted_at',
+]);
+
+function compareMockValues(
+  column: string,
+  a: unknown,
+  b: unknown
+): number {
+  if (a === b) {
+    return 0;
+  }
+  if (a === null || a === undefined) {
+    return 1;
+  }
+  if (b === null || b === undefined) {
+    return -1;
+  }
+  if (
+    TIMESTAMP_COLUMNS.has(column) &&
+    typeof a === 'string' &&
+    typeof b === 'string'
+  ) {
+    const timeA = Date.parse(a);
+    const timeB = Date.parse(b);
+    if (!Number.isNaN(timeA) && !Number.isNaN(timeB)) {
+      return timeA < timeB ? -1 : timeA > timeB ? 1 : 0;
+    }
+  }
+  const strA = String(a);
+  const strB = String(b);
+  return strA < strB ? -1 : strA > strB ? 1 : 0;
+}
+
+function applyMockOrderSpecs<T extends Record<string, unknown>>(
+  rows: readonly T[],
+  orderSpecs: readonly MockOrderSpec[]
+): T[] {
+  const copy = [...rows];
+  if (orderSpecs.length === 0) {
+    return copy;
+  }
+  copy.sort((a, b) => {
+    for (const spec of orderSpecs) {
+      const cmp = compareMockValues(spec.column, a[spec.column], b[spec.column]);
+      if (cmp !== 0) {
+        return spec.ascending ? cmp : -cmp;
+      }
+    }
+    return 0;
+  });
+  return copy;
+}
+
+function splitPostgrestTopLevel(expr: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let depth = 0;
+  let inQuotes = false;
+  let escaping = false;
+
+  for (let i = 0; i < expr.length; i += 1) {
+    const ch = expr[i];
+    if (escaping) {
+      current += ch;
+      escaping = false;
+      continue;
+    }
+    if (inQuotes) {
+      current += ch;
+      if (ch === '\\') {
+        escaping = true;
+      } else if (ch === '"') {
+        inQuotes = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inQuotes = true;
+      current += ch;
+      continue;
+    }
+    if (ch === '(') {
+      depth += 1;
+      current += ch;
+      continue;
+    }
+    if (ch === ')') {
+      depth -= 1;
+      current += ch;
+      continue;
+    }
+    if (ch === ',' && depth === 0) {
+      parts.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+
+  if (current.trim().length > 0) {
+    parts.push(current.trim());
+  }
+  return parts;
+}
+
+function unquotePostgrestValue(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    let out = '';
+    for (let i = 1; i < trimmed.length - 1; i += 1) {
+      if (trimmed[i] === '\\' && i + 1 < trimmed.length - 1) {
+        out += trimmed[i + 1];
+        i += 1;
+      } else {
+        out += trimmed[i];
+      }
+    }
+    return out;
+  }
+  return trimmed;
+}
+
+function evaluatePostgrestCondition(
+  row: Record<string, unknown>,
+  clause: string
+): boolean {
+  const trimmed = clause.trim();
+  if (trimmed.startsWith('and(') && trimmed.endsWith(')')) {
+    const inner = trimmed.slice(4, -1);
+    return splitPostgrestTopLevel(inner).every((sub) =>
+      evaluatePostgrestCondition(row, sub)
+    );
+  }
+  if (trimmed.startsWith('or(') && trimmed.endsWith(')')) {
+    const inner = trimmed.slice(3, -1);
+    return splitPostgrestTopLevel(inner).some((sub) =>
+      evaluatePostgrestCondition(row, sub)
+    );
+  }
+
+  const firstDot = trimmed.indexOf('.');
+  if (firstDot <= 0) {
+    throw new Error(`Invalid PostgREST filter clause: ${clause}`);
+  }
+  const secondDot = trimmed.indexOf('.', firstDot + 1);
+  if (secondDot <= firstDot + 1) {
+    throw new Error(`Invalid PostgREST filter clause: ${clause}`);
+  }
+  const column = trimmed.slice(0, firstDot);
+  const operator = trimmed.slice(firstDot + 1, secondDot);
+  const rawValue = trimmed.slice(secondDot + 1);
+  const value = unquotePostgrestValue(rawValue);
+  const cmp = compareMockValues(column, row[column], value);
+
+  switch (operator) {
+    case 'eq':
+      return cmp === 0;
+    case 'lt':
+      return cmp < 0;
+    case 'lte':
+      return cmp <= 0;
+    case 'gt':
+      return cmp > 0;
+    case 'gte':
+      return cmp >= 0;
+    default:
+      throw new Error(`Unsupported PostgREST filter operator: ${operator}`);
+  }
+}
+
+function matchesPostgrestOrFilter(
+  row: Record<string, unknown>,
+  orExpr: string
+): boolean {
+  const clauses = splitPostgrestTopLevel(orExpr);
+  if (clauses.length === 0) {
+    throw new Error(`Empty PostgREST .or() filter expression.`);
+  }
+  return clauses.some((clause) => evaluatePostgrestCondition(row, clause));
 }
 
 function createDeferred<T>() {
@@ -305,6 +505,8 @@ function readFormDataField(formData: FormData, fieldName: string): unknown {
   return null;
 }
 
+const MOCK_POSTGREST_MAX_ROWS = 1000;
+
 function createMockDeptOrgClient(initial: MockDbState): {
   client: DeptOrgSupabaseClient;
   state: MockDbState;
@@ -315,7 +517,8 @@ function createMockDeptOrgClient(initial: MockDbState): {
     insertAnnouncement: jest.Mock;
     announcementsLimit: jest.Mock;
     fetchOrgAnnouncements: jest.Mock;
-    orgAnnouncementsRanges: jest.Mock;
+    orgAnnouncementsOrders: jest.Mock;
+    orgAnnouncementsLimits: jest.Mock;
   };
 } {
   const state: MockDbState = {
@@ -342,8 +545,17 @@ function createMockDeptOrgClient(initial: MockDbState): {
     insertAnnouncement: jest.fn(),
     announcementsLimit: jest.fn(),
     fetchOrgAnnouncements: jest.fn(),
-    orgAnnouncementsRanges: jest.fn(),
+    orgAnnouncementsOrders: jest.fn(),
+    orgAnnouncementsLimits: jest.fn(),
   };
+
+  interface MockQueryState {
+    eqCol?: string;
+    eqVal?: unknown;
+    isNullCols: string[];
+    orFilters: string[];
+    orderSpecs: MockOrderSpec[];
+  }
 
   const client: DeptOrgSupabaseClient = {
     auth: {
@@ -363,58 +575,95 @@ function createMockDeptOrgClient(initial: MockDbState): {
           : null;
 
       const resolveRows = async (
-        eqCol?: string,
-        eqVal?: unknown
+        query: MockQueryState
       ): Promise<DeptOrgQueryResult<unknown[]>> => {
         const err = makeError();
         if (err) {
           return { data: null, error: err };
         }
         if (table === 'department_info') {
+          const rows = state.departmentInfo ? [state.departmentInfo] : [];
           return {
-            data: state.departmentInfo ? [state.departmentInfo] : [],
+            data: applyMockOrderSpecs(
+              rows as unknown as Array<Record<string, unknown>>,
+              query.orderSpecs
+            ),
             error: null,
           };
         }
         if (table === 'organizations') {
+          const rows = state.organizations.filter((o) =>
+            query.isNullCols.every(
+              (col) => (o as unknown as Record<string, unknown>)[col] === null
+            )
+          );
           return {
-            data: state.organizations.filter((o) => o.deleted_at === null),
+            data: applyMockOrderSpecs(
+              rows as unknown as Array<Record<string, unknown>>,
+              query.orderSpecs
+            ),
             error: null,
           };
         }
         if (table === 'org_memberships') {
           const rows =
-            eqCol === 'profile_id'
-              ? state.memberships.filter((m) => m.profile_id === eqVal)
+            query.eqCol === 'profile_id'
+              ? state.memberships.filter((m) => m.profile_id === query.eqVal)
               : state.memberships;
-          return { data: rows, error: null };
+          return {
+            data: applyMockOrderSpecs(
+              rows as unknown as Array<Record<string, unknown>>,
+              query.orderSpecs
+            ),
+            error: null,
+          };
         }
         if (table === 'announcements') {
-          const compareStable = (a: Announcement, b: Announcement) => {
-            const diff = Date.parse(b.published_at) - Date.parse(a.published_at);
-            return diff !== 0 ? diff : a.id.localeCompare(b.id);
-          };
-          if (eqCol === 'organization_id') {
-            spies.fetchOrgAnnouncements(eqVal);
-            const rows = state.announcements
-              .filter(
-                (a) => a.deleted_at === null && a.organization_id === eqVal
-              )
-              .sort(compareStable);
-            return { data: rows, error: null };
+          if (query.eqCol === 'organization_id') {
+            const rows = state.announcements.filter((a) => {
+              const record = a as unknown as Record<string, unknown>;
+              if (a.organization_id !== query.eqVal) {
+                return false;
+              }
+              if (!query.isNullCols.every((col) => record[col] === null)) {
+                return false;
+              }
+              return query.orFilters.every((expr) =>
+                matchesPostgrestOrFilter(record, expr)
+              );
+            });
+            return {
+              data: applyMockOrderSpecs(
+                rows as unknown as Array<Record<string, unknown>>,
+                query.orderSpecs
+              ),
+              error: null,
+            };
           }
           if (state.onFetchAnnouncements) {
             return state.onFetchAnnouncements();
           }
-          const rows = state.announcements
-            .filter((a) => a.deleted_at === null)
-            .sort(compareStable);
-          return { data: rows, error: null };
+          const rows = state.announcements.filter((a) => {
+            const record = a as unknown as Record<string, unknown>;
+            if (!query.isNullCols.every((col) => record[col] === null)) {
+              return false;
+            }
+            return query.orFilters.every((expr) =>
+              matchesPostgrestOrFilter(record, expr)
+            );
+          });
+          return {
+            data: applyMockOrderSpecs(
+              rows as unknown as Array<Record<string, unknown>>,
+              query.orderSpecs
+            ),
+            error: null,
+          };
         }
         return { data: [], error: null };
       };
 
-      const makeListTerminal = (eqCol?: string, eqVal?: unknown) => {
+      const makeListTerminal = (query: MockQueryState) => {
         const terminal = {
           then<TResult1 = DeptOrgQueryResult<unknown[]>, TResult2 = never>(
             onfulfilled?:
@@ -426,35 +675,42 @@ function createMockDeptOrgClient(initial: MockDbState): {
               | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
               | null
           ) {
-            return resolveRows(eqCol, eqVal).then(onfulfilled, onrejected);
+            return resolveRows(query).then(onfulfilled, onrejected);
           },
-          order() {
-            return terminal;
+          order(column: string, options?: { ascending?: boolean }) {
+            return makeListTerminal({
+              ...query,
+              orderSpecs: [
+                ...query.orderSpecs,
+                { column, ascending: options?.ascending ?? true },
+              ],
+            });
           },
           limit: async (count: number) => {
-            if (table === 'announcements') {
+            if (table === 'announcements' && query.eqCol === 'organization_id') {
+              spies.fetchOrgAnnouncements(query.eqVal);
+              spies.orgAnnouncementsOrders(query.eqVal, [...query.orderSpecs]);
+              spies.orgAnnouncementsLimits(query.eqVal, count);
+              if (state.onFetchOrgAnnouncements) {
+                const override = await state.onFetchOrgAnnouncements(
+                  String(query.eqVal),
+                  {
+                    orFilters: [...query.orFilters],
+                    orderSpecs: [...query.orderSpecs],
+                    limit: count,
+                  }
+                );
+                if (override !== undefined) {
+                  return override;
+                }
+              }
+            } else if (table === 'announcements') {
               spies.announcementsLimit(count);
             }
-            const res = await resolveRows(eqCol, eqVal);
+            const res = await resolveRows(query);
+            const serverCappedCount = Math.min(count, MOCK_POSTGREST_MAX_ROWS);
             return {
-              data: res.data ? res.data.slice(0, count) : null,
-              error: res.error,
-            };
-          },
-          range: async (from: number, to: number) => {
-            if (table === 'announcements' && eqCol === 'organization_id') {
-              spies.orgAnnouncementsRanges(eqVal, from, to);
-              if (state.onFetchOrgAnnouncements) {
-                return state.onFetchOrgAnnouncements(String(eqVal), from, to);
-              }
-            }
-            const res = await resolveRows(eqCol, eqVal);
-            if (!res.data) {
-              return res;
-            }
-            const maxEnd = Math.min(to + 1, from + ORG_ANNOUNCEMENTS_PAGE_SIZE);
-            return {
-              data: res.data.slice(from, maxEnd),
+              data: res.data ? res.data.slice(0, serverCappedCount) : null,
               error: res.error,
             };
           },
@@ -462,10 +718,35 @@ function createMockDeptOrgClient(initial: MockDbState): {
         return terminal;
       };
 
+      const makeOrgFilterChain = (query: MockQueryState) => ({
+        or(filters: string) {
+          return makeOrgFilterChain({
+            ...query,
+            orFilters: [...query.orFilters, filters],
+          });
+        },
+        order(column: string, options?: { ascending?: boolean }) {
+          return makeListTerminal({
+            ...query,
+            orderSpecs: [
+              ...query.orderSpecs,
+              { column, ascending: options?.ascending ?? true },
+            ],
+          });
+        },
+      });
+
       return {
         select() {
           return {
             eq(col: string, val: unknown) {
+              const baseQuery: MockQueryState = {
+                eqCol: col,
+                eqVal: val,
+                isNullCols: [],
+                orFilters: [],
+                orderSpecs: [],
+              };
               return {
                 then<
                   TResult1 = DeptOrgQueryResult<unknown[]>,
@@ -480,26 +761,35 @@ function createMockDeptOrgClient(initial: MockDbState): {
                     | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
                     | null
                 ) {
-                  return resolveRows(col, val).then(onfulfilled, onrejected);
+                  return resolveRows(baseQuery).then(onfulfilled, onrejected);
                 },
-                is() {
-                  return {
-                    order() {
-                      return makeListTerminal(col, val);
-                    },
-                  };
+                is(isCol: string, _val: null) {
+                  return makeOrgFilterChain({
+                    ...baseQuery,
+                    isNullCols: [...baseQuery.isNullCols, isCol],
+                  });
                 },
               };
             },
-            is() {
+            is(isCol: string, _val: null) {
               return {
-                order() {
-                  return makeListTerminal();
+                order(column: string, options?: { ascending?: boolean }) {
+                  return makeListTerminal({
+                    isNullCols: [isCol],
+                    orFilters: [],
+                    orderSpecs: [
+                      { column, ascending: options?.ascending ?? true },
+                    ],
+                  });
                 },
               };
             },
-            order() {
-              return makeListTerminal();
+            order(column: string, options?: { ascending?: boolean }) {
+              return makeListTerminal({
+                isNullCols: [],
+                orFilters: [],
+                orderSpecs: [{ column, ascending: options?.ascending ?? true }],
+              });
             },
           };
         },
@@ -1542,7 +1832,7 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
       ).rejects.toThrow();
 
       const pagedCount = 1005;
-      const manyOrgPosts: Announcement[] = Array.from(
+      const expectedPagedOrder: Announcement[] = Array.from(
         { length: pagedCount },
         (_, index) => ({
           id: `88888888-8888-4888-9888-${String(index + 1).padStart(12, '0')}`,
@@ -1551,17 +1841,25 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
           content: 'Paginated organization announcement.',
           global_visibility: false,
           published_at: new Date(
-            Date.parse('2026-11-20T00:00:00.000Z') - Math.floor(index / 2) * 60_000
+            Date.parse('2026-11-20T00:00:00.000Z') -
+              Math.floor((index + 1) / 2) * 60_000
           ).toISOString(),
           expires_at: null,
           deleted_at: null,
         })
       );
+      const outOfIdOrderFixture: Announcement[] = [...expectedPagedOrder];
+      for (let i = 1; i + 1 < outOfIdOrderFixture.length; i += 2) {
+        const first = outOfIdOrderFixture[i];
+        outOfIdOrderFixture[i] = outOfIdOrderFixture[i + 1];
+        outOfIdOrderFixture[i + 1] = first;
+      }
+
       const pagedMock = createMockDeptOrgClient({
         departmentInfo: SAMPLE_DEPT,
         organizations: [SAMPLE_ORG_A],
         memberships: [],
-        announcements: manyOrgPosts,
+        announcements: outOfIdOrderFixture,
       });
 
       const allPaged = await fetchOrganizationAnnouncements(
@@ -1569,21 +1867,134 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
         ORG_A_ID
       );
       expect(allPaged).toHaveLength(pagedCount);
-      expect(allPaged[0].id).toBe(manyOrgPosts[0].id);
-      expect(allPaged[pagedCount - 1].id).toBe(manyOrgPosts[pagedCount - 1].id);
-      expect(pagedMock.spies.orgAnnouncementsRanges).toHaveBeenNthCalledWith(
+      expect(allPaged.map((a) => a.id)).toEqual(
+        expectedPagedOrder.map((a) => a.id)
+      );
+      const expectedOrders: MockOrderSpec[] = [
+        { column: 'published_at', ascending: false },
+        { column: 'id', ascending: true },
+      ];
+      expect(pagedMock.spies.orgAnnouncementsOrders).toHaveBeenCalledTimes(2);
+      expect(pagedMock.spies.orgAnnouncementsOrders).toHaveBeenNthCalledWith(
         1,
         ORG_A_ID,
-        0,
-        999
+        expectedOrders
       );
-      expect(pagedMock.spies.orgAnnouncementsRanges).toHaveBeenNthCalledWith(
+      expect(pagedMock.spies.orgAnnouncementsOrders).toHaveBeenNthCalledWith(
         2,
         ORG_A_ID,
-        1000,
-        1999
+        expectedOrders
       );
-      expect(pagedMock.spies.orgAnnouncementsRanges).toHaveBeenCalledTimes(2);
+      expect(pagedMock.spies.orgAnnouncementsLimits).toHaveBeenCalledTimes(2);
+      expect(pagedMock.spies.orgAnnouncementsLimits).toHaveBeenNthCalledWith(
+        1,
+        ORG_A_ID,
+        ORG_ANNOUNCEMENTS_PAGE_SIZE
+      );
+      expect(pagedMock.spies.orgAnnouncementsLimits).toHaveBeenNthCalledWith(
+        2,
+        ORG_A_ID,
+        ORG_ANNOUNCEMENTS_PAGE_SIZE
+      );
+
+      const overCapMock = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [SAMPLE_ORG_A],
+        memberships: [],
+        announcements: outOfIdOrderFixture,
+      });
+      const overCapResult = await fetchOrganizationAnnouncements(
+        overCapMock.client,
+        ORG_A_ID,
+        1500
+      );
+      expect(overCapResult).toHaveLength(pagedCount);
+      expect(overCapResult.map((a) => a.id)).toEqual(
+        expectedPagedOrder.map((a) => a.id)
+      );
+      expect(overCapMock.spies.orgAnnouncementsLimits).toHaveBeenCalledTimes(2);
+      expect(overCapMock.spies.orgAnnouncementsLimits).toHaveBeenNthCalledWith(
+        1,
+        ORG_A_ID,
+        ORG_ANNOUNCEMENTS_MAX_PAGE_SIZE
+      );
+      expect(overCapMock.spies.orgAnnouncementsLimits).toHaveBeenNthCalledWith(
+        2,
+        ORG_A_ID,
+        ORG_ANNOUNCEMENTS_MAX_PAGE_SIZE
+      );
+
+      const expectedSmallOrder = expectedPagedOrder.slice(0, 5);
+      const smallFixture = [
+        expectedSmallOrder[0],
+        expectedSmallOrder[2],
+        expectedSmallOrder[1],
+        expectedSmallOrder[4],
+        expectedSmallOrder[3],
+      ];
+      const smallPageMock = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [SAMPLE_ORG_A],
+        memberships: [],
+        announcements: smallFixture,
+      });
+      const smallPaged = await fetchOrganizationAnnouncements(
+        smallPageMock.client,
+        ORG_A_ID,
+        2
+      );
+      expect(smallPaged.map((a) => a.id)).toEqual(
+        expectedSmallOrder.map((a) => a.id)
+      );
+      expect(smallPageMock.spies.orgAnnouncementsLimits).toHaveBeenCalledTimes(
+        3
+      );
+      expect(smallPageMock.spies.orgAnnouncementsLimits).toHaveBeenNthCalledWith(
+        1,
+        ORG_A_ID,
+        2
+      );
+      expect(smallPageMock.spies.orgAnnouncementsLimits).toHaveBeenNthCalledWith(
+        2,
+        ORG_A_ID,
+        2
+      );
+      expect(smallPageMock.spies.orgAnnouncementsLimits).toHaveBeenNthCalledWith(
+        3,
+        ORG_A_ID,
+        2
+      );
+
+      let pageCalls = 0;
+      const midDeleteMock = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [SAMPLE_ORG_A],
+        memberships: [],
+        announcements: smallFixture.map((item) => ({ ...item })),
+        onFetchOrgAnnouncements: async (_orgId, params) => {
+          pageCalls += 1;
+          if (pageCalls === 2) {
+            expect(params.orFilters).toHaveLength(1);
+            midDeleteMock.state.announcements =
+              midDeleteMock.state.announcements.map((item) =>
+                item.id === expectedSmallOrder[0].id
+                  ? { ...item, deleted_at: '2026-11-27T12:05:00.000Z' }
+                  : item
+              );
+          }
+          return undefined;
+        },
+      });
+      const midDeleteResult = await fetchOrganizationAnnouncements(
+        midDeleteMock.client,
+        ORG_A_ID,
+        2
+      );
+      expect(midDeleteResult.map((a) => a.id)).toEqual(
+        expectedSmallOrder.map((a) => a.id)
+      );
+      expect(new Set(midDeleteResult.map((a) => a.id)).size).toBe(5);
+      expect(pageCalls).toBe(3);
     });
   });
 
@@ -2642,6 +3053,10 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
       state.failErrorMessage = 'Department update failed';
       await fireEvent.press(screen.getByTestId('tab-department'));
       await fireEvent.press(screen.getByTestId('dept-edit-button'));
+      await fireEvent.changeText(
+        screen.getByTestId('dept-edit-title-input'),
+        'CCS Title With Error'
+      );
       await fireEvent.press(screen.getByTestId('dept-save-button'));
       await waitFor(() => {
         expect(screen.getByTestId('dept-form-error').props.children).toBe(
@@ -2960,17 +3375,9 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
       await waitFor(() => {
         expect(onSave).toHaveBeenCalledTimes(1);
       });
-      expect(onSave).toHaveBeenLastCalledWith(
-        DEPT_ID,
-        expect.objectContaining({
-          title: 'CCS Updated Title',
-          contact_json: {
-            office: ['Room 301', 'Room 302'],
-            email: { primary: 'ccs@lpunetwork.edu.ph' },
-            hotline: '464-1234',
-          },
-        })
-      );
+      expect(onSave).toHaveBeenLastCalledWith(DEPT_ID, {
+        title: 'CCS Updated Title',
+      });
 
       await fireEvent.changeText(
         view.getByTestId('dept-edit-office-input'),
@@ -3011,6 +3418,285 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
           },
         })
       );
+    });
+
+    it('submits only edited department fields after background refresh so newer server title and contacts are preserved', async () => {
+      const { client, state, spies } = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [],
+        memberships: [],
+        announcements: [],
+      });
+
+      const screen = await render(
+        createElement(MyCcsHubScreen, {
+          profile: ADMIN_PROFILE,
+          busy: false,
+          errorMessage: null,
+          onSignOut: jest.fn(),
+          deptOrgClient: client,
+          now: NOW,
+        })
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('announcements-empty')).toBeTruthy();
+      });
+
+      await fireEvent.press(screen.getByTestId('tab-department'));
+      await fireEvent.press(screen.getByTestId('dept-edit-button'));
+      expect(screen.getByTestId('department-edit-form')).toBeTruthy();
+
+      await fireEvent.press(screen.getByTestId('dept-save-button'));
+      expect(screen.getByTestId('dept-form-error').props.children).toMatch(
+        /At least one department_info field/
+      );
+      expect(spies.updateDepartment).not.toHaveBeenCalled();
+
+      await fireEvent.changeText(
+        screen.getByTestId('dept-edit-office-input'),
+        'CCS Innovation Wing 5F'
+      );
+
+      state.departmentInfo = {
+        ...SAMPLE_DEPT,
+        title: 'CCS — Refreshed Server Title',
+        contact_json: {
+          ...SAMPLE_DEPT.contact_json,
+          email: 'updated-ccs@lpunetwork.edu.ph',
+          hotline: '464-9999',
+        },
+        updated_at: '2026-11-27T13:15:00.000Z',
+      };
+
+      await fireEvent.press(screen.getByTestId('hub-refresh-button'));
+      await waitFor(() => {
+        expect(screen.getByText('Refresh')).toBeTruthy();
+      });
+      expect(screen.getByTestId('department-edit-form')).toBeTruthy();
+      expect(screen.getByTestId('dept-edit-office-input').props.value).toBe(
+        'CCS Innovation Wing 5F'
+      );
+
+      await fireEvent.press(screen.getByTestId('dept-save-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('department-about-view')).toBeTruthy();
+      });
+
+      expect(spies.updateDepartment).toHaveBeenCalledTimes(1);
+      expect(spies.updateDepartment).toHaveBeenCalledWith(DEPT_ID, {
+        contact_json: {
+          office: 'CCS Innovation Wing 5F',
+          email: 'updated-ccs@lpunetwork.edu.ph',
+          office_hours: 'Mon-Fri 8:00 AM - 5:00 PM',
+          hotline: '464-9999',
+        },
+      });
+      expect(state.departmentInfo?.title).toBe('CCS — Refreshed Server Title');
+      expect(screen.getByTestId('department-title').props.children).toBe(
+        'CCS — Refreshed Server Title'
+      );
+      expect(screen.getByText('CCS Innovation Wing 5F')).toBeTruthy();
+      expect(screen.getByText('updated-ccs@lpunetwork.edu.ph')).toBeTruthy();
+      expect(screen.getByText('464-9999')).toBeTruthy();
+    });
+
+    it('preserves newly published org posts across pending initial history load and preserves org mutations across in-flight hub refresh', async () => {
+      const olderHistoryPost: Announcement = {
+        id: '66666666-6666-4666-8666-999999999950',
+        organization_id: ORG_A_ID,
+        title: 'Earlier Org History Post',
+        content: 'Returned by the initial history fetch after publish.',
+        global_visibility: false,
+        published_at: '2026-10-15T08:00:00.000Z',
+        expires_at: null,
+        deleted_at: null,
+      };
+      const pendingOrgHistory = createDeferred<
+        DeptOrgQueryResult<Announcement[]> | undefined
+      >();
+
+      const memberships: OrgMembership[] = [
+        {
+          id: '99999999-9999-4999-8999-999999999998',
+          profile_id: OFFICER_ID,
+          organization_id: ORG_A_ID,
+          role: 'officer',
+          status: 'approved',
+          submission_id: null,
+          created_at: '2026-10-01T00:00:00.000Z',
+        },
+      ];
+
+      const { client, state } = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [SAMPLE_ORG_A],
+        memberships,
+        announcements: [],
+        onFetchOrgAnnouncements: () => pendingOrgHistory.promise,
+      });
+
+      const uploadedCoverPath = `orgs/${ORG_A_ID}/cover/77777777-7777-4777-8777-777777777755.webp`;
+      const uploadedCoverUrl = `https://myccs.supabase.co/storage/v1/object/public/${MEDIA_STORAGE_BUCKET}/${uploadedCoverPath}`;
+      const onUploadOrgMedia = jest.fn(
+        async (
+          orgId: string,
+          kind: 'logo' | 'cover',
+          _localUri: string
+        ): Promise<CompressImageResponse> => {
+          state.organizations = state.organizations.map((org) =>
+            org.id === orgId
+              ? {
+                  ...org,
+                  ...(kind === 'cover'
+                    ? { cover_url: uploadedCoverUrl }
+                    : { logo_url: uploadedCoverUrl }),
+                }
+              : org
+          );
+          return {
+            bucket: MEDIA_STORAGE_BUCKET,
+            path: uploadedCoverPath,
+            publicUrl: uploadedCoverUrl,
+            mimeType: OUTPUT_IMAGE_MIME_TYPE,
+            sizeBytes: 21000,
+            width: 1600,
+            height: 900,
+            exifStripped: true,
+          };
+        }
+      );
+
+      const screen = await render(
+        createElement(MyCcsHubScreen, {
+          profile: OFFICER_PROFILE,
+          busy: false,
+          errorMessage: null,
+          onSignOut: jest.fn(),
+          deptOrgClient: client,
+          onUploadOrgMedia,
+          now: NOW,
+        })
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('announcements-empty')).toBeTruthy();
+      });
+
+      await fireEvent.press(screen.getByTestId('tab-orgs'));
+      await fireEvent.press(screen.getByTestId(`org-row-${ORG_A_ID}`));
+      expect(screen.getByTestId('org-posts-loading')).toBeTruthy();
+
+      await fireEvent.press(screen.getByTestId('org-new-post-button'));
+      await fireEvent.changeText(
+        screen.getByTestId('org-post-title-input'),
+        'Published Before Initial History'
+      );
+      await fireEvent.changeText(
+        screen.getByTestId('org-post-content-input'),
+        'Created before the first history response arrived.'
+      );
+      await fireEvent.press(screen.getByTestId('org-post-publish-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`org-post-item-${ANN_NEW_ID}`)).toBeTruthy();
+      });
+
+      await act(async () => {
+        pendingOrgHistory.resolve({
+          data: [olderHistoryPost],
+          error: null,
+        });
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`org-post-item-${olderHistoryPost.id}`)
+        ).toBeTruthy();
+      });
+      expect(screen.getByTestId(`org-post-item-${ANN_NEW_ID}`)).toBeTruthy();
+
+      state.onFetchOrgAnnouncements = undefined;
+      await fireEvent.press(screen.getByTestId('org-customize-button'));
+      expect(screen.getByTestId('org-edit-panel')).toBeTruthy();
+
+      const uploadRefreshDeferred =
+        createDeferred<DeptOrgQueryResult<Announcement[]>>();
+      state.onFetchAnnouncements = () => uploadRefreshDeferred.promise;
+
+      await fireEvent.press(screen.getByTestId('hub-refresh-button'));
+      expect(screen.getByText('Refreshing...')).toBeTruthy();
+      expect(screen.getByTestId('org-edit-panel')).toBeTruthy();
+
+      await fireEvent.changeText(
+        screen.getByTestId('org-cover-uri-input'),
+        'file:///tmp/race-cover.jpg'
+      );
+      await fireEvent.press(screen.getByTestId('org-upload-cover-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('org-media-status').props.children).toMatch(
+          /Cover image compressed/
+        );
+      });
+      expect(screen.getByTestId('org-detail-cover-image').props.source).toEqual({
+        uri: uploadedCoverUrl,
+      });
+
+      await act(async () => {
+        uploadRefreshDeferred.resolve({ data: [], error: null });
+      });
+      await waitFor(() => {
+        expect(screen.getByText('Refresh')).toBeTruthy();
+      });
+      expect(screen.getByTestId('org-detail-cover-image').props.source).toEqual({
+        uri: uploadedCoverUrl,
+      });
+
+      const detailsRefreshDeferred =
+        createDeferred<DeptOrgQueryResult<Announcement[]>>();
+      state.onFetchAnnouncements = () => detailsRefreshDeferred.promise;
+
+      await fireEvent.press(screen.getByTestId('hub-refresh-button'));
+      expect(screen.getByText('Refreshing...')).toBeTruthy();
+      expect(screen.getByTestId('org-edit-panel')).toBeTruthy();
+
+      await fireEvent.changeText(
+        screen.getByTestId('org-edit-details-input'),
+        'Updated org bio while refresh in flight.'
+      );
+      await fireEvent.press(screen.getByTestId('org-edit-save-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('org-detail-about').props.children).toBe(
+          'Updated org bio while refresh in flight.'
+        );
+      });
+
+      await act(async () => {
+        detailsRefreshDeferred.resolve({ data: [], error: null });
+      });
+      await waitFor(() => {
+        expect(screen.getByText('Refresh')).toBeTruthy();
+      });
+
+      expect(screen.getByTestId('org-detail-cover-image').props.source).toEqual({
+        uri: uploadedCoverUrl,
+      });
+      expect(screen.getByTestId('org-detail-about').props.children).toBe(
+        'Updated org bio while refresh in flight.'
+      );
+
+      state.onFetchAnnouncements = undefined;
+      state.organizations = state.organizations.map((org) =>
+        org.id === ORG_A_ID
+          ? { ...org, details: 'Subsequent Server Org Bio' }
+          : org
+      );
+      await fireEvent.press(screen.getByTestId('hub-refresh-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('org-detail-about').props.children).toBe(
+          'Subsequent Server Org Bio'
+        );
+      });
     });
   });
 });

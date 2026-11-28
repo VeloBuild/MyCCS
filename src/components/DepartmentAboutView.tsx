@@ -171,9 +171,11 @@ function DepartmentEditForm({
   onSave,
 }: DepartmentEditFormProps) {
   const [title, setTitle] = useState(departmentInfo?.title ?? '');
+  const [titleDirty, setTitleDirty] = useState(false);
   const [aboutMarkdown, setAboutMarkdown] = useState(
     departmentInfo?.about_markdown ?? ''
   );
+  const [aboutDirty, setAboutDirty] = useState(false);
   const [contactOffice, setContactOffice] = useState(
     departmentInfo ? readContactString(departmentInfo.contact_json, 'office') : ''
   );
@@ -185,6 +187,7 @@ function DepartmentEditForm({
   const [leadershipText, setLeadershipText] = useState(
     departmentInfo ? formatLeadershipLines(departmentInfo.leadership_json) : ''
   );
+  const [leadershipDirty, setLeadershipDirty] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
@@ -205,44 +208,34 @@ function DepartmentEditForm({
 
     setValidationError(null);
 
-    let leadershipEntries: DepartmentLeadershipEntry[];
-    try {
-      leadershipEntries = parseLeadershipLines(leadershipText);
-    } catch (err) {
-      setValidationError(
-        err instanceof Error ? err.message : 'Invalid leadership entries.'
-      );
-      return;
-    }
+    if (isCreating) {
+      let leadershipEntries: DepartmentLeadershipEntry[];
+      try {
+        leadershipEntries = parseLeadershipLines(leadershipText);
+      } catch (err) {
+        setValidationError(
+          err instanceof Error ? err.message : 'Invalid leadership entries.'
+        );
+        return;
+      }
 
-    const nextContacts: Record<string, unknown> = departmentInfo
-      ? { ...departmentInfo.contact_json }
-      : {};
-    const trimmedOffice = contactOffice.trim();
-    const trimmedEmail = contactEmail.trim();
-    if (officeDirty || (isCreating && trimmedOffice.length > 0)) {
+      const nextContacts: Record<string, unknown> = {};
+      const trimmedOffice = contactOffice.trim();
+      const trimmedEmail = contactEmail.trim();
       if (trimmedOffice.length > 0) {
         nextContacts.office = trimmedOffice;
-      } else {
-        delete nextContacts.office;
       }
-    }
-    if (emailDirty || (isCreating && trimmedEmail.length > 0)) {
       if (trimmedEmail.length > 0) {
         nextContacts.email = trimmedEmail;
-      } else {
-        delete nextContacts.email;
       }
-    }
 
-    const rawPayload = {
-      title,
-      about_markdown: aboutMarkdown,
-      leadership_json: leadershipEntries,
-      contact_json: nextContacts,
-    };
+      const rawPayload = {
+        title,
+        about_markdown: aboutMarkdown,
+        leadership_json: leadershipEntries,
+        contact_json: nextContacts,
+      };
 
-    if (isCreating) {
       const parsed = DepartmentInfoCreateInputSchema.safeParse(rawPayload);
       if (!parsed.success) {
         setValidationError(
@@ -268,7 +261,47 @@ function DepartmentEditForm({
       return;
     }
 
-    const parsed = DepartmentInfoUpdateInputSchema.safeParse(rawPayload);
+    const updatePayload: Record<string, unknown> = {};
+    if (titleDirty) {
+      updatePayload.title = title;
+    }
+    if (aboutDirty) {
+      updatePayload.about_markdown = aboutMarkdown;
+    }
+    if (leadershipDirty) {
+      try {
+        updatePayload.leadership_json = parseLeadershipLines(leadershipText);
+      } catch (err) {
+        setValidationError(
+          err instanceof Error ? err.message : 'Invalid leadership entries.'
+        );
+        return;
+      }
+    }
+    if (officeDirty || emailDirty) {
+      const nextContacts: Record<string, unknown> = {
+        ...departmentInfo.contact_json,
+      };
+      if (officeDirty) {
+        const trimmedOffice = contactOffice.trim();
+        if (trimmedOffice.length > 0) {
+          nextContacts.office = trimmedOffice;
+        } else {
+          delete nextContacts.office;
+        }
+      }
+      if (emailDirty) {
+        const trimmedEmail = contactEmail.trim();
+        if (trimmedEmail.length > 0) {
+          nextContacts.email = trimmedEmail;
+        } else {
+          delete nextContacts.email;
+        }
+      }
+      updatePayload.contact_json = nextContacts;
+    }
+
+    const parsed = DepartmentInfoUpdateInputSchema.safeParse(updatePayload);
     if (!parsed.success) {
       setValidationError(
         parsed.error.issues[0]?.message ?? 'Invalid department details.'
@@ -301,7 +334,10 @@ function DepartmentEditForm({
         <TextInput
           style={styles.input}
           value={title}
-          onChangeText={setTitle}
+          onChangeText={(value) => {
+            setTitleDirty(true);
+            setTitle(value);
+          }}
           placeholder="College of Information Technology and Computer Science"
           testID="dept-edit-title-input"
         />
@@ -310,7 +346,10 @@ function DepartmentEditForm({
         <TextInput
           style={[styles.input, styles.multilineInput]}
           value={aboutMarkdown}
-          onChangeText={setAboutMarkdown}
+          onChangeText={(value) => {
+            setAboutDirty(true);
+            setAboutMarkdown(value);
+          }}
           multiline
           placeholder="Department mission, programs, and office notes"
           testID="dept-edit-about-input"
@@ -348,7 +387,10 @@ function DepartmentEditForm({
         <TextInput
           style={[styles.input, styles.multilineInput]}
           value={leadershipText}
-          onChangeText={setLeadershipText}
+          onChangeText={(value) => {
+            setLeadershipDirty(true);
+            setLeadershipText(value);
+          }}
           multiline
           placeholder="Dr. Maria Santos | Dean | maria.santos@lpunetwork.edu.ph"
           testID="dept-edit-leadership-input"

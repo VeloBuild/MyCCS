@@ -134,8 +134,10 @@ DECLARE
   v_org_b_id uuid;
   v_logo_path text;
   v_cover_path text;
+  v_org_b_logo_path text;
   v_logo_url text;
   v_cover_url text;
+  v_org_b_logo_url text;
   v_missing_logo_url text;
   v_missing_cover_url text;
   v_rows integer;
@@ -227,8 +229,10 @@ BEGIN
 
   v_logo_path := 'orgs/' || v_org_a_id::text || '/logo/b0000000-0000-4000-8000-000000000030.webp';
   v_cover_path := 'orgs/' || v_org_a_id::text || '/cover/b0000000-0000-4000-8000-000000000031.webp';
+  v_org_b_logo_path := 'orgs/' || v_org_b_id::text || '/logo/b0000000-0000-4000-8000-000000000034.webp';
   v_logo_url := 'https://myccs.supabase.co/storage/v1/object/public/org-media/' || v_logo_path;
   v_cover_url := 'https://myccs.supabase.co/storage/v1/object/public/org-media/' || v_cover_path;
+  v_org_b_logo_url := 'https://myccs.supabase.co/storage/v1/object/public/org-media/' || v_org_b_logo_path;
   v_missing_logo_url := 'https://myccs.supabase.co/storage/v1/object/public/org-media/orgs/' || v_org_a_id::text || '/logo/b0000000-0000-4000-8000-000000000099.webp';
   v_missing_cover_url := 'https://myccs.supabase.co/storage/v1/object/public/org-media/orgs/' || v_org_a_id::text || '/cover/b0000000-0000-4000-8000-000000000098.webp';
 
@@ -263,7 +267,8 @@ BEGIN
   INSERT INTO storage.objects (bucket_id, name, owner)
   VALUES
     ('org-media', v_logo_path, v_user_id),
-    ('org-media', v_cover_path, v_user_id);
+    ('org-media', v_cover_path, v_user_id),
+    ('org-media', v_org_b_logo_path, v_user_id);
 
   PERFORM set_config('request.jwt.claim.sub', v_user_id::text, true);
   PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
@@ -460,16 +465,24 @@ BEGIN
 
   SET LOCAL ROLE service_role;
 
+  UPDATE public.organizations
+  SET logo_url = v_org_b_logo_url
+  WHERE id = v_org_b_id;
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows <> 1 THEN
+    RAISE EXCEPTION 'Expected service_role UPDATE on Org B with its own existing org-media logo_url to succeed';
+  END IF;
+
   BEGIN
     UPDATE public.organizations
-    SET logo_url = 'https://myccs.supabase.co/storage/v1/object/public/org-media/orgs/' || v_org_b_id::text || '/logo/b0000000-0000-4000-8000-000000000030.webp'
+    SET logo_url = v_org_b_logo_url
     WHERE id = v_org_a_id;
     v_blocked := false;
   EXCEPTION WHEN check_violation THEN
     v_blocked := true;
   END;
   IF NOT v_blocked THEN
-    RAISE EXCEPTION 'service_role cross-org org-media logo_url must fail with check_violation (23514)';
+    RAISE EXCEPTION 'service_role cross-org org-media logo_url referencing existing Org B object must fail with check_violation (23514)';
   END IF;
 
   UPDATE public.organizations
