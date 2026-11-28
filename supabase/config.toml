@@ -124,6 +124,11 @@ file_size_limit = "50MiB"
 # allowed_mime_types = ["image/png", "image/jpeg"]
 # objects_path = "./images"
 
+[storage.buckets.org-media]
+public = true
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/webp"]
+
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]
 enabled = true
@@ -384,8 +389,12 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
-# [edge_runtime.secrets]
-# secret_key = "env(SECRET_VALUE)"
+[edge_runtime.secrets]
+SUPABASE_JWT_ISSUER = "http://127.0.0.1:54321/auth/v1"
+SUPABASE_PUBLIC_URL = "http://127.0.0.1:54321"
+
+[functions.compress-image]
+verify_jwt = false
 
 [analytics]
 enabled = true

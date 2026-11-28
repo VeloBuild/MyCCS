@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -21,11 +21,22 @@ import {
 
 type AuthStep = 'signup' | 'signin' | 'otp';
 
-export interface AuthIdentityScreenProps {
-  client?: AuthSupabaseClient;
+export interface AuthenticatedRenderContext {
+  profile: PublicProfileDto;
+  busy: boolean;
+  errorMessage: string | null;
+  onSignOut: () => void;
 }
 
-export function AuthIdentityScreen({ client }: AuthIdentityScreenProps) {
+export interface AuthIdentityScreenProps {
+  client?: AuthSupabaseClient;
+  renderAuthenticated?: (context: AuthenticatedRenderContext) => ReactElement;
+}
+
+export function AuthIdentityScreen({
+  client,
+  renderAuthenticated,
+}: AuthIdentityScreenProps) {
   const [step, setStep] = useState<AuthStep>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -193,6 +204,15 @@ export function AuthIdentityScreen({ client }: AuthIdentityScreenProps) {
   };
 
   if (profile) {
+    if (renderAuthenticated) {
+      return renderAuthenticated({
+        profile,
+        busy,
+        errorMessage,
+        onSignOut: handleSignOut,
+      });
+    }
+
     return (
       <IdentityCard
         profile={profile}
