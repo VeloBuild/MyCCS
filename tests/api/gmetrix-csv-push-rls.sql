@@ -1050,7 +1050,7 @@ BEGIN
   v_promote_first := public.promote_faculty_by_email('  Spec05.Faculty@LPUNetwork.edu.ph  ');
   IF (v_promote_first ->> 'id')::uuid IS DISTINCT FROM v_faculty_id
      OR (v_promote_first ->> 'email') IS DISTINCT FROM 'spec05.faculty@lpunetwork.edu.ph'
-     OR (v_promote_first ->> 'fullName') IS DISTINCT FROM 'Spec05 Faculty'
+     OR (v_promote_first ->> 'fullName') IS DISTINCT FROM 'Prof. Spec05 Faculty'
      OR (v_promote_first ->> 'role') IS DISTINCT FROM 'admin'
      OR (v_promote_first ->> 'alreadyAdmin')::boolean IS DISTINCT FROM false
      OR v_promote_first ? 'student_id'
@@ -1061,7 +1061,7 @@ BEGIN
   v_promote_second := public.promote_faculty_by_email('spec05.faculty@lpunetwork.edu.ph');
   IF (v_promote_second ->> 'id')::uuid IS DISTINCT FROM v_faculty_id
      OR (v_promote_second ->> 'email') IS DISTINCT FROM 'spec05.faculty@lpunetwork.edu.ph'
-     OR (v_promote_second ->> 'fullName') IS DISTINCT FROM 'Spec05 Faculty'
+     OR (v_promote_second ->> 'fullName') IS DISTINCT FROM 'Prof. Spec05 Faculty'
      OR (v_promote_second ->> 'role') IS DISTINCT FROM 'admin'
      OR (v_promote_second ->> 'alreadyAdmin')::boolean IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'Expected second promote_faculty_by_email to return alreadyAdmin = true, got %', v_promote_second;
