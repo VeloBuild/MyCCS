@@ -13,6 +13,7 @@ import type {
   RbacActor,
 } from '../../shared/core-schema';
 import {
+  compareIsoTimestamps,
   findOrganizationById,
   type MobileHubRoute,
 } from '../../shared/dept-org';
@@ -85,12 +86,17 @@ function compareAnnouncementsNewestFirst(
   a: Announcement,
   b: Announcement
 ): number {
-  const timeDiff = Date.parse(b.published_at) - Date.parse(a.published_at);
+  const timeDiff = compareIsoTimestamps(b.published_at, a.published_at);
   if (timeDiff !== 0) {
     return timeDiff;
   }
   return a.id.localeCompare(b.id);
 }
+
+type OrgMutableField = keyof OrganizationUpdateInput;
+type PendingOrgFieldMap = Partial<{
+  [K in OrgMutableField]: { seq: number; value: Organization[K] };
+}>;
 
 function mergeAcknowledgedAnnouncements(
   fetched: Announcement[],
@@ -157,9 +163,7 @@ export function MyCcsHubScreen({
     Array<{ seq: number; post: Announcement }>
   >([]);
   const orgMutationSeqRef = useRef(0);
-  const mutatedOrgsRef = useRef<
-    Map<string, { seq: number; patch: Partial<Organization> }>
-  >(new Map());
+  const mutatedOrgsRef = useRef<Map<string, PendingOrgFieldMap>>(new Map());
   const deptMutationSeqRef = useRef(0);
   const mutatedDeptRef = useRef<{ seq: number; value: DepartmentInfo } | null>(
     null
@@ -285,14 +289,30 @@ export function MyCcsHubScreen({
       }
 
       const mergedOrganizations = snapshot.organizations.map((org) => {
-        const pendingOrg = mutatedOrgsRef.current.get(org.id);
-        if (pendingOrg && pendingOrg.seq > startOrgSeq) {
-          return { ...org, ...pendingOrg.patch };
+        const pendingFields = mutatedOrgsRef.current.get(org.id);
+        if (!pendingFields) {
+          return org;
         }
-        return org;
+        let nextOrg: Organization = org;
+        for (const key of Object.keys(pendingFields) as OrgMutableField[]) {
+          const entry = pendingFields[key];
+          if (entry && entry.seq > startOrgSeq) {
+            nextOrg = { ...nextOrg, [key]: entry.value };
+          }
+        }
+        return nextOrg;
       });
-      for (const [orgId, pendingOrg] of mutatedOrgsRef.current.entries()) {
-        if (pendingOrg.seq <= startOrgSeq) {
+      for (const [orgId, pendingFields] of mutatedOrgsRef.current.entries()) {
+        let remainingCount = 0;
+        for (const key of Object.keys(pendingFields) as OrgMutableField[]) {
+          const entry = pendingFields[key];
+          if (!entry || entry.seq <= startOrgSeq) {
+            delete pendingFields[key];
+          } else {
+            remainingCount += 1;
+          }
+        }
+        if (remainingCount === 0) {
           mutatedOrgsRef.current.delete(orgId);
         }
       }
@@ -439,11 +459,21 @@ export function MyCcsHubScreen({
       );
       if (mountedRef.current) {
         const seq = ++orgMutationSeqRef.current;
-        const prev = mutatedOrgsRef.current.get(organizationId);
-        mutatedOrgsRef.current.set(organizationId, {
-          seq,
-          patch: { ...(prev?.patch ?? {}), ...updated },
-        });
+        const nextFields: PendingOrgFieldMap = {
+          ...(mutatedOrgsRef.current.get(organizationId) ?? {}),
+        };
+        const recordField = <K extends OrgMutableField>(key: K) => {
+          (nextFields as Record<OrgMutableField, { seq: number; value: unknown }>)[key] = {
+            seq,
+            value: updated[key],
+          };
+        };
+        for (const key of Object.keys(input) as OrgMutableField[]) {
+          if (input[key] !== undefined) {
+            recordField(key);
+          }
+        }
+        mutatedOrgsRef.current.set(organizationId, nextFields);
         setOrganizations((current) =>
           current.map((org) => (org.id === updated.id ? updated : org))
         );
@@ -487,11 +517,15 @@ export function MyCcsHubScreen({
           kind === 'cover'
             ? { cover_url: uploaded.publicUrl }
             : { logo_url: uploaded.publicUrl };
-        const prev = mutatedOrgsRef.current.get(organizationId);
-        mutatedOrgsRef.current.set(organizationId, {
-          seq,
-          patch: { ...(prev?.patch ?? {}), ...mediaPatch },
-        });
+        const nextFields: PendingOrgFieldMap = {
+          ...(mutatedOrgsRef.current.get(organizationId) ?? {}),
+        };
+        if (kind === 'cover') {
+          nextFields.cover_url = { seq, value: uploaded.publicUrl };
+        } else {
+          nextFields.logo_url = { seq, value: uploaded.publicUrl };
+        }
+        mutatedOrgsRef.current.set(organizationId, nextFields);
         setOrganizations((current) =>
           current.map((org) =>
             org.id === organizationId ? { ...org, ...mediaPatch } : org

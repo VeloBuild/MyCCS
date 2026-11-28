@@ -33,6 +33,68 @@ const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DATE_ONLY_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
 const ISO_OFFSET_REGEX =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/;
+const TIMESTAMP_PRECISION_REGEX =
+  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(Z|[+-]\d{2}(?::?\d{2})?)$/;
+
+function parseIsoInstantParts(
+  iso: string
+): { wholeSeconds: number; nanoseconds: number } | null {
+  const match = TIMESTAMP_PRECISION_REGEX.exec(iso.trim());
+  if (!match) {
+    return null;
+  }
+  const year = Number.parseInt(match[1], 10);
+  const month = Number.parseInt(match[2], 10);
+  const day = Number.parseInt(match[3], 10);
+  const hour = Number.parseInt(match[4], 10);
+  const minute = Number.parseInt(match[5], 10);
+  const second = match[6] ? Number.parseInt(match[6], 10) : 0;
+  if (
+    !isValidCalendarDate(year, month, day) ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
+  ) {
+    return null;
+  }
+  const fracRaw = match[7] ?? '';
+  const tz = match[8];
+  let offsetSeconds = 0;
+  if (tz !== 'Z') {
+    const sign = tz[0] === '-' ? -1 : 1;
+    const tzDigits = tz.slice(1).replace(':', '');
+    const tzHours = Number.parseInt(tzDigits.slice(0, 2), 10);
+    const tzMinutes = tzDigits.length >= 4 ? Number.parseInt(tzDigits.slice(2, 4), 10) : 0;
+    if (tzHours > 23 || tzMinutes > 59) {
+      return null;
+    }
+    offsetSeconds = sign * (tzHours * 3600 + tzMinutes * 60);
+  }
+  const utcMs = Date.UTC(year, month - 1, day, hour, minute, second);
+  const wholeSeconds = Math.floor(utcMs / 1000) - offsetSeconds;
+  const nanoseconds = Number.parseInt(fracRaw.padEnd(9, '0'), 10);
+  return { wholeSeconds, nanoseconds };
+}
+
+export function compareIsoTimestamps(a: string, b: string): number {
+  const parsedA = parseIsoInstantParts(a);
+  const parsedB = parseIsoInstantParts(b);
+  if (parsedA && parsedB) {
+    if (parsedA.wholeSeconds !== parsedB.wholeSeconds) {
+      return parsedA.wholeSeconds < parsedB.wholeSeconds ? -1 : 1;
+    }
+    if (parsedA.nanoseconds !== parsedB.nanoseconds) {
+      return parsedA.nanoseconds < parsedB.nanoseconds ? -1 : 1;
+    }
+    return 0;
+  }
+  const msA = Date.parse(a);
+  const msB = Date.parse(b);
+  if (!Number.isNaN(msA) && !Number.isNaN(msB)) {
+    return msA < msB ? -1 : msA > msB ? 1 : 0;
+  }
+  return a < b ? -1 : a > b ? 1 : 0;
+}
 
 function isValidCalendarDate(year: number, month: number, day: number): boolean {
   if (month < 1 || month > 12 || day < 1 || day > 31) {
@@ -99,8 +161,8 @@ export function formatManilaDate(iso: string): string {
 }
 
 function compareAnnouncementsNewestFirst(a: Announcement, b: Announcement): number {
-  const diff = Date.parse(b.published_at) - Date.parse(a.published_at);
-  if (diff !== 0 && !Number.isNaN(diff)) {
+  const diff = compareIsoTimestamps(b.published_at, a.published_at);
+  if (diff !== 0) {
     return diff;
   }
 

@@ -170,12 +170,14 @@ function DepartmentEditForm({
   onCreate,
   onSave,
 }: DepartmentEditFormProps) {
-  const [title, setTitle] = useState(departmentInfo?.title ?? '');
-  const [titleDirty, setTitleDirty] = useState(false);
-  const [aboutMarkdown, setAboutMarkdown] = useState(
-    departmentInfo?.about_markdown ?? ''
+  const initialTitleRef = useRef(departmentInfo?.title ?? '');
+  const initialAboutRef = useRef(departmentInfo?.about_markdown ?? '');
+  const initialLeadershipRef = useRef(
+    departmentInfo ? formatLeadershipLines(departmentInfo.leadership_json) : ''
   );
-  const [aboutDirty, setAboutDirty] = useState(false);
+
+  const [title, setTitle] = useState(initialTitleRef.current);
+  const [aboutMarkdown, setAboutMarkdown] = useState(initialAboutRef.current);
   const [contactOffice, setContactOffice] = useState(
     departmentInfo ? readContactString(departmentInfo.contact_json, 'office') : ''
   );
@@ -185,9 +187,8 @@ function DepartmentEditForm({
   );
   const [emailDirty, setEmailDirty] = useState(false);
   const [leadershipText, setLeadershipText] = useState(
-    departmentInfo ? formatLeadershipLines(departmentInfo.leadership_json) : ''
+    initialLeadershipRef.current
   );
-  const [leadershipDirty, setLeadershipDirty] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
@@ -262,13 +263,13 @@ function DepartmentEditForm({
     }
 
     const updatePayload: Record<string, unknown> = {};
-    if (titleDirty) {
+    if (title !== initialTitleRef.current) {
       updatePayload.title = title;
     }
-    if (aboutDirty) {
+    if (aboutMarkdown !== initialAboutRef.current) {
       updatePayload.about_markdown = aboutMarkdown;
     }
-    if (leadershipDirty) {
+    if (leadershipText !== initialLeadershipRef.current) {
       try {
         updatePayload.leadership_json = parseLeadershipLines(leadershipText);
       } catch (err) {
@@ -334,10 +335,7 @@ function DepartmentEditForm({
         <TextInput
           style={styles.input}
           value={title}
-          onChangeText={(value) => {
-            setTitleDirty(true);
-            setTitle(value);
-          }}
+          onChangeText={setTitle}
           placeholder="College of Information Technology and Computer Science"
           testID="dept-edit-title-input"
         />
@@ -346,10 +344,7 @@ function DepartmentEditForm({
         <TextInput
           style={[styles.input, styles.multilineInput]}
           value={aboutMarkdown}
-          onChangeText={(value) => {
-            setAboutDirty(true);
-            setAboutMarkdown(value);
-          }}
+          onChangeText={setAboutMarkdown}
           multiline
           placeholder="Department mission, programs, and office notes"
           testID="dept-edit-about-input"
@@ -387,10 +382,7 @@ function DepartmentEditForm({
         <TextInput
           style={[styles.input, styles.multilineInput]}
           value={leadershipText}
-          onChangeText={(value) => {
-            setLeadershipDirty(true);
-            setLeadershipText(value);
-          }}
+          onChangeText={setLeadershipText}
           multiline
           placeholder="Dr. Maria Santos | Dean | maria.santos@lpunetwork.edu.ph"
           testID="dept-edit-leadership-input"

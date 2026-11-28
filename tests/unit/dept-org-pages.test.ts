@@ -12,6 +12,7 @@ import type {
 } from '../../shared/core-schema';
 import {
   buildOrganizationTree,
+  compareIsoTimestamps,
   filterAnnouncementsFeed,
   findOrganizationById,
   formatManilaDate,
@@ -321,11 +322,7 @@ function compareMockValues(
     typeof a === 'string' &&
     typeof b === 'string'
   ) {
-    const timeA = Date.parse(a);
-    const timeB = Date.parse(b);
-    if (!Number.isNaN(timeA) && !Number.isNaN(timeB)) {
-      return timeA < timeB ? -1 : timeA > timeB ? 1 : 0;
-    }
+    return compareIsoTimestamps(a, b);
   }
   const strA = String(a);
   const strB = String(b);
@@ -1995,6 +1992,81 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
       );
       expect(new Set(midDeleteResult.map((a) => a.id)).size).toBe(5);
       expect(pageCalls).toBe(3);
+
+      const microsecondFixture: Announcement[] = [
+        {
+          id: '88888888-8888-4888-9999-000000000004',
+          organization_id: ORG_A_ID,
+          title: 'Microsecond #1 (newest, largest ID)',
+          content: 'Distinct microsecond 456.',
+          global_visibility: false,
+          published_at: '2026-11-20T00:00:00.123456Z',
+          expires_at: null,
+          deleted_at: null,
+        },
+        {
+          id: '88888888-8888-4888-9999-000000000003',
+          organization_id: ORG_A_ID,
+          title: 'Microsecond #2 (page boundary, smaller ID)',
+          content: 'Distinct microsecond 455.',
+          global_visibility: false,
+          published_at: '2026-11-20T00:00:00.123455Z',
+          expires_at: null,
+          deleted_at: null,
+        },
+        {
+          id: '88888888-8888-4888-9999-000000000001',
+          organization_id: ORG_A_ID,
+          title: 'Microsecond #3 (after boundary, smallest ID)',
+          content: 'Distinct microsecond 454.',
+          global_visibility: false,
+          published_at: '2026-11-20T00:00:00.123454Z',
+          expires_at: null,
+          deleted_at: null,
+        },
+        {
+          id: '88888888-8888-4888-9999-000000000002',
+          organization_id: ORG_A_ID,
+          title: 'Microsecond #4 (exact tie with #3, higher ID)',
+          content: 'Exact tie at 454.',
+          global_visibility: false,
+          published_at: '2026-11-20T00:00:00.123454Z',
+          expires_at: null,
+          deleted_at: null,
+        },
+      ];
+      expect(
+        compareIsoTimestamps(
+          '2026-11-20T00:00:00.123456Z',
+          '2026-11-20T00:00:00.123455Z'
+        )
+      ).toBe(1);
+      expect(
+        compareIsoTimestamps(
+          '2026-11-20T08:00:00.123456+08:00',
+          '2026-11-20T00:00:00.123456Z'
+        )
+      ).toBe(0);
+
+      const microMock = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [SAMPLE_ORG_A],
+        memberships: [],
+        announcements: [
+          microsecondFixture[3],
+          microsecondFixture[2],
+          microsecondFixture[1],
+          microsecondFixture[0],
+        ],
+      });
+      const microPaged = await fetchOrganizationAnnouncements(
+        microMock.client,
+        ORG_A_ID,
+        2
+      );
+      expect(microPaged.map((a) => a.id)).toEqual(
+        microsecondFixture.map((a) => a.id)
+      );
     });
   });
 
@@ -3696,6 +3768,216 @@ describe('spec-04-dept-and-org-pages (SCRUM-13) — Mobile & Shared', () => {
         expect(screen.getByTestId('org-detail-about').props.children).toBe(
           'Subsequent Server Org Bio'
         );
+      });
+    });
+
+    it('omits restored DepartmentAboutView fields on save and isolates per-field org refresh patches across concurrent updates and dual uploads', async () => {
+      const adminActor: RbacActor = {
+        profileId: ADMIN_ID,
+        role: 'admin',
+        memberships: [],
+      };
+      const onSave = jest.fn().mockResolvedValue(undefined);
+      const editView = await render(
+        createElement(DepartmentAboutView, {
+          departmentInfo: SAMPLE_DEPT,
+          actor: adminActor,
+          mode: 'edit',
+          onEnterEdit: jest.fn(),
+          onCancelEdit: jest.fn(),
+          onCreate: jest.fn(),
+          onSave,
+        })
+      );
+
+      await fireEvent.changeText(
+        editView.getByTestId('dept-edit-title-input'),
+        'Temporary Title Edit'
+      );
+      await fireEvent.changeText(
+        editView.getByTestId('dept-edit-title-input'),
+        SAMPLE_DEPT.title
+      );
+      await fireEvent.changeText(
+        editView.getByTestId('dept-edit-office-input'),
+        'CCS Room 501'
+      );
+      await fireEvent.press(editView.getByTestId('dept-save-button'));
+      await waitFor(() => {
+        expect(onSave).toHaveBeenCalledTimes(1);
+      });
+      expect(onSave).toHaveBeenCalledWith(DEPT_ID, {
+        contact_json: {
+          ...SAMPLE_DEPT.contact_json,
+          office: 'CCS Room 501',
+        },
+      });
+
+      const serverNewCover = `https://myccs.supabase.co/storage/v1/object/public/${MEDIA_STORAGE_BUCKET}/orgs/${ORG_A_ID}/cover/12121212-1212-4121-8121-121212121212.webp`;
+      const uploadedCover2 = `https://myccs.supabase.co/storage/v1/object/public/${MEDIA_STORAGE_BUCKET}/orgs/${ORG_A_ID}/cover/34343434-3434-4343-8343-343434343434.webp`;
+      const uploadedLogo2 = `https://myccs.supabase.co/storage/v1/object/public/${MEDIA_STORAGE_BUCKET}/orgs/${ORG_A_ID}/logo/56565656-5656-4565-8565-565656565656.webp`;
+
+      const { client, state } = createMockDeptOrgClient({
+        departmentInfo: SAMPLE_DEPT,
+        organizations: [SAMPLE_ORG_A],
+        memberships: [
+          {
+            id: '99999999-9999-4999-8999-999999999998',
+            profile_id: OFFICER_ID,
+            organization_id: ORG_A_ID,
+            role: 'officer',
+            status: 'approved',
+            submission_id: null,
+            created_at: '2026-10-01T00:00:00.000Z',
+          },
+        ],
+        announcements: [],
+      });
+
+      const onUploadOrgMedia = jest.fn(
+        async (
+          orgId: string,
+          kind: 'logo' | 'cover',
+          _localUri: string
+        ): Promise<CompressImageResponse> => {
+          const publicUrl = kind === 'cover' ? uploadedCover2 : uploadedLogo2;
+          const path = `orgs/${orgId}/${kind}/78787878-7878-4787-8787-787878787878.webp`;
+          return {
+            bucket: MEDIA_STORAGE_BUCKET,
+            path,
+            publicUrl,
+            mimeType: OUTPUT_IMAGE_MIME_TYPE,
+            sizeBytes: 18000,
+            width: kind === 'cover' ? 1600 : 512,
+            height: kind === 'cover' ? 900 : 512,
+            exifStripped: true,
+          };
+        }
+      );
+
+      const screen = await render(
+        createElement(MyCcsHubScreen, {
+          profile: OFFICER_PROFILE,
+          busy: false,
+          errorMessage: null,
+          onSignOut: jest.fn(),
+          deptOrgClient: client,
+          onUploadOrgMedia,
+          now: NOW,
+        })
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('announcements-empty')).toBeTruthy();
+      });
+
+      await fireEvent.press(screen.getByTestId('tab-orgs'));
+      await fireEvent.press(screen.getByTestId(`org-row-${ORG_A_ID}`));
+      await fireEvent.press(screen.getByTestId('org-customize-button'));
+
+      await fireEvent.changeText(
+        screen.getByTestId('org-edit-details-input'),
+        'Pre-refresh local bio.'
+      );
+      await fireEvent.press(screen.getByTestId('org-edit-save-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('org-detail-about').props.children).toBe(
+          'Pre-refresh local bio.'
+        );
+      });
+
+      await fireEvent.press(screen.getByTestId('org-customize-button'));
+      const concurrentRefresh =
+        createDeferred<DeptOrgQueryResult<Announcement[]>>();
+      state.onFetchAnnouncements = () => concurrentRefresh.promise;
+      state.organizations = state.organizations.map((org) =>
+        org.id === ORG_A_ID
+          ? {
+              ...org,
+              details: 'Server bio changed before upload.',
+              cover_url: serverNewCover,
+            }
+          : org
+      );
+
+      await fireEvent.press(screen.getByTestId('hub-refresh-button'));
+
+      await fireEvent.changeText(
+        screen.getByTestId('org-cover-uri-input'),
+        'file:///tmp/cover2.jpg'
+      );
+      await fireEvent.press(screen.getByTestId('org-upload-cover-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('org-media-status').props.children).toMatch(
+          /Cover image compressed/
+        );
+      });
+
+      await fireEvent.changeText(
+        screen.getByTestId('org-logo-uri-input'),
+        'file:///tmp/logo2.png'
+      );
+      await fireEvent.press(screen.getByTestId('org-upload-logo-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('org-media-status').props.children).toMatch(
+          /Logo image compressed/
+        );
+      });
+
+      await act(async () => {
+        concurrentRefresh.resolve({ data: [], error: null });
+      });
+      await waitFor(() => {
+        expect(screen.getByText('Refresh')).toBeTruthy();
+      });
+
+      expect(screen.getByTestId('org-detail-about').props.children).toBe(
+        'Server bio changed before upload.'
+      );
+      expect(screen.getByTestId('org-detail-cover-image').props.source).toEqual({
+        uri: uploadedCover2,
+      });
+      expect(screen.getByTestId('org-detail-logo-image').props.source).toEqual({
+        uri: uploadedLogo2,
+      });
+
+      const detailsOnlyRefresh =
+        createDeferred<DeptOrgQueryResult<Announcement[]>>();
+      state.onFetchAnnouncements = () => detailsOnlyRefresh.promise;
+      state.organizations = state.organizations.map((org) =>
+        org.id === ORG_A_ID
+          ? {
+              ...org,
+              cover_url: serverNewCover,
+            }
+          : org
+      );
+
+      await fireEvent.press(screen.getByTestId('hub-refresh-button'));
+
+      await fireEvent.changeText(
+        screen.getByTestId('org-edit-details-input'),
+        'Details-only mutation during refresh.'
+      );
+      await fireEvent.press(screen.getByTestId('org-edit-save-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('org-detail-about').props.children).toBe(
+          'Details-only mutation during refresh.'
+        );
+      });
+
+      await act(async () => {
+        detailsOnlyRefresh.resolve({ data: [], error: null });
+      });
+      await waitFor(() => {
+        expect(screen.getByText('Refresh')).toBeTruthy();
+      });
+
+      expect(screen.getByTestId('org-detail-about').props.children).toBe(
+        'Details-only mutation during refresh.'
+      );
+      expect(screen.getByTestId('org-detail-cover-image').props.source).toEqual({
+        uri: serverNewCover,
       });
     });
   });
